@@ -17,6 +17,10 @@ const TeamsPage = ({ sidebarOpen }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sportFilter, setSportFilter] = useState("all");
 
+  // Validation states
+  const [validationError, setValidationError] = useState("");
+  const [showValidationMessage, setShowValidationMessage] = useState(false);
+
   // Position options
   const positions = {
     Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
@@ -64,6 +68,12 @@ const TeamsPage = ({ sidebarOpen }) => {
         players: value ? [{ name: "", position: "", jerseyNumber: "" }] : [],
       }));
     }
+    
+    // Clear validation error when user makes changes
+    if (validationError) {
+      setValidationError("");
+      setShowValidationMessage(false);
+    }
   };
 
   // Player functions
@@ -73,6 +83,12 @@ const TeamsPage = ({ sidebarOpen }) => {
         ...prev,
         players: [...prev.players, { name: "", position: "", jerseyNumber: "" }],
       }));
+      
+      // Clear validation error when adding players
+      if (validationError) {
+        setValidationError("");
+        setShowValidationMessage(false);
+      }
     }
   };
 
@@ -81,22 +97,77 @@ const TeamsPage = ({ sidebarOpen }) => {
       ...prev,
       players: prev.players.filter((_, i) => i !== index),
     }));
+    
+    // Clear validation error when removing players
+    if (validationError) {
+      setValidationError("");
+      setShowValidationMessage(false);
+    }
   };
 
   const handlePlayerChange = (index, field, value) => {
     const newPlayers = [...formData.players];
     newPlayers[index][field] = value;
     setFormData(prev => ({ ...prev, players: newPlayers }));
+    
+    // Clear validation error when editing players
+    if (validationError) {
+      setValidationError("");
+      setShowValidationMessage(false);
+    }
+  };
+
+  // Validate form before submission
+  const validateForm = () => {
+    if (!formData.teamName.trim()) {
+      return "Please enter a team name";
+    }
+    
+    if (!formData.sport) {
+      return "Please select a sport";
+    }
+    
+    const validPlayers = formData.players.filter(p => 
+      p.name.trim() && p.position && p.jerseyNumber
+    );
+    
+    if (validPlayers.length < 12) {
+      return `Team must have at least 12 players. Currently you have ${validPlayers.length} valid players.`;
+    }
+    
+    if (formData.players.length > 15) {
+      return "Team cannot have more than 15 players";
+    }
+    
+    // Check for duplicate jersey numbers
+    const jerseyNumbers = validPlayers.map(p => p.jerseyNumber);
+    const uniqueJerseyNumbers = new Set(jerseyNumbers);
+    if (jerseyNumbers.length !== uniqueJerseyNumbers.size) {
+      return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
+    }
+    
+    return null;
   };
 
   // Submit team
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validPlayers = formData.players.filter(p => p.name.trim() && p.position && p.jerseyNumber);
-
-    if (!formData.teamName || !formData.sport || validPlayers.length === 0) {
-      return alert("Please fill in all required fields and add at least one player with all details.");
+    
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setValidationError(validationError);
+      setShowValidationMessage(true);
+      return;
     }
+
+    // Clear any previous validation errors
+    setValidationError("");
+    setShowValidationMessage(false);
+
+    const validPlayers = formData.players.filter(p => 
+      p.name.trim() && p.position && p.jerseyNumber
+    );
 
     try {
       const res = await fetch("http://localhost:5000/api/teams", {
@@ -114,19 +185,29 @@ const TeamsPage = ({ sidebarOpen }) => {
         setTeams(prev => [...prev, newTeam]);
         setFormData({ teamName: "", sport: "", players: [] });
         setActiveTab("view");
-        alert("Team created successfully!");
+        // Show success message (you can replace this with a toast notification)
+        setValidationError("Team created successfully!");
+        setShowValidationMessage(true);
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setValidationError("");
+          setShowValidationMessage(false);
+        }, 3000);
       } else {
-        alert("Error creating team");
+        setValidationError("Error creating team. Please try again.");
+        setShowValidationMessage(true);
       }
     } catch (err) {
       console.error("Error creating team:", err);
-      alert("Error creating team");
+      setValidationError("Error creating team. Please check your connection and try again.");
+      setShowValidationMessage(true);
     }
   };
 
   // Delete team
   const handleDeleteTeam = async (id) => {
-    if (!confirm("Are you sure you want to delete this team?")) return;
+    if (!window.confirm("Are you sure you want to delete this team?")) return;
     
     try {
       const res = await fetch(`http://localhost:5000/api/teams/${id}`, { method: "DELETE" });
@@ -135,13 +216,23 @@ const TeamsPage = ({ sidebarOpen }) => {
         setTeams(prev => prev.filter(team => team.id !== id));
         // Remove from expanded teams if it was expanded
         setExpandedTeams(prev => prev.filter(teamId => teamId !== id));
-        alert("Team deleted successfully!");
+        // Show success message
+        setValidationError("Team deleted successfully!");
+        setShowValidationMessage(true);
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setValidationError("");
+          setShowValidationMessage(false);
+        }, 3000);
       } else {
-        alert("Error deleting team");
+        setValidationError("Error deleting team");
+        setShowValidationMessage(true);
       }
     } catch (err) {
       console.error("Error deleting team:", err);
-      alert("Error deleting team");
+      setValidationError("Error deleting team");
+      setShowValidationMessage(true);
     }
   };
 
@@ -170,7 +261,9 @@ const TeamsPage = ({ sidebarOpen }) => {
 
   const saveEditedPlayer = async () => {
     if (!editingPlayer.player.name.trim() || !editingPlayer.player.position || !editingPlayer.player.jerseyNumber) {
-      return alert("Please fill in all player details.");
+      setValidationError("Please fill in all player details.");
+      setShowValidationMessage(true);
+      return;
     }
 
     try {
@@ -194,13 +287,22 @@ const TeamsPage = ({ sidebarOpen }) => {
         }));
 
         setEditingPlayer(null);
-        alert("Player updated successfully!");
+        setValidationError("Player updated successfully!");
+        setShowValidationMessage(true);
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setValidationError("");
+          setShowValidationMessage(false);
+        }, 3000);
       } else {
-        alert("Error updating player");
+        setValidationError("Error updating player");
+        setShowValidationMessage(true);
       }
     } catch (err) {
       console.error("Error updating player:", err);
-      alert("Error updating player");
+      setValidationError("Error updating player");
+      setShowValidationMessage(true);
     }
   };
 
@@ -215,6 +317,11 @@ const TeamsPage = ({ sidebarOpen }) => {
 
   // Capitalize first letter
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+
+  // Get valid player count
+  const validPlayerCount = formData.players.filter(p => 
+    p.name.trim() && p.position && p.jerseyNumber
+  ).length;
 
   return (
     <div className="admin-dashboard">
@@ -241,6 +348,19 @@ const TeamsPage = ({ sidebarOpen }) => {
                 View Teams ({teams.length})
               </button>
             </div>
+
+            {/* Validation Message */}
+            {showValidationMessage && validationError && (
+              <div className={`admin-teams-validation-message ${validationError.includes("successfully") ? "admin-teams-success" : "admin-teams-error"}`}>
+                {validationError}
+                <button 
+                  className="admin-teams-close-message"
+                  onClick={() => setShowValidationMessage(false)}
+                >
+                  ×
+                </button>
+              </div>
+            )}
 
             {/* Create Team */}
             {activeTab === "create" && (
@@ -284,6 +404,12 @@ const TeamsPage = ({ sidebarOpen }) => {
                       <div className="admin-teams-players-section">
                         <div className="admin-teams-players-header">
                           <h3>Players</h3>
+                          <div className="admin-teams-player-count">
+                            {validPlayerCount} / 12-15 players
+                            {validPlayerCount < 12 && (
+                              <span className="admin-teams-count-warning"> (Minimum 12 required)</span>
+                            )}
+                          </div>
                           <button
                             type="button"
                             className="admin-teams-submit-btn"
@@ -293,6 +419,12 @@ const TeamsPage = ({ sidebarOpen }) => {
                             Add Player
                           </button>
                         </div>
+
+                        {formData.players.length >= 15 && (
+                          <div className="admin-teams-max-players-message">
+                            Maximum of 15 players reached
+                          </div>
+                        )}
 
                         {formData.players.map((player, index) => (
                           <div key={index} className="admin-teams-player-card">
@@ -329,22 +461,39 @@ const TeamsPage = ({ sidebarOpen }) => {
                                 type="button"
                                 className="admin-teams-delete-btn"
                                 onClick={() => removePlayer(index)}
+                                disabled={formData.players.length === 1}
                               >
                                 Remove
                               </button>
                             </div>
                           </div>
                         ))}
+
+                        {formData.players.length === 0 && (
+                          <div className="admin-teams-no-players-message">
+                            Please add at least 12 players to create a team
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {/* Actions */}
                     <div className="admin-teams-form-actions">
-                      <button type="submit" className="admin-teams-submit-btn">Create Team</button>
+                      <button 
+                        type="submit" 
+                        className="admin-teams-submit-btn"
+                        disabled={validPlayerCount < 12 || formData.players.length > 15}
+                      >
+                        Create Team
+                      </button>
                       <button
                         type="button"
                         className="admin-teams-cancel-btn"
-                        onClick={() => setFormData({ teamName: "", sport: "", players: [] })}
+                        onClick={() => {
+                          setFormData({ teamName: "", sport: "", players: [] });
+                          setValidationError("");
+                          setShowValidationMessage(false);
+                        }}
                       >
                         Clear Form
                       </button>
