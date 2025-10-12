@@ -73,10 +73,16 @@ const StaffStats = ({ sidebarOpen }) => {
     isOnCourt: false
   };
 
-  // Initialize starting players (first 5 players from each team)
-  const initializeStartingPlayers = (stats, team1Id, team2Id) => {
-    const team1Players = stats.filter(p => p.team_id === team1Id).slice(0, 5);
-    const team2Players = stats.filter(p => p.team_id === team2Id).slice(0, 5);
+  // Get max starting players based on sport type
+  const getMaxStartingPlayers = (sportType) => {
+    return sportType === "volleyball" ? 6 : 5;
+  };
+
+  // Initialize starting players (first players from each team based on sport type)
+  const initializeStartingPlayers = (stats, team1Id, team2Id, sportType) => {
+    const maxStarters = getMaxStartingPlayers(sportType);
+    const team1Players = stats.filter(p => p.team_id === team1Id).slice(0, maxStarters);
+    const team2Players = stats.filter(p => p.team_id === team2Id).slice(0, maxStarters);
     
     setStartingPlayers({
       team1: team1Players.map(p => p.player_id),
@@ -97,6 +103,8 @@ const StaffStats = ({ sidebarOpen }) => {
 
   // Handle starting player selection - AUTOMATIC SWAPPING VERSION
   const handleStartingPlayerToggle = (playerId, teamId) => {
+    const sportType = selectedGame?.sport_type;
+    const maxStarters = getMaxStartingPlayers(sportType);
     const teamKey = teamId === selectedGame.team1_id ? 'team1' : 'team2';
     const currentStarters = [...startingPlayers[teamKey]];
     
@@ -113,8 +121,8 @@ const StaffStats = ({ sidebarOpen }) => {
         p.player_id === playerId ? { ...p, isStarting: false, isOnCourt: false } : p
       ));
     } else {
-      // If we already have 5 starters, find one to replace
-      if (currentStarters.length >= 5) {
+      // If we already have max starters, find one to replace
+      if (currentStarters.length >= maxStarters) {
         // Find the first starter that can be replaced (not necessarily the last one)
         const playerToRemove = currentStarters[0]; // Replace the first starter
         
@@ -138,7 +146,7 @@ const StaffStats = ({ sidebarOpen }) => {
           return p;
         }));
       } else {
-        // Add to starters if less than 5
+        // Add to starters if less than max
         const updatedStarters = [...currentStarters, playerId];
         setStartingPlayers(prev => ({
           ...prev,
@@ -669,7 +677,7 @@ const StaffStats = ({ sidebarOpen }) => {
       ];
       
       setPlayerStats(initialStats);
-      initializeStartingPlayers(initialStats, game.team1_id, game.team2_id);
+      initializeStartingPlayers(initialStats, game.team1_id, game.team2_id, game.sport_type);
 
       // Calculate initial team scores
       const scores = calculateTeamScores(initialStats, game.team1_id, game.team2_id, game.sport_type);
@@ -1003,14 +1011,16 @@ const StaffStats = ({ sidebarOpen }) => {
   const renderPlayerTable = (teamId, teamName) => {
     const teamPlayers = getSortedTeamPlayers(teamId);
     const isBasketball = selectedGame.sport_type === "basketball";
+    const maxStarters = getMaxStartingPlayers(selectedGame.sport_type);
+    const guideMessage = `✓ Check/uncheck to set starting lineup (max ${maxStarters} - ${maxStarters === 6 ? 'volleyball has 6 players on court' : 'basketball has 5 players on court'})`;
 
     return (
       <div className="team-table-container">
         <div className="team-table-header">
           <h3>{teamName}</h3>
           <div className="starting-guide">
-          <span>✓ Check/uncheck to set starting lineup (max 5)</span>
-        </div>
+            <span>{guideMessage}</span>
+          </div>
         </div>
         
         <div className="stats-table-wrapper">
