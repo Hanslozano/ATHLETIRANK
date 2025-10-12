@@ -868,3 +868,70 @@
     overflow: visible;
   }
 }
+
+/* Mobile Responsive Header */
+@media (max-width: 768px) {
+  .user_bracket_page_header_content {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+    padding: 0 1rem;
+  }
+
+  .user_bracket_page_header_top {
+    order: 1; /* Button comes first */
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .user_bracket_page_header_center {
+    order: 2; /* Text comes after button */
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .user_bracket_page_brackets_header {
+    padding: 1.5rem 0;
+  }
+
+  .user_bracket_page_brackets_header h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    justify-content: center;
+  }
+
+  .user_bracket_page_brackets_header p {
+    font-size: 1rem;
+    padding: 0;
+  }
+
+  .user_bracket_page_back_btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  .user_bracket_page_back_arrow {
+    font-size: 1.1rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .user_bracket_page_header_content {
+    gap: 0.8rem;
+  }
+
+  .user_bracket_page_brackets_header h1 {
+    font-size: 1.5rem;
+  }
+
+  .user_bracket_page_brackets_header p {
+    font-size: 0.9rem;
+  }
+
+  .user_bracket_page_back_btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}

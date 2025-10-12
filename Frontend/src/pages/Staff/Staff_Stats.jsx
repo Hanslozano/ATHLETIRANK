@@ -9,7 +9,8 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaTrophy,
-  FaCrown
+  FaCrown,
+  FaExchangeAlt
 } from "react-icons/fa";
 import "../../style/Staff_Stats.css";
 
@@ -31,6 +32,16 @@ const StaffStats = ({ sidebarOpen }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expandedRounds, setExpandedRounds] = useState(new Set([1]));
+  const [startingPlayers, setStartingPlayers] = useState({
+    team1: [],
+    team2: []
+  });
+  const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
+  const [substitutionData, setSubstitutionData] = useState({
+    playerOut: null,
+    playerIn: null,
+    team: null
+  });
 
   // Basketball template
   const basketballStatsTemplate = {
@@ -42,6 +53,8 @@ const StaffStats = ({ sidebarOpen }) => {
     blocks: [0, 0, 0, 0],
     fouls: [0, 0, 0, 0],
     turnovers: [0, 0, 0, 0],
+    isStarting: false,
+    isOnCourt: false
   };
 
   // Volleyball template
@@ -56,6 +69,146 @@ const StaffStats = ({ sidebarOpen }) => {
     reception_errors: [0, 0, 0, 0, 0],
     digs: [0, 0, 0, 0, 0],
     volleyball_assists: [0, 0, 0, 0, 0],
+    isStarting: false,
+    isOnCourt: false
+  };
+
+  // Initialize starting players (first 5 players from each team)
+  const initializeStartingPlayers = (stats, team1Id, team2Id) => {
+    const team1Players = stats.filter(p => p.team_id === team1Id).slice(0, 5);
+    const team2Players = stats.filter(p => p.team_id === team2Id).slice(0, 5);
+    
+    setStartingPlayers({
+      team1: team1Players.map(p => p.player_id),
+      team2: team2Players.map(p => p.player_id)
+    });
+
+    // Update player stats with starting lineup
+    const updatedStats = stats.map(player => ({
+      ...player,
+      isStarting: team1Players.some(p => p.player_id === player.player_id) || 
+                 team2Players.some(p => p.player_id === player.player_id),
+      isOnCourt: team1Players.some(p => p.player_id === player.player_id) || 
+                 team2Players.some(p => p.player_id === player.player_id)
+    }));
+
+    setPlayerStats(updatedStats);
+  };
+
+  // Handle starting player selection - AUTOMATIC SWAPPING VERSION
+  const handleStartingPlayerToggle = (playerId, teamId) => {
+    const teamKey = teamId === selectedGame.team1_id ? 'team1' : 'team2';
+    const currentStarters = [...startingPlayers[teamKey]];
+    
+    if (currentStarters.includes(playerId)) {
+      // Remove from starters if already selected
+      const updatedStarters = currentStarters.filter(id => id !== playerId);
+      setStartingPlayers(prev => ({
+        ...prev,
+        [teamKey]: updatedStarters
+      }));
+      
+      // Update player stats
+      setPlayerStats(prev => prev.map(p => 
+        p.player_id === playerId ? { ...p, isStarting: false, isOnCourt: false } : p
+      ));
+    } else {
+      // If we already have 5 starters, find one to replace
+      if (currentStarters.length >= 5) {
+        // Find the first starter that can be replaced (not necessarily the last one)
+        const playerToRemove = currentStarters[0]; // Replace the first starter
+        
+        const updatedStarters = currentStarters.map(starterId => 
+          starterId === playerToRemove ? playerId : starterId
+        );
+        
+        setStartingPlayers(prev => ({
+          ...prev,
+          [teamKey]: updatedStarters
+        }));
+        
+        // Update both players' stats - swap their positions
+        setPlayerStats(prev => prev.map(p => {
+          if (p.player_id === playerId) {
+            return { ...p, isStarting: true, isOnCourt: true };
+          }
+          if (p.player_id === playerToRemove) {
+            return { ...p, isStarting: false, isOnCourt: false };
+          }
+          return p;
+        }));
+      } else {
+        // Add to starters if less than 5
+        const updatedStarters = [...currentStarters, playerId];
+        setStartingPlayers(prev => ({
+          ...prev,
+          [teamKey]: updatedStarters
+        }));
+        
+        // Update player stats
+        setPlayerStats(prev => prev.map(p => 
+          p.player_id === playerId ? { ...p, isStarting: true, isOnCourt: true } : p
+        ));
+      }
+    }
+  };
+
+  // Handle substitution
+  const handleSubstitution = (team, playerOut, playerIn) => {
+    const teamKey = team === selectedGame.team1_id ? 'team1' : 'team2';
+    
+    // Update player on-court status
+    setPlayerStats(prev => prev.map(p => {
+      if (p.player_id === playerOut) {
+        return { ...p, isOnCourt: false };
+      }
+      if (p.player_id === playerIn) {
+        return { ...p, isOnCourt: true };
+      }
+      return p;
+    }));
+
+    setShowSubstitutionModal(false);
+    setSubstitutionData({ playerOut: null, playerIn: null, team: null });
+  };
+
+  // Open substitution modal
+  const openSubstitutionModal = (teamId) => {
+    const teamPlayers = playerStats.filter(p => p.team_id === teamId);
+    const courtPlayers = teamPlayers.filter(p => p.isOnCourt);
+    const benchPlayers = teamPlayers.filter(p => !p.isOnCourt && p.isStarting);
+    
+    if (benchPlayers.length === 0) {
+      alert("No bench players available for substitution");
+      return;
+    }
+
+    if (courtPlayers.length === 0) {
+      alert("No players on court to substitute out");
+      return;
+    }
+
+    setSubstitutionData({
+      team: teamId,
+      playerOut: courtPlayers[0]?.player_id || null,
+      playerIn: benchPlayers[0]?.player_id || null
+    });
+    setShowSubstitutionModal(true);
+  };
+
+  // Sort players for display - starters first, then bench players
+  const getSortedTeamPlayers = (teamId) => {
+    const teamPlayers = playerStats.filter(player => player.team_id === teamId);
+    
+    // Sort: starters first (on court), then bench players, sorted by name
+    return teamPlayers.sort((a, b) => {
+      // Starters (on court) come first
+      if (a.isOnCourt && !b.isOnCourt) return -1;
+      if (!a.isOnCourt && b.isOnCourt) return 1;
+      
+      // Then sort by name
+      return a.player_name.localeCompare(b.player_name);
+    });
   };
 
   // Calculate hitting percentage for volleyball
@@ -463,7 +616,7 @@ const StaffStats = ({ sidebarOpen }) => {
       setSelectedBracket(bracket);
 
       if (allMatches.length === 0) {
-        setError("No matches found for this bracket. Make sure brackets have matches.");
+        setError("No matches found for this bracket. Make sure brackets have been generated.");
       }
 
       setActiveTab("games");
@@ -516,6 +669,7 @@ const StaffStats = ({ sidebarOpen }) => {
       ];
       
       setPlayerStats(initialStats);
+      initializeStartingPlayers(initialStats, game.team1_id, game.team2_id);
 
       // Calculate initial team scores
       const scores = calculateTeamScores(initialStats, game.team1_id, game.team2_id, game.sport_type);
@@ -845,301 +999,335 @@ const StaffStats = ({ sidebarOpen }) => {
     }
   };
 
-  // Render stat inputs
-  const renderStatInputs = (player, idx) => {
-    const sport = selectedGame.sport_type;
-
-    // Volleyball stat labels mapping
-    const volleyballStatLabels = {
-      kills: "Kills",
-      attack_attempts: "Att",
-      attack_errors: "Att Err",
-      serves: "Serve",
-      service_aces: "Ace",
-      serve_errors: "Serve Err",
-      receptions: "Rec",
-      reception_errors: "Rec Err",
-      digs: "Digs",
-      volleyball_assists: "Ast"
-    };
+  // Render player table with stats
+  const renderPlayerTable = (teamId, teamName) => {
+    const teamPlayers = getSortedTeamPlayers(teamId);
+    const isBasketball = selectedGame.sport_type === "basketball";
 
     return (
-      <div className="player-stats-container">
-        {sport === "basketball" ? (
-          <div className="stats-grid basketball-stats">
-            <div className="stat-group">
-              <label>Points</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "points", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.points[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "points", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "points", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group">
-              <label>Assists</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "assists", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.assists[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "assists", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "assists", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group">
-              <label>Rebounds</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "rebounds", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.rebounds[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "rebounds", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "rebounds", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group">
-              <label>3-Pointers</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "three_points_made", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.three_points_made[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "three_points_made", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "three_points_made", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group">
-              <label>Steals</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "steals", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.steals[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "steals", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "steals", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group">
-              <label>Blocks</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "blocks", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.blocks[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "blocks", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "blocks", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group">
-              <label>Fouls</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "fouls", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.fouls[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "fouls", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "fouls", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group">
-              <label>Turnovers</label>
-              <div className="stat-controls">
-                <button 
-                  className="stat-button stat-button-minus"
-                  onClick={() => adjustPlayerStat(idx, "turnovers", false)}
-                >
-                  <FaMinus />
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="stat-input"
-                  value={player.turnovers[currentQuarter]}
-                  onChange={(e) => updatePlayerStat(idx, "turnovers", e.target.value)}
-                />
-                <button 
-                  className="stat-button stat-button-plus"
-                  onClick={() => adjustPlayerStat(idx, "turnovers", true)}
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-            
-            <div className="stat-group total-stats">
-              <label>Total Points</label>
-              <div className="total-display">
-                {player.points.reduce((a, b) => a + b, 0)}
-              </div>
-            </div>
+      <div className="team-table-container">
+        <div className="team-table-header">
+          <h3>{teamName}</h3>
+          <div className="starting-guide">
+          <span>✓ Check/uncheck to set starting lineup (max 5)</span>
+        </div>
+        </div>
+        
+        <div className="stats-table-wrapper">
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th className="checkbox-col">Start</th>
+                <th className="name-col">Player</th>
+                <th className="jersey-col">#</th>
+                <th className="status-col">Status</th>
+                {isBasketball ? (
+                  <>
+                    <th className="stat-col">PTS</th>
+                    <th className="stat-col">AST</th>
+                    <th className="stat-col">REB</th>
+                    <th className="stat-col">3PM</th>
+                    <th className="stat-col">STL</th>
+                    <th className="stat-col">BLK</th>
+                    <th className="stat-col">Fouls</th>
+                    <th className="stat-col">TO</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="stat-col">Kills</th>
+                    <th className="stat-col">Ast</th>
+                    <th className="stat-col">Digs</th>
+                    <th className="stat-col">Ace</th>
+                    <th className="stat-col">Serve Err</th>
+                    <th className="stat-col">Att Err</th>
+                    <th className="stat-col">Rec Err</th>
+                    <th className="stat-col">Hit%</th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {teamPlayers.map((player) => {
+                const globalIndex = playerStats.findIndex(p => p.player_id === player.player_id);
+                const teamKey = teamId === selectedGame.team1_id ? 'team1' : 'team2';
+                const isStarter = startingPlayers[teamKey].includes(player.player_id);
+                
+                return (
+                  <tr key={player.player_id} className={player.isOnCourt ? 'on-court' : 'on-bench'}>
+                    <td className="checkbox-col">
+                      <input
+                        type="checkbox"
+                        checked={isStarter}
+                        onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
+                      />
+                    </td>
+                    <td className="name-col">
+                      <div className="player-name-info">
+                        <span className="player-name">{player.player_name}</span>
+                        {isPlayerFouledOut(player) && (
+                          <span className="fouled-out-indicator-small">FO</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="jersey-col">#{player.jersey_number}</td>
+                    <td className="status-col">
+                      <span className={`status-badge ${player.isOnCourt ? 'on-court-badge' : 'on-bench-badge'}`}>
+                        {player.isOnCourt ? 'On Court' : 'On Bench'}
+                      </span>
+                    </td>
+                    
+                    {isBasketball ? (
+                      <>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "points", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.points[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "points", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.assists[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.rebounds[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.three_points_made[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "steals", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.steals[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "steals", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "blocks", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.blocks[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "blocks", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "fouls", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.fouls[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "fouls", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.turnovers[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "kills", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.kills[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "kills", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "volleyball_assists", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.volleyball_assists[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "volleyball_assists", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "digs", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.digs[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "digs", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "service_aces", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.service_aces[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "service_aces", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "serve_errors", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.serve_errors[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "serve_errors", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "attack_errors", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.attack_errors[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "attack_errors", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <div className="stat-controls-compact">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "reception_errors", false)}>
+                              <FaMinus />
+                            </button>
+                            <span className="stat-value">{player.reception_errors[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "reception_errors", true)}>
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="stat-col">
+                          <span className="percentage-value">
+                            {calculateHittingPercentage(player)}
+                          </span>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
-            {/* New Basketball Percentage Stats */}
-            <div className="stat-group percentage-stats">
-              <label>Reb%</label>
-              <div className="percentage-display">
-                {calculateBasketballPercentage(player.rebounds, 20)}
-              </div>
-            </div>
+  // Render substitution modal
+  const renderSubstitutionModal = () => {
+    if (!showSubstitutionModal || !substitutionData.team) return null;
 
-            <div className="stat-group percentage-stats">
-              <label>Ast%</label>
-              <div className="percentage-display">
-                {calculateBasketballPercentage(player.assists, 15)}
-              </div>
-            </div>
+    const teamPlayers = playerStats.filter(p => p.team_id === substitutionData.team);
+    const courtPlayers = teamPlayers.filter(p => p.isOnCourt);
+    const benchPlayers = teamPlayers.filter(p => !p.isOnCourt && p.isStarting);
 
-            {/* Fouled Out Indicator */}
-            {isPlayerFouledOut(player) && (
-              <div className="stat-group fouled-out-indicator">
-                <div className="fouled-out-display">Fouled Out</div>
-              </div>
-            )}
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content">
+          <h3>Make Substitution</h3>
+          
+          <div className="substitution-form">
+            <div className="form-group">
+              <label>Player Out (On Court):</label>
+              <select 
+                value={substitutionData.playerOut || ''}
+                onChange={(e) => setSubstitutionData(prev => ({ ...prev, playerOut: parseInt(e.target.value) }))}
+              >
+                <option value="">Select player to sub out</option>
+                {courtPlayers.map(player => (
+                  <option key={player.player_id} value={player.player_id}>
+                    #{player.jersey_number} {player.player_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label>Player In (On Bench):</label>
+              <select 
+                value={substitutionData.playerIn || ''}
+                onChange={(e) => setSubstitutionData(prev => ({ ...prev, playerIn: parseInt(e.target.value) }))}
+              >
+                <option value="">Select player to sub in</option>
+                {benchPlayers.map(player => (
+                  <option key={player.player_id} value={player.player_id}>
+                    #{player.jersey_number} {player.player_name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        ) : (
-          <div className="stats-grid volleyball-stats">
-            {Object.entries(volleyballStatLabels).map(([stat, label]) => (
-              <div className="stat-group" key={stat}>
-                <label>{label}</label>
-                <div className="stat-controls">
-                  <button 
-                    className="stat-button stat-button-minus"
-                    onClick={() => adjustPlayerStat(idx, stat, false)}
-                  >
-                    <FaMinus />
-                  </button>
-                  <input
-                    type="number"
-                    min="0"
-                    className="stat-input"
-                    value={player[stat][currentQuarter]}
-                    onChange={(e) => updatePlayerStat(idx, stat, e.target.value)}
-                  />
-                  <button 
-                    className="stat-button stat-button-plus"
-                    onClick={() => adjustPlayerStat(idx, stat, true)}
-                  >
-                    <FaPlus />
-                  </button>
-                </div>
-              </div>
-            ))}
-            
-            <div className="stat-group percentage-stats">
-              <label>Hit%</label>
-              <div className="percentage-display">
-                {calculateHittingPercentage(player)}
-              </div>
-            </div>
-
-            <div className="stat-group total-stats">
-              <label>Total Kills</label>
-              <div className="total-display">
-                {player.kills ? player.kills.reduce((a, b) => a + b, 0) : 0}
-              </div>
-            </div>
+          
+          <div className="modal-actions">
+            <button 
+              className="bracket-cancel-btn"
+              onClick={() => setShowSubstitutionModal(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              className="bracket-submit-btn"
+              onClick={() => handleSubstitution(
+                substitutionData.team, 
+                substitutionData.playerOut, 
+                substitutionData.playerIn
+              )}
+              disabled={!substitutionData.playerOut || !substitutionData.playerIn}
+            >
+              Confirm Substitution
+            </button>
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -1499,72 +1687,13 @@ const StaffStats = ({ sidebarOpen }) => {
                   </div>
                 </div>
 
-                {/* Player Stats */}
+                {/* Player Stats Tables */}
                 {loading ? (
                   <p>Loading player data...</p>
                 ) : (
-                  <div className="teams-stats-container">
-                    {/* Team 1 Column */}
-                    <div className="team-column">
-                      <h3 className="team-title">{selectedGame.team1_name}</h3>
-                      <div className="players-container">
-                        {playerStats
-                          .filter(player => player.team_id === selectedGame.team1_id)
-                          .map((player, playerIndex) => {
-                            const globalIndex = playerStats.findIndex(
-                              p => p.player_id === player.player_id
-                            );
-                            return (
-                              <div
-                                key={player.player_id}
-                                className={`bracket-card player-card ${isPlayerFouledOut(player) ? 'fouled-out-player' : ''}`}
-                              >
-                                <div className="bracket-card-header">
-                                  <h4>{player.player_name}</h4>
-                                  <span className="player-jersey">#{player.jersey_number}</span>
-                                  {isPlayerFouledOut(player) && (
-                                    <span className="fouled-out-badge">Fouled Out</span>
-                                  )}
-                                </div>
-                                <div className="bracket-card-info">
-                                  {renderStatInputs(player, globalIndex)}
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-
-                    {/* Team 2 Column */}
-                    <div className="team-column">
-                      <h3 className="team-title">{selectedGame.team2_name}</h3>
-                      <div className="players-container">
-                        {playerStats
-                          .filter(player => player.team_id === selectedGame.team2_id)
-                          .map((player, playerIndex) => {
-                            const globalIndex = playerStats.findIndex(
-                              p => p.player_id === player.player_id
-                            );
-                            return (
-                              <div
-                                key={player.player_id}
-                                className={`bracket-card player-card ${isPlayerFouledOut(player) ? 'fouled-out-player' : ''}`}
-                              >
-                                <div className="bracket-card-header">
-                                  <h4>{player.player_name}</h4>
-                                  <span className="player-jersey">#{player.jersey_number}</span>
-                                  {isPlayerFouledOut(player) && (
-                                    <span className="fouled-out-badge">Fouled Out</span>
-                                  )}
-                                </div>
-                                <div className="bracket-card-info">
-                                  {renderStatInputs(player, globalIndex)}
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
+                  <div className="teams-stats-tables">
+                    {renderPlayerTable(selectedGame.team1_id, selectedGame.team1_name)}
+                    {renderPlayerTable(selectedGame.team2_id, selectedGame.team2_name)}
                   </div>
                 )}
               </div>
@@ -1572,6 +1701,9 @@ const StaffStats = ({ sidebarOpen }) => {
           </div>
         </div>
       </div>
+
+      {/* Substitution Modal */}
+      {renderSubstitutionModal()}
     </div>
   );
 };
