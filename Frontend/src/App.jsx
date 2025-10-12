@@ -16,9 +16,8 @@ import AdminAwardsStandings from "./pages/Admin/Admin_Awards & Standings";
 
 import StaffDashboard from "./pages/Staff/Staff_Dashboard";
 import StaffEvents from "./pages/Staff/Staff_Events";
-import StaffSchedulePage from "./pages/Staff/Staff_Schedules";
+
 import StaffStats from "./pages/Staff/Staff_Stats";
-import StaffBrackets from "./pages/Staff/Staff_Brackets";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import EventDetails from "./pages/Admin/Admin_EventDetails";
@@ -180,15 +179,7 @@ function App() {
               }
             />
 
-            <Route
-              path="/StaffDashboard/schedules"
-              element={
-                <>
-                  <SideBar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-                  <StaffSchedulePage sidebarOpen={sidebarOpen} />
-                </>
-              }
-            />
+           
 
             <Route
               path="/StaffDashboard/stats"
@@ -200,16 +191,7 @@ function App() {
               }
             />
             
-            {/* Add Staff Brackets Route */}
-            <Route
-              path="/StaffDashboard/brackets"
-              element={
-                <>
-                  <SideBar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-                  <StaffBrackets sidebarOpen={sidebarOpen} />
-                </>
-              }
-            />
+            
           </Route>
         </Routes>
       </Router>

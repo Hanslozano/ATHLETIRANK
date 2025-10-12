@@ -46,8 +46,6 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
     const staffMenuItems = [
         { icon: <IoIosHome />, label: "Dashboard", id: "dashboard", path: "/StaffDashboard" },
         { icon: <AiFillSchedule />, label: "Events", id: "events", path: "/StaffDashboard/events" },
-        { icon: <TbTournament />, label: "Brackets", id: "bracket", path: "/StaffDashboard/brackets" },
-        { icon: <AiFillSchedule />, label: "Schedules", id: "schedule", path: "/StaffDashboard/schedules" },
         { icon: <IoStatsChart />, label: "Stats", id: "stats", path: "/StaffDashboard/stats" },
     ];
 
