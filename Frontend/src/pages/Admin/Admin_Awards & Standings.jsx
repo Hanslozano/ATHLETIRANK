@@ -211,7 +211,7 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
 
         <div className="dashboard-main">
           <div className="bracket-content">
-            {/* Simplified Tabs */}
+            {/* Tabs */}
             <div className="bracket-tabs">
               <button
                 className={`bracket-tab-button ${activeTab === "tournaments" ? "bracket-tab-active" : ""}`}
@@ -229,7 +229,7 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
               )}
             </div>
 
-            {/* Combined Tournament & Bracket Selection */}
+            {/* Tournament Selection Tab */}
             {activeTab === "tournaments" && (
               <div className="bracket-view-section">
                 <h2>Select Tournament & Bracket</h2>
@@ -243,58 +243,78 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                     <p>No completed tournaments found. Complete a tournament first to view awards and standings.</p>
                   </div>
                 ) : (
-                  <div className="tournament-brackets-combined">
-                    {events.map(event => (
-                      <div key={event.id} className="event-section">
-                        <div className="event-header-card">
-                          <div className="event-title-section">
-                            <h3>{event.name}</h3>
-                            <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
-                              {event.sport || 'MULTI-SPORT'}
-                            </span>
-                          </div>
-                          <div className="event-dates">
-                            {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
-                          </div>
-                        </div>
-
-                        {event.brackets && event.brackets.length > 0 ? (
-                          <div className="brackets-grid">
-                            {event.brackets.map(bracket => (
-                              <div 
-                                key={bracket.id} 
-                                className="bracket-card clickable-bracket"
-                                onClick={() => handleBracketSelect(event, bracket)}
-                              >
-                                <div className="bracket-card-header">
-                                  <h4>{bracket.name}</h4>
-                                  <span className={`bracket-sport-badge bracket-sport-${bracket.sport_type}`}>
-                                    {bracket.sport_type}
-                                  </span>
-                                </div>
-                                <div className="bracket-card-info">
-                                  <div className="bracket-info-row">
-                                    <FaTrophy className="info-icon" />
+                  <div className="awards_standings_table_container">
+                    <table className="awards_standings_table">
+                      <thead>
+                        <tr>
+                          <th>Tournament</th>
+                          <th>Sport</th>
+                          <th>Dates</th>
+                          <th>Bracket</th>
+                          <th>Type</th>
+                          <th>Champion</th>
+                          <th style={{ textAlign: 'center' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {events.map(event => 
+                          event.brackets && event.brackets.length > 0 ? (
+                            event.brackets.map((bracket, idx) => (
+                              <tr key={`${event.id}-${bracket.id}`}>
+                                {idx === 0 && (
+                                  <>
+                                    <td rowSpan={event.brackets.length} style={{ fontWeight: '600', borderRight: '1px solid var(--border-color)' }}>
+                                      {event.name}
+                                    </td>
+                                    <td rowSpan={event.brackets.length} style={{ borderRight: '1px solid var(--border-color)' }}>
+                                      <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                                        {event.sport?.toUpperCase() || 'MULTI-SPORT'}
+                                      </span>
+                                    </td>
+                                    <td rowSpan={event.brackets.length} style={{ fontSize: '14px', borderRight: '1px solid var(--border-color)' }}>
+                                      {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
+                                    </td>
+                                  </>
+                                )}
+                                <td>{bracket.name}</td>
+                                <td style={{ fontSize: '14px' }}>
+                                  {bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elim.
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FaTrophy style={{ color: '#fbbf24' }} />
                                     <span>{bracket.winner_team_name}</span>
                                   </div>
-                                  <div className="bracket-info-row">
-                                    <span className="info-label">Type:</span>
-                                    <span>{bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elimination</span>
-                                  </div>
-                                </div>
-                                <div className="bracket-card-actions">
-                                  <button className="bracket-view-btn">View Results →</button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="no-brackets-message">
-                            <p>No completed brackets available for this event</p>
-                          </div>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <button
+                                    onClick={() => handleBracketSelect(event, bracket)}
+                                    className="bracket-view-btn"
+                                  >
+                                    View Results →
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr key={event.id}>
+                              <td style={{ fontWeight: '600' }}>{event.name}</td>
+                              <td>
+                                <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                                  {event.sport?.toUpperCase() || 'MULTI-SPORT'}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: '14px' }}>
+                                {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
+                              </td>
+                              <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                                No completed brackets available
+                              </td>
+                            </tr>
+                          )
                         )}
-                      </div>
-                    ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -389,7 +409,7 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                                 <tr key={index} className={team.position <= 3 ? `awards_standings_podium_${team.position}` : ""}>
                                   <td className="awards_standings_rank">
                                     {team.position <= 3 && (
-                                      <span className={`awards_standings_medal`}>
+                                      <span className="awards_standings_medal">
                                         {team.position === 1 ? "🥇" : team.position === 2 ? "🥈" : "🥉"}
                                       </span>
                                     )}
@@ -557,24 +577,35 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                         ) : (
                           <div className="awards_standings_awards_section">
                             <h2>Tournament Awards</h2>
-                            <div className="awards_standings_awards_grid">
-                              {getAwardsForDisplay().map((award, index) => (
-                                <div key={index} className="awards_standings_award_card">
-                                  <div className="awards_standings_award_icon">
-                                    {index === 0 ? <FaCrown /> : <FaStar />}
-                                  </div>
-                                  <div className="awards_standings_award_content">
-                                    <h4>{award.category}</h4>
-                                    <div className="awards_standings_award_winner">
-                                      <strong>{award.winner}</strong>
-                                      <span>{award.team}</span>
-                                    </div>
-                                    <div className="awards_standings_award_stat">
-                                      {award.stat}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
+                            <div className="awards_standings_table_container">
+                              <table className="awards_standings_table">
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: '60px', textAlign: 'center' }}></th>
+                                    <th>Award Category</th>
+                                    <th>Winner</th>
+                                    <th>Team</th>
+                                    <th>Statistics</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {getAwardsForDisplay().map((award, index) => (
+                                    <tr key={index}>
+                                      <td style={{ textAlign: 'center' }}>
+                                        {index === 0 ? (
+                                          <FaCrown style={{ color: '#fbbf24', fontSize: '24px' }} />
+                                        ) : (
+                                          <FaStar style={{ color: '#3b82f6', fontSize: '20px' }} />
+                                        )}
+                                      </td>
+                                      <td style={{ fontWeight: '600' }}>{award.category}</td>
+                                      <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>{award.winner}</td>
+                                      <td>{award.team}</td>
+                                      <td style={{ color: '#3b82f6', fontWeight: '600' }}>{award.stat}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
                         )}
@@ -587,100 +618,6 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .tournament-brackets-combined {
-          display: flex;
-          flex-direction: column;
-          gap: 30px;
-        }
-
-        .event-section {
-          background: #1e2a3a;
-          border-radius: 12px;
-          padding: 20px;
-        }
-
-        .event-header-card {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-          padding-bottom: 15px;
-          border-bottom: 2px solid #2d3e50;
-        }
-
-        .event-title-section {
-          display: flex;
-          align-items: center;
-          gap: 15px;
-        }
-
-        .event-title-section h3 {
-          margin: 0;
-          font-size: 24px;
-          color: #fff;
-        }
-
-        .event-dates {
-          color: #8b9dc3;
-          font-size: 14px;
-        }
-
-        .brackets-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 20px;
-        }
-
-        .clickable-bracket {
-          cursor: pointer;
-          transition: all 0.3s ease;
-          border: 2px solid transparent;
-        }
-
-        .clickable-bracket:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);
-          border-color: #2196f3;
-        }
-
-        .bracket-info-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-        }
-
-        .info-icon {
-          color: #ffd700;
-        }
-
-        .info-label {
-          color: #8b9dc3;
-        }
-
-        .no-brackets-message {
-          padding: 30px;
-          text-align: center;
-          color: #8b9dc3;
-          background: #151f2e;
-          border-radius: 8px;
-          margin-top: 15px;
-        }
-
-        @media (max-width: 768px) {
-          .event-header-card {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-          }
-
-          .brackets-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
     </div>
   );
 };
