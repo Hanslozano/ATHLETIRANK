@@ -13,10 +13,10 @@ import TeamsPage from "./pages/Admin/Admin_Teams";
 import AdminStats from "./pages/Admin/Admin_Stats";
 import AdminUsers from "./pages/Admin/Admin_Users";
 import AdminAwardsStandings from "./pages/Admin/Admin_Awards & Standings";
+import TournamentCreator from "./pages/Admin/TournamentCreator"; // ✅ Add this import
 
 import StaffDashboard from "./pages/Staff/Staff_Dashboard";
 import StaffEvents from "./pages/Staff/Staff_Events";
-
 import StaffStats from "./pages/Staff/Staff_Stats";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -49,7 +49,6 @@ function App() {
           <Route path="/brackets" element={<User_BracketPage />} />
           <Route path="/schedules" element={<UserSchedulePage />} />
           <Route path="/awards%standings" element={<UserAwardsStandings />} />
-
 
           {/* Admin protected routes */}
           <Route element={<ProtectedRoute requiredRole="admin" />}>
@@ -84,6 +83,17 @@ function App() {
               }
             />
 
+            {/* ✅ NEW: Tournament Creator Route */}
+            <Route
+              path="/AdminDashboard/tournament-creator"
+              element={
+                <>
+                  <SideBar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+                  <TournamentCreator sidebarOpen={sidebarOpen} />
+                </>
+              }
+            />
+
             {/* ✅ Brackets main page */}
             <Route
               path="/AdminDashboard/brackets"
@@ -95,7 +105,7 @@ function App() {
               }
             />
 
-            {/*  Bracket details page */}
+            {/* Bracket details page */}
             <Route
               path="/AdminDashboard/brackets/:id"
               element={
@@ -179,8 +189,6 @@ function App() {
               }
             />
 
-           
-
             <Route
               path="/StaffDashboard/stats"
               element={
@@ -190,8 +198,6 @@ function App() {
                 </>
               }
             />
-            
-            
           </Route>
         </Routes>
       </Router>

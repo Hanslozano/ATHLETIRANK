@@ -5,7 +5,6 @@ import "../../style/Admin_Awards & Standing.css";
 const AdminAwardsStandings = ({ sidebarOpen }) => {
   const [activeTab, setActiveTab] = useState("tournaments");
   const [events, setEvents] = useState([]);
-  const [brackets, setBrackets] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedBracket, setSelectedBracket] = useState(null);
   const [standings, setStandings] = useState([]);
@@ -16,7 +15,6 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [contentTab, setContentTab] = useState("standings");
 
-  // Safe number formatter
   const safeNumber = (value, decimals = 1) => {
     const num = Number(value);
     return isNaN(num) ? 0 : Number(num.toFixed(decimals));
@@ -31,7 +29,22 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
     try {
       const res = await fetch("http://localhost:5000/api/awards/events/completed");
       const data = await res.json();
-      setEvents(data);
+      
+      // Fetch brackets for each event
+      const eventsWithBrackets = await Promise.all(
+        data.map(async (event) => {
+          try {
+            const bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${event.id}/completed-brackets`);
+            const brackets = await bracketsRes.json();
+            return { ...event, brackets: brackets || [] };
+          } catch (err) {
+            console.error(`Error fetching brackets for event ${event.id}:`, err);
+            return { ...event, brackets: [] };
+          }
+        })
+      );
+      
+      setEvents(eventsWithBrackets);
     } catch (err) {
       setError("Failed to load completed events");
       console.error("Error fetching events:", err);
@@ -40,33 +53,8 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
     }
   };
 
-  const handleEventSelect = async (event) => {
+  const handleBracketSelect = async (event, bracket) => {
     setSelectedEvent(event);
-    setSelectedBracket(null);
-    setStandings([]);
-    setMvpData(null);
-    setAwards(null);
-    setActiveTab("brackets");
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`http://localhost:5000/api/awards/events/${event.id}/completed-brackets`);
-      const data = await res.json();
-      setBrackets(data);
-      
-      if (data.length === 0) {
-        setError("No completed brackets found for this event.");
-      }
-    } catch (err) {
-      setError("Failed to load brackets: " + err.message);
-      console.error("Error loading brackets:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBracketSelect = async (bracket) => {
     setSelectedBracket(bracket);
     setActiveTab("results");
     setContentTab("standings");
@@ -80,8 +68,6 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
 
       const awardsRes = await fetch(`http://localhost:5000/api/awards/brackets/${bracket.id}/mvp-awards`);
       const awardsData = await awardsRes.json();
-      
-      console.log("Awards data received:", awardsData);
       
       setMvpData(awardsData.awards?.mvp || null);
       setAwards(awardsData.awards || null);
@@ -225,21 +211,14 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
 
         <div className="dashboard-main">
           <div className="bracket-content">
+            {/* Simplified Tabs */}
             <div className="bracket-tabs">
               <button
                 className={`bracket-tab-button ${activeTab === "tournaments" ? "bracket-tab-active" : ""}`}
                 onClick={() => setActiveTab("tournaments")}
               >
-                Select Tournament
+                Select Tournament & Bracket
               </button>
-              {selectedEvent && (
-                <button
-                  className={`bracket-tab-button ${activeTab === "brackets" ? "bracket-tab-active" : ""}`}
-                  onClick={() => setActiveTab("brackets")}
-                >
-                  {selectedEvent.name} - Brackets
-                </button>
-              )}
               {selectedBracket && (
                 <button
                   className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
@@ -250,9 +229,10 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
               )}
             </div>
 
+            {/* Combined Tournament & Bracket Selection */}
             {activeTab === "tournaments" && (
               <div className="bracket-view-section">
-                <h2>Select Completed Tournament</h2>
+                <h2>Select Tournament & Bracket</h2>
                 {loading ? (
                   <div className="awards_standings_loading">
                     <div className="awards_standings_spinner"></div>
@@ -263,29 +243,56 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                     <p>No completed tournaments found. Complete a tournament first to view awards and standings.</p>
                   </div>
                 ) : (
-                  <div className="bracket-grid">
+                  <div className="tournament-brackets-combined">
                     {events.map(event => (
-                      <div 
-                        key={event.id} 
-                        className="bracket-card"
-                        onClick={() => handleEventSelect(event)}
-                      >
-                        <div className="bracket-card-header">
-                          <h3>{event.name}</h3>
-                          <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
-                            {event.sport || 'MULTI-SPORT'}
-                          </span>
-                        </div>
-                        <div className="bracket-card-info">
-                          <div><strong>Start:</strong> {new Date(event.start_date).toLocaleDateString()}</div>
-                          <div><strong>End:</strong> {new Date(event.end_date).toLocaleDateString()}</div>
-                          <div><strong>Status:</strong> 
-                            <span className="status-completed">COMPLETED</span>
+                      <div key={event.id} className="event-section">
+                        <div className="event-header-card">
+                          <div className="event-title-section">
+                            <h3>{event.name}</h3>
+                            <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                              {event.sport || 'MULTI-SPORT'}
+                            </span>
+                          </div>
+                          <div className="event-dates">
+                            {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
                           </div>
                         </div>
-                        <div className="bracket-card-actions">
-                          <button className="bracket-view-btn">View Brackets</button>
-                        </div>
+
+                        {event.brackets && event.brackets.length > 0 ? (
+                          <div className="brackets-grid">
+                            {event.brackets.map(bracket => (
+                              <div 
+                                key={bracket.id} 
+                                className="bracket-card clickable-bracket"
+                                onClick={() => handleBracketSelect(event, bracket)}
+                              >
+                                <div className="bracket-card-header">
+                                  <h4>{bracket.name}</h4>
+                                  <span className={`bracket-sport-badge bracket-sport-${bracket.sport_type}`}>
+                                    {bracket.sport_type}
+                                  </span>
+                                </div>
+                                <div className="bracket-card-info">
+                                  <div className="bracket-info-row">
+                                    <FaTrophy className="info-icon" />
+                                    <span>{bracket.winner_team_name}</span>
+                                  </div>
+                                  <div className="bracket-info-row">
+                                    <span className="info-label">Type:</span>
+                                    <span>{bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elimination</span>
+                                  </div>
+                                </div>
+                                <div className="bracket-card-actions">
+                                  <button className="bracket-view-btn">View Results →</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="no-brackets-message">
+                            <p>No completed brackets available for this event</p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -293,48 +300,7 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
               </div>
             )}
 
-            {activeTab === "brackets" && selectedEvent && (
-              <div className="bracket-view-section">
-                <h2>Select Bracket - {selectedEvent.name}</h2>
-                {loading ? (
-                  <div className="awards_standings_loading">
-                    <div className="awards_standings_spinner"></div>
-                    <p>Loading brackets...</p>
-                  </div>
-                ) : error ? (
-                  <div className="bracket-error"><p>{error}</p></div>
-                ) : brackets.length === 0 ? (
-                  <div className="bracket-no-brackets">
-                    <p>No completed brackets found for this event.</p>
-                  </div>
-                ) : (
-                  <div className="bracket-grid">
-                    {brackets.map(bracket => (
-                      <div 
-                        key={bracket.id} 
-                        className="bracket-card"
-                        onClick={() => handleBracketSelect(bracket)}
-                      >
-                        <div className="bracket-card-header">
-                          <h3>{bracket.name}</h3>
-                          <span className={`bracket-sport-badge bracket-sport-${bracket.sport_type}`}>
-                            {bracket.sport_type}
-                          </span>
-                        </div>
-                        <div className="bracket-card-info">
-                          <div><strong>Champion:</strong> {bracket.winner_team_name}</div>
-                          <div><strong>Type:</strong> {bracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}</div>
-                        </div>
-                        <div className="bracket-card-actions">
-                          <button className="bracket-view-btn">View Results</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
+            {/* Results Tab */}
             {activeTab === "results" && selectedEvent && selectedBracket && (
               <div className="bracket-visualization-section">
                 <div className="event-details-header">
@@ -621,6 +587,100 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .tournament-brackets-combined {
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+        }
+
+        .event-section {
+          background: #1e2a3a;
+          border-radius: 12px;
+          padding: 20px;
+        }
+
+        .event-header-card {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 2px solid #2d3e50;
+        }
+
+        .event-title-section {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .event-title-section h3 {
+          margin: 0;
+          font-size: 24px;
+          color: #fff;
+        }
+
+        .event-dates {
+          color: #8b9dc3;
+          font-size: 14px;
+        }
+
+        .brackets-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 20px;
+        }
+
+        .clickable-bracket {
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: 2px solid transparent;
+        }
+
+        .clickable-bracket:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);
+          border-color: #2196f3;
+        }
+
+        .bracket-info-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+        }
+
+        .info-icon {
+          color: #ffd700;
+        }
+
+        .info-label {
+          color: #8b9dc3;
+        }
+
+        .no-brackets-message {
+          padding: 30px;
+          text-align: center;
+          color: #8b9dc3;
+          background: #151f2e;
+          border-radius: 8px;
+          margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+          .event-header-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+          }
+
+          .brackets-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </div>
   );
 };
