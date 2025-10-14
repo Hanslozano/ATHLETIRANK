@@ -186,14 +186,14 @@ const StaffEvents = ({ sidebarOpen }) => {
               >
                 Select Events & Brackets
               </button>
-              {selectedBracket && (
-                <button
-                  className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
-                  onClick={() => setActiveTab("results")}
+             {selectedBracket && (
+            <button
+              className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
+              onClick={() => setActiveTab("results")}
                 >
-                  {selectedBracket.name} - View Matches
-                </button>
-              )}
+               {selectedBracket.name} - Matches
+  </button>
+)}
             </div>
 
             {/* Events Selection Tab */}
@@ -357,8 +357,11 @@ const StaffEvents = ({ sidebarOpen }) => {
             {activeTab === "results" && selectedEvent && selectedBracket && (
               <div className="bracket-visualization-section">
                 <div className="event-details-header">
-                  <h2>{selectedEvent.name} - {selectedBracket.name}</h2>
+                  {/* Change this line: */}
+                  <h2>{selectedBracket.name}</h2>
                   <div className="event-details-info">
+                    {/* Add event name here: */}
+                    <span><strong>Event:</strong> {selectedEvent.name}</span>
                     <span><strong>Sport:</strong> {capitalize(selectedBracket.sport_type)}</span>
                     <span><strong>Type:</strong> {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}</span>
                     <span><strong>Teams:</strong> {selectedBracket.team_count || 0}</span>
