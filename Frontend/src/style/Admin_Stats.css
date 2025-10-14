@@ -117,6 +117,69 @@
   margin-bottom: 20px;
 }
 
+/* Statistics Header Container */
+.stats-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--border-color);
+  gap: 20px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.stats-header-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-width: 250px;
+}
+
+.stats-header-center h2 {
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+}
+
+.stats-match-info {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin: 0;
+}
+
+.stats-header-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.back-to-events-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.back-to-events-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-light);
+}
+
 /* Event/Bracket Grid - SCOPED */
 .admin-dashboard .bracket-grid {
   display: grid;
@@ -314,7 +377,6 @@
 }
 
 /* Bracket Section - Matches Event Page Structure - SCOPED */
-/* IMPORTANT: This only applies to bracket sections inside admin dashboard, NOT double elimination bracket */
 .admin-dashboard > .dashboard-content .bracket-section {
   margin-bottom: 40px;
   background: var(--background-card);
@@ -328,7 +390,6 @@
 .admin-dashboard > .dashboard-content .bracket-section:hover {
   box-shadow: var(--shadow-large);
 }
-
 .admin-dashboard .bracket-header {
   display: flex;
   justify-content: space-between;
@@ -347,7 +408,6 @@
   align-items: center;
   gap: 15px;
 }
-
 .admin-dashboard .bracket-winner {
   display: flex;
   align-items: center;
@@ -360,6 +420,41 @@
   font-size: 14px;
 }
 
+
+.admin-dashboard .bracket-title-banner {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  padding: 16px 30px;
+  margin-bottom: 30px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-medium);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.admin-dashboard .bracket-title-banner h3 {
+  color: white;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-dashboard .bracket-title-banner .sport-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(10px);
+}
 /* Matches Grid - Matches Event Page Layout - SCOPED */
 .admin-dashboard .matches-grid {
   display: grid;
@@ -806,6 +901,16 @@
   .admin-dashboard .matches-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
+  
+  .stats-header-container {
+    flex-direction: column;
+  }
+  
+  .stats-header-center {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 @media (max-width: 768px) {
@@ -902,9 +1007,35 @@
     margin: 5px 0;
   }
   
+  .stats-header-container {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 50px;
+  }
+  
+  .stats-header-center {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .stats-header-right {
+    position: static;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: -40px;
+    margin-bottom: 20px;
+  }
+  
+  .back-to-events-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
   .adminstats-table-controls {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
   
   .adminstats-search-box {
@@ -916,42 +1047,56 @@
     justify-content: space-between;
   }
   
+  .adminstats-filter-toggle-btn {
+    display: flex;
+    width: 100%;
+  }
+  
   .adminstats-filter-group {
     display: none;
   }
   
-  .adminstats-filter-toggle-btn {
+  .adminstats-mobile-filters.active .adminstats-filter-group {
     display: flex;
+    width: 100%;
   }
   
-  .adminstats-mobile-filters .adminstats-filter-group {
-    display: flex;
+  .adminstats-filter-group select {
+    width: 100%;
+  }
+  
+  .adminstats-export-btn {
+    width: 100%;
+    justify-content: center;
   }
   
   .adminstats-table {
-    font-size: 0.85em;
+    font-size: 12px;
   }
   
   .adminstats-table th,
   .adminstats-table td {
-    padding: 8px 10px;
+    padding: 10px 8px;
   }
   
   .adminstats-pagination-container {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 15px 0;
+    flex-direction: column;
+    gap: 15px;
   }
   
-  .adminstats-pagination-btn {
-    padding: 8px 16px;
-    font-size: 13px;
+  .adminstats-pagination-numbers {
+    gap: 3px;
   }
   
   .adminstats-pagination-number {
     min-width: 35px;
     height: 35px;
-    font-size: 13px;
+    font-size: 12px;
+  }
+  
+  .adminstats-pagination-btn {
+    width: 100%;
+    max-width: 200px;
   }
 }
 
@@ -960,105 +1105,148 @@
     font-size: 20px;
   }
   
+  .dashboard-header p {
+    font-size: 14px;
+  }
+  
   .admin-dashboard .bracket-view-section h2 {
     font-size: 22px;
   }
   
-  .admin-dashboard .bracket-section {
-    padding: 15px 10px;
+  .admin-dashboard .event-details-header h2 {
+    font-size: 22px;
   }
   
-  .admin-dashboard .match-card {
-    padding: 15px;
+  .admin-dashboard .bracket-header h3 {
+    font-size: 18px;
   }
   
-  .adminstats-pagination-numbers {
-    max-width: 250px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 5px 0;
+  .admin-dashboard .match-score {
+    font-size: 24px;
   }
   
-  .adminstats-export-btn span {
-    display: none;
+  .stats-match-info {
+    font-size: 14px;
   }
-}
-/* Awards Page Header Styling */
-.awards-page-header {
-  background: var(--background-card);
-  padding: 30px 40px;
-  margin-bottom: 0;
-  border-bottom: 2px solid var(--border-color);
+  
+  .stats-header-center h2 {
+    font-size: 22px;
+  }
+  
+  .adminstats-table {
+    font-size: 11px;
+  }
+  
+  .adminstats-table th,
+  .adminstats-table td {
+    padding: 8px 6px;
+  }
 }
 
-.awards-header-top {
+/* Print Styles */
+@media print {
+  .admin-dashboard .bracket-tabs,
+  .adminstats-table-controls,
+  .adminstats-pagination-container,
+  .back-to-events-btn,
+  .bracket-card-actions,
+  .match-actions {
+    display: none !important;
+  }
+  
+  .admin-dashboard {
+    background: white;
+  }
+  
+  .admin-dashboard .bracket-view-section {
+    padding: 20px;
+  }
+  
+  .adminstats-table-wrapper {
+    border: 1px solid #000;
+  }
+  
+  .adminstats-table th {
+    background-color: #f0f0f0;
+    color: #000;
+  }
+  
+  .adminstats-table td {
+    color: #000;
+  }
+}
+
+/* Accessibility */
+.admin-dashboard *:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Loading States */
+.admin-dashboard .loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--border-color);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty States */
+.admin-dashboard .empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.admin-dashboard .empty-state-icon {
+  font-size: 48px;
   margin-bottom: 20px;
+  opacity: 0.5;
 }
 
-.awards-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--background-secondary);
-  color: var(--text-primary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius);
-  padding: 10px 20px;
-  font-size: 14px;
+/* Archived Status Badge */
+.archived-no {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
+  text-transform: uppercase;
 }
 
-.awards-back-btn:hover {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  color: white;
-  transform: translateX(-4px);
+.archived-yes {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.awards-back-btn .back-arrow {
+/* Fix for match info text color */
+.stats-match-info {
+  color: var(--text-primary);
   font-size: 18px;
-  transition: transform 0.3s ease;
-}
-
-.awards-back-btn:hover .back-arrow {
-  transform: translateX(-4px);
-}
-
-.awards-header-content {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.awards-page-title {
-  color: var(--text-primary);
-  font-size: 32px;
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.awards-page-info {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.info-badge {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--background-secondary);
-  color: var(--text-secondary);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  border: 1px solid var(--border-color);
-}
-
-.info-badge strong {
-  color: var(--text-primary);
   font-weight: 600;
+  margin: 10px 0 5px 0;
+}
+
+.stats-bracket-info {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.stats-bracket-info strong {
+  color: var(--text-primary);
 }

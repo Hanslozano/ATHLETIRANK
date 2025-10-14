@@ -87,6 +87,102 @@ const AdminEvents = ({ sidebarOpen }) => {
     fetchEvents();
   }, []);
 
+
+  useEffect(() => {
+  const checkReturnContext = async () => {
+    const returnContext = sessionStorage.getItem('adminEventsReturnContext');
+    
+    if (returnContext) {
+      try {
+        const { selectedEvent: eventContext, selectedBracket: bracketContext } = JSON.parse(returnContext);
+        
+        if (eventContext && bracketContext) {
+          // Set the selected event and bracket
+          setSelectedEvent(eventContext);
+          setSelectedBracket(bracketContext);
+          setActiveTab("results");
+          setContentTab("matches");
+          setLoadingDetails(true);
+          
+          // Load the matches for the bracket
+          try {
+            const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            
+            const data = await res.json();
+            const visibleMatches = data.filter(match => match.status !== 'hidden');
+            setMatches(visibleMatches);
+            setBracketMatches(visibleMatches);
+
+            if (visibleMatches.length === 0) {
+              setError("No matches found for this bracket.");
+            }
+          } catch (err) {
+            setError("Failed to load matches: " + err.message);
+          } finally {
+            setLoadingDetails(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading return context:", err);
+      } finally {
+        // Clear the return context
+        sessionStorage.removeItem('adminEventsReturnContext');
+      }
+    }
+  };
+  
+  checkReturnContext();
+  }, []);
+  
+  // Check for return context from AdminStats
+useEffect(() => {
+  const checkReturnContext = async () => {
+    const returnContext = sessionStorage.getItem('adminEventsReturnContext');
+    
+    if (returnContext) {
+      try {
+        const { selectedEvent: eventContext, selectedBracket: bracketContext } = JSON.parse(returnContext);
+        
+        if (eventContext && bracketContext) {
+          // Set the selected event and bracket
+          setSelectedEvent(eventContext);
+          setSelectedBracket(bracketContext);
+          setActiveTab("results");
+          setContentTab("matches");
+          setLoadingDetails(true);
+          
+          // Load the matches for the bracket
+          try {
+            const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            
+            const data = await res.json();
+            const visibleMatches = data.filter(match => match.status !== 'hidden');
+            setMatches(visibleMatches);
+            setBracketMatches(visibleMatches);
+
+            if (visibleMatches.length === 0) {
+              setError("No matches found for this bracket.");
+            }
+          } catch (err) {
+            setError("Failed to load matches: " + err.message);
+          } finally {
+            setLoadingDetails(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading return context:", err);
+      } finally {
+        // Clear the return context
+        sessionStorage.removeItem('adminEventsReturnContext');
+      }
+    }
+  };
+  
+  checkReturnContext();
+}, []);
+
   // Filter events based on search term and status filter
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -541,8 +637,10 @@ const AdminEvents = ({ sidebarOpen }) => {
             {activeTab === "results" && selectedEvent && selectedBracket && (
               <div className="bracket-visualization-section">
                 <div className="event-details-header">
-                  <h2>{selectedEvent.name} - {selectedBracket.name}</h2>
+                  {/* Change this line: */}
+                  <h2>{selectedBracket.name}</h2>
                   <div className="event-details-info">
+                    <span><strong>Event:</strong> {selectedEvent.name}</span>
                     <span><strong>Sport:</strong> {capitalize(selectedBracket.sport_type)}</span>
                     <span><strong>Type:</strong> {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}</span>
                     <span><strong>Teams:</strong> {selectedBracket.team_count || 0}</span>

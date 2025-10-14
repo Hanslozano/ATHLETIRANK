@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { FaSearch, FaFilter, FaDownload, FaTrophy } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { FaSearch, FaFilter, FaDownload, FaTrophy, FaArrowLeft } from "react-icons/fa";
 import "../../style/Admin_Stats.css";
 
 const AdminStats = ({ sidebarOpen }) => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedBracket, setSelectedBracket] = useState(null); // Add this state
   const [brackets, setBrackets] = useState([]);
   const [matches, setMatches] = useState([]);
   const [playerStats, setPlayerStats] = useState([]);
@@ -16,6 +19,7 @@ const AdminStats = ({ sidebarOpen }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [cameFromAdminEvents, setCameFromAdminEvents] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -25,24 +29,20 @@ const AdminStats = ({ sidebarOpen }) => {
   const formatRoundDisplay = (match) => {
     const roundNum = match.round_number;
     
-    // Championship rounds - check by round number first
     if (roundNum === 200) return 'Grand Final';
     if (roundNum === 201) return 'Bracket Reset';
-    if (roundNum >= 200 && match.bracket_type === 'championship') {
+    if (match.bracket_type === 'championship') {
       return `Championship Round ${roundNum - 199}`;
     }
     
-    // Loser's bracket rounds (101, 102, 103, etc.) - Display as LB Round 1, 2, 3
     if (match.bracket_type === 'loser' || (roundNum >= 101 && roundNum < 200)) {
       return `LB Round ${roundNum - 100}`;
     }
     
-    // Winner's bracket rounds (1, 2, 3, etc.)
     if (match.bracket_type === 'winner' || roundNum < 100) {
       return `Round ${roundNum}`;
     }
     
-    // Fallback
     return `Round ${roundNum}`;
   };
 
@@ -56,6 +56,35 @@ const AdminStats = ({ sidebarOpen }) => {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Check for session storage data on component mount
+  useEffect(() => {
+    const checkSessionData = async () => {
+      const matchData = sessionStorage.getItem('selectedMatchData');
+      const contextData = sessionStorage.getItem('adminEventsContext');
+      
+      if (matchData && contextData) {
+        setCameFromAdminEvents(true);
+        try {
+          const { matchId, eventId, bracketId, match } = JSON.parse(matchData);
+          const { selectedEvent: eventContext, selectedBracket: bracketContext } = JSON.parse(contextData);
+          
+          // Set the event and bracket context
+          setSelectedEvent(eventContext);
+          setSelectedBracket(bracketContext); // Set the selected bracket
+          
+          // Load the match statistics directly
+          await handleMatchSelect(match);
+          
+          // Don't clear session storage - keep it for back navigation
+        } catch (err) {
+          console.error("Error loading session data:", err);
+        }
+      }
+    };
+    
+    checkSessionData();
   }, []);
 
   // Fetch events
@@ -96,6 +125,7 @@ const AdminStats = ({ sidebarOpen }) => {
   // Handle event selection
   const handleEventSelect = async (event) => {
     setSelectedEvent(event);
+    setSelectedBracket(null); // Reset selected bracket
     setLoading(true);
     setCurrentPage(1);
     try {
@@ -262,6 +292,42 @@ const AdminStats = ({ sidebarOpen }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Go back to Admin Events page
+ // Go back to Admin Events page with context preserved
+const handleBackToAdminEvents = () => {
+  // Store the context to restore the matches view
+  sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
+    selectedEvent: selectedEvent,
+    selectedBracket: selectedBracket
+  }));
+  
+  // Navigate back to Admin Events
+  navigate('/AdminDashboard/events');
+};
+
+// In the JSX return, update the button:
+{cameFromAdminEvents && (
+  <div className="stats-header-right">
+    <button 
+      onClick={handleBackToAdminEvents}
+      className="back-to-events-btn"
+    >
+      <FaArrowLeft /> Back
+    </button>
+  </div>
+)}
+  // Go back to events list (within stats page)
+  const handleBackToEvents = () => {
+    setSelectedEvent(null);
+    setSelectedBracket(null); // Reset selected bracket
+    setSelectedMatch(null);
+    setBrackets([]);
+    setMatches([]);
+    setPlayerStats([]);
+    setActiveTab("events");
+    setCameFromAdminEvents(false);
   };
 
   // Filter player stats based on search term
@@ -577,8 +643,10 @@ const AdminStats = ({ sidebarOpen }) => {
     <div className="admin-dashboard">
       <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="dashboard-header">
-          <h1>Admin Statistics</h1>
-          <p>View match results and player statistics</p>
+          <div>
+            <h1>Admin Statistics</h1>
+            <p>View match results and player statistics</p>
+          </div>
         </div>
 
         <div className="dashboard-main">
@@ -682,8 +750,20 @@ const AdminStats = ({ sidebarOpen }) => {
 
                       return (
                         <div key={bracket.id} className="bracket-section">
+                          {/* Bracket Title Banner */}
+                          <div className="bracket-title-banner">
+                            <h3>
+                              {selectedEvent.name} - {bracket.name}
+                            </h3>
+                            <div className="sport-badge">
+                              {bracket.sport_type?.toUpperCase() || 'SPORT'}
+                            </div>
+                          </div>
+                          
                           <div className="bracket-header">
-                            <h3>{bracket.name}</h3>
+                            <h3>
+                              {bracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}
+                            </h3>
                             {bracketWinners[bracket.id] && (
                               <div className="bracket-winner">
                                 <FaTrophy /> Winner: {bracketWinners[bracket.id]}
@@ -707,9 +787,30 @@ const AdminStats = ({ sidebarOpen }) => {
             {/* Player Statistics Tab */}
             {activeTab === "statistics" && (
               <div className="bracket-view-section">
-                <div className="event-details-header">
-                  <h2>Player Statistics</h2>
-                  <p>Detailed player performance data from the selected match</p>
+                <div className="stats-header-container">
+                  {selectedMatch && (
+                    <div className="stats-header-center">
+                      <h2>{selectedMatch.team1_name} vs {selectedMatch.team2_name}</h2>
+                      <p className="stats-match-info">
+                        {selectedEvent?.name} - {formatRoundDisplay(selectedMatch)}
+                      </p>
+                      <p className="stats-bracket-info">
+                        <strong>Bracket:</strong> {selectedBracket?.name || selectedMatch.bracket_name} | 
+                        <strong> Type:</strong> {selectedBracket?.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}
+                      </p>
+                    </div>
+                  )}
+                  
+                 {cameFromAdminEvents && (
+                  <div className="stats-header-right">
+                    <button 
+                      onClick={handleBackToAdminEvents}
+                      className="back-to-events-btn"
+                    >
+                      <FaArrowLeft /> Back
+                    </button>
+                  </div>
+                )}
                 </div>
 
                 {loading ? (
