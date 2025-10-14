@@ -287,4 +287,32 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+
+// ✅ GET brackets for a specific team
+router.get("/:teamId/brackets", async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    
+    const [brackets] = await db.pool.query(`
+      SELECT 
+        b.id as bracket_id,
+        b.name as bracket_name,
+        b.sport_type,
+        b.elimination_type,
+        e.id as event_id,
+        e.name as event_name
+      FROM bracket_teams bt
+      JOIN brackets b ON bt.bracket_id = b.id
+      JOIN events e ON b.event_id = e.id
+      WHERE bt.team_id = ?
+      ORDER BY e.name, b.name
+    `, [teamId]);
+
+    res.json(brackets);
+  } catch (err) {
+    console.error("Error fetching team brackets:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 module.exports = router;

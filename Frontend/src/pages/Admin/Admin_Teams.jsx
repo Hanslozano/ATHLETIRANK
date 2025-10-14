@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaEye } from "react-icons/fa";
 import "../../style/Admin_TeamPage.css";
 
 const TeamsPage = ({ sidebarOpen }) => {
-  const [activeTab, setActiveTab] = useState("create");
+  const [activeTab, setActiveTab] = useState("view");
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -10,7 +11,8 @@ const TeamsPage = ({ sidebarOpen }) => {
     sport: "",
     players: [],
   });
-  const [expandedTeams, setExpandedTeams] = useState([]);
+  const [viewModal, setViewModal] = useState({ show: false, team: null });
+  const [editingTeamName, setEditingTeamName] = useState(null);
   const [editingPlayer, setEditingPlayer] = useState(null);
   
   // Search and filter states
@@ -20,6 +22,7 @@ const TeamsPage = ({ sidebarOpen }) => {
   // Validation states
   const [validationError, setValidationError] = useState("");
   const [showValidationMessage, setShowValidationMessage] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, type: '', id: null, name: '' });
 
   // Position options
   const positions = {
@@ -27,14 +30,29 @@ const TeamsPage = ({ sidebarOpen }) => {
     Volleyball: ["Setter", "Outside Hitter", "Middle Blocker", "Opposite Hitter", "Libero", "Defensive Specialist"],
   };
 
-  // Fetch teams
+  // Fetch teams with brackets
   useEffect(() => {
     const fetchTeams = async () => {
       setLoading(true);
       try {
         const res = await fetch("http://localhost:5000/api/teams");
         const data = await res.json();
-        setTeams(data);
+        
+        // Fetch bracket information for each team
+        const teamsWithBrackets = await Promise.all(
+          data.map(async (team) => {
+            try {
+              const bracketRes = await fetch(`http://localhost:5000/api/teams/${team.id}/brackets`);
+              const brackets = await bracketRes.json();
+              return { ...team, brackets: brackets || [] };
+            } catch (err) {
+              console.error(`Error fetching brackets for team ${team.id}:`, err);
+              return { ...team, brackets: [] };
+            }
+          })
+        );
+        
+        setTeams(teamsWithBrackets);
       } catch (err) {
         console.error("Error fetching teams:", err);
       } finally {
@@ -84,7 +102,6 @@ const TeamsPage = ({ sidebarOpen }) => {
         players: [...prev.players, { name: "", position: "", jerseyNumber: "" }],
       }));
       
-      // Clear validation error when adding players
       if (validationError) {
         setValidationError("");
         setShowValidationMessage(false);
@@ -98,7 +115,6 @@ const TeamsPage = ({ sidebarOpen }) => {
       players: prev.players.filter((_, i) => i !== index),
     }));
     
-    // Clear validation error when removing players
     if (validationError) {
       setValidationError("");
       setShowValidationMessage(false);
@@ -110,7 +126,6 @@ const TeamsPage = ({ sidebarOpen }) => {
     newPlayers[index][field] = value;
     setFormData(prev => ({ ...prev, players: newPlayers }));
     
-    // Clear validation error when editing players
     if (validationError) {
       setValidationError("");
       setShowValidationMessage(false);
@@ -139,7 +154,6 @@ const TeamsPage = ({ sidebarOpen }) => {
       return "Team cannot have more than 15 players";
     }
     
-    // Check for duplicate jersey numbers
     const jerseyNumbers = validPlayers.map(p => p.jerseyNumber);
     const uniqueJerseyNumbers = new Set(jerseyNumbers);
     if (jerseyNumbers.length !== uniqueJerseyNumbers.size) {
@@ -153,7 +167,6 @@ const TeamsPage = ({ sidebarOpen }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form
     const validationError = validateForm();
     if (validationError) {
       setValidationError(validationError);
@@ -161,7 +174,6 @@ const TeamsPage = ({ sidebarOpen }) => {
       return;
     }
 
-    // Clear any previous validation errors
     setValidationError("");
     setShowValidationMessage(false);
 
@@ -185,11 +197,9 @@ const TeamsPage = ({ sidebarOpen }) => {
         setTeams(prev => [...prev, newTeam]);
         setFormData({ teamName: "", sport: "", players: [] });
         setActiveTab("view");
-        // Show success message (you can replace this with a toast notification)
         setValidationError("Team created successfully!");
         setShowValidationMessage(true);
         
-        // Clear success message after 3 seconds
         setTimeout(() => {
           setValidationError("");
           setShowValidationMessage(false);
@@ -205,43 +215,73 @@ const TeamsPage = ({ sidebarOpen }) => {
     }
   };
 
-  // Delete team
-  const handleDeleteTeam = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this team?")) return;
-    
+  // Open view modal
+  const openViewModal = (team) => {
+    setViewModal({ show: true, team: { ...team } });
+    setEditingTeamName(null);
+    setEditingPlayer(null);
+  };
+
+  // Close view modal
+  const closeViewModal = () => {
+    setViewModal({ show: false, team: null });
+    setEditingTeamName(null);
+    setEditingPlayer(null);
+  };
+
+  // Edit team name in modal
+  const startEditTeamName = () => {
+    setEditingTeamName(viewModal.team.name);
+  };
+
+  const cancelEditTeamName = () => {
+    setEditingTeamName(null);
+  };
+
+  const saveTeamName = async () => {
+    if (!editingTeamName.trim()) {
+      setValidationError("Team name cannot be empty");
+      setShowValidationMessage(true);
+      return;
+    }
+
     try {
-      const res = await fetch(`http://localhost:5000/api/teams/${id}`, { method: "DELETE" });
-      
+      const res = await fetch(`http://localhost:5000/api/teams/${viewModal.team.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editingTeamName }),
+      });
+
       if (res.ok) {
-        setTeams(prev => prev.filter(team => team.id !== id));
-        // Remove from expanded teams if it was expanded
-        setExpandedTeams(prev => prev.filter(teamId => teamId !== id));
-        // Show success message
-        setValidationError("Team deleted successfully!");
+        const updatedTeam = await res.json();
+        setTeams(prev => prev.map(team => 
+          team.id === viewModal.team.id ? { ...team, name: updatedTeam.name } : team
+        ));
+        setViewModal(prev => ({ ...prev, team: { ...prev.team, name: updatedTeam.name } }));
+        setEditingTeamName(null);
+        setValidationError("Team name updated successfully!");
         setShowValidationMessage(true);
         
-        // Clear success message after 3 seconds
         setTimeout(() => {
           setValidationError("");
           setShowValidationMessage(false);
         }, 3000);
       } else {
-        setValidationError("Error deleting team");
+        setValidationError("Error updating team name");
         setShowValidationMessage(true);
       }
     } catch (err) {
-      console.error("Error deleting team:", err);
-      setValidationError("Error deleting team");
+      console.error("Error updating team:", err);
+      setValidationError("Error updating team name");
       setShowValidationMessage(true);
     }
   };
 
-  // Edit player functions
-  const startEditPlayer = (teamId, playerIndex, player) => {
+  // Edit player in modal
+  const startEditPlayer = (index) => {
     setEditingPlayer({
-      teamId,
-      playerIndex,
-      player: { ...player }
+      index,
+      player: { ...viewModal.team.players[index] }
     });
   };
 
@@ -267,7 +307,7 @@ const TeamsPage = ({ sidebarOpen }) => {
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/teams/${editingPlayer.teamId}/players/${editingPlayer.player.id}`, {
+      const res = await fetch(`http://localhost:5000/api/teams/${viewModal.team.id}/players/${editingPlayer.player.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingPlayer.player),
@@ -276,21 +316,27 @@ const TeamsPage = ({ sidebarOpen }) => {
       if (res.ok) {
         const updatedPlayer = await res.json();
         
-        // Update the local state
+        // Update teams state
         setTeams(prev => prev.map(team => {
-          if (team.id === editingPlayer.teamId) {
+          if (team.id === viewModal.team.id) {
             const updatedPlayers = [...team.players];
-            updatedPlayers[editingPlayer.playerIndex] = updatedPlayer;
+            updatedPlayers[editingPlayer.index] = updatedPlayer;
             return { ...team, players: updatedPlayers };
           }
           return team;
         }));
 
+        // Update modal state
+        setViewModal(prev => {
+          const updatedPlayers = [...prev.team.players];
+          updatedPlayers[editingPlayer.index] = updatedPlayer;
+          return { ...prev, team: { ...prev.team, players: updatedPlayers } };
+        });
+
         setEditingPlayer(null);
         setValidationError("Player updated successfully!");
         setShowValidationMessage(true);
         
-        // Clear success message after 3 seconds
         setTimeout(() => {
           setValidationError("");
           setShowValidationMessage(false);
@@ -306,13 +352,47 @@ const TeamsPage = ({ sidebarOpen }) => {
     }
   };
 
-  // Toggle team expansion
-  const toggleTeamExpansion = (teamId) => {
-    if (expandedTeams.includes(teamId)) {
-      setExpandedTeams(expandedTeams.filter(id => id !== teamId));
-    } else {
-      setExpandedTeams([...expandedTeams, teamId]);
+  // Delete team
+  const handleDeleteTeam = (team) => {
+    setDeleteConfirm({
+      show: true,
+      type: 'team',
+      id: team.id,
+      name: team.name
+    });
+  };
+
+  const confirmDelete = async () => {
+    const { type, id } = deleteConfirm;
+    
+    try {
+      const res = await fetch(`http://localhost:5000/api/teams/${id}`, { method: "DELETE" });
+      
+      if (res.ok) {
+        setTeams(prev => prev.filter(team => team.id !== id));
+        setValidationError("Team deleted successfully!");
+        setShowValidationMessage(true);
+        
+        // Close modal if we're viewing the deleted team
+        if (viewModal.show && viewModal.team.id === id) {
+          closeViewModal();
+        }
+        
+        setTimeout(() => {
+          setValidationError("");
+          setShowValidationMessage(false);
+        }, 3000);
+      } else {
+        setValidationError("Error deleting team");
+        setShowValidationMessage(true);
+      }
+    } catch (err) {
+      console.error("Error deleting team:", err);
+      setValidationError("Error deleting team");
+      setShowValidationMessage(true);
     }
+    
+    setDeleteConfirm({ show: false, type: '', id: null, name: '' });
   };
 
   // Capitalize first letter
@@ -331,21 +411,21 @@ const TeamsPage = ({ sidebarOpen }) => {
           <p>Create and manage sports teams</p>
         </div>
 
-         <div className="dashboard-main">
+        <div className="dashboard-main">
           <div className="bracket-content">
             {/* Tabs */}
             <div className="bracket-tabs">
               <button
-                 className={`bracket-tab-button ${activeTab === "create" ? "bracket-tab-active" : ""}`}
-                onClick={() => setActiveTab("create")}
-              >
-                Create Team
-              </button>
-              <button
-               className={`bracket-tab-button ${activeTab === "view" ? "bracket-tab-active" : ""}`}
+                className={`bracket-tab-button ${activeTab === "view" ? "bracket-tab-active" : ""}`}
                 onClick={() => setActiveTab("view")}
               >
                 View Teams ({teams.length})
+              </button>
+              <button
+                className={`bracket-tab-button ${activeTab === "create" ? "bracket-tab-active" : ""}`}
+                onClick={() => setActiveTab("create")}
+              >
+                Create Team
               </button>
             </div>
 
@@ -359,6 +439,168 @@ const TeamsPage = ({ sidebarOpen }) => {
                 >
                   ×
                 </button>
+              </div>
+            )}
+
+            {/* View Teams */}
+            {activeTab === "view" && (
+              <div className="bracket-view-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search teams or players..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{
+                        flex: '1',
+                        padding: '12px 16px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    <select
+                      value={sportFilter}
+                      onChange={(e) => setSportFilter(e.target.value)}
+                      style={{
+                        padding: '12px 16px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                        minWidth: '150px',
+                      }}
+                    >
+                      <option value="all">All Sports</option>
+                      <option value="Basketball">Basketball</option>
+                      <option value="Volleyball">Volleyball</option>
+                    </select>
+                  </div>
+                  <button 
+                    className="awards_standings_export_btn" 
+                    onClick={() => setActiveTab("create")}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <FaPlus /> Create Team
+                  </button>
+                </div>
+
+                {/* Results Info */}
+                {(searchTerm || sportFilter !== "all") && (
+                  <div style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    Showing {filteredTeams.length} of {teams.length} teams
+                    {searchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{searchTerm}"</span>}
+                    {sportFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Sport: {sportFilter}</span>}
+                  </div>
+                )}
+
+                {loading ? (
+                  <div className="awards_standings_loading">
+                    <div className="awards_standings_spinner"></div>
+                    <p>Loading teams...</p>
+                  </div>
+                ) : filteredTeams.length === 0 ? (
+                  <div className="bracket-no-brackets">
+                    {teams.length === 0 ? (
+                      <>
+                        <p>No teams created yet. Create your first team!</p>
+                        <button 
+                          className="bracket-view-btn" 
+                          onClick={() => setActiveTab("create")}
+                        >
+                          Create Team
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p>No teams match your search criteria.</p>
+                        <button 
+                          className="bracket-view-btn" 
+                          onClick={() => {
+                            setSearchTerm("");
+                            setSportFilter("all");
+                          }}
+                        >
+                          Clear Search
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="awards_standings_table_container">
+                    <table className="awards_standings_table">
+                      <thead>
+                        <tr>
+                          <th style={{ fontSize: '15px', minWidth: '200px' }}>Team Name</th>
+                          <th style={{ fontSize: '15px' }}>Sport</th>
+                          <th style={{ fontSize: '15px' }}>Players</th>
+                          <th style={{ fontSize: '15px' }}>Brackets</th>
+                          <th style={{ textAlign: 'center', width: '180px', fontSize: '15px' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredTeams.map(team => {
+                          const teamSport = team.sport || 'Basketball';
+                          
+                          return (
+                            <tr key={team.id}>
+                              <td style={{ fontWeight: '600', fontSize: '16px' }}>
+                                {team.name}
+                              </td>
+                              <td>
+                                <span className={`bracket-sport-badge ${teamSport === 'Volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
+                                  {teamSport}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: '15px', fontWeight: '600' }}>{team.players.length}</td>
+                              <td>
+                                {team.brackets && team.brackets.length > 0 ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {team.brackets.map((bracket, idx) => (
+                                      <span 
+                                        key={idx}
+                                        className="admin-teams-bracket-badge"
+                                        title={`${bracket.event_name} - ${bracket.bracket_name}`}
+                                      >
+                                        {bracket.event_name}: {bracket.bracket_name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Not in any bracket</span>
+                                )}
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                  <button
+                                    onClick={() => openViewModal(team)}
+                                    className="bracket-view-btn"
+                                    style={{ fontSize: '13px', padding: '8px 12px', flex: '1 1 auto', minWidth: '45px' }}
+                                    title="View All Players"
+                                  >
+                                    <FaEye />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTeam(team)}
+                                    className="bracket-view-btn"
+                                    style={{ fontSize: '13px', padding: '8px 12px', background: 'var(--error-color)', flex: '1 1 auto', minWidth: '45px' }}
+                                    title="Delete Team"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
@@ -502,191 +744,187 @@ const TeamsPage = ({ sidebarOpen }) => {
                 </div>
               </div>
             )}
-
-            {/* View Teams */}
-            {activeTab === "view" && (
-              <div className="admin-teams-view-section">
-                <h2>All Teams</h2>
-                
-                {/* Search and Filter Section */}
-                <div className="admin-teams-search-filter">
-                  <div className="admin-teams-search-box">
-                    <input
-                      type="text"
-                      placeholder="Search teams or players..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="admin-teams-search-input"
-                    />
-                  </div>
-                  
-                  <div className="admin-teams-filter-controls">
-                    <select
-                      value={sportFilter}
-                      onChange={(e) => setSportFilter(e.target.value)}
-                      className="admin-teams-sport-filter"
-                    >
-                      <option value="all">All Sports</option>
-                      <option value="Basketball">Basketball</option>
-                      <option value="Volleyball">Volleyball</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Results Count */}
-                <div className="admin-teams-results-info">
-                  <p>
-                    Showing {filteredTeams.length} of {teams.length} teams
-                    {(searchTerm || sportFilter !== "all") && (
-                      <span className="admin-teams-filter-indicator">
-                        {searchTerm && ` • Searching: "${searchTerm}"`}
-                        {sportFilter !== "all" && ` • Sport: ${sportFilter}`}
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                {loading ? (
-                  <p>Loading teams...</p>
-                ) : filteredTeams.length === 0 ? (
-                  <div className="admin-teams-no-teams">
-                    {teams.length === 0 ? (
-                      <>
-                        <p>No teams created yet. Create your first team!</p>
-                        <button 
-                          className="admin-teams-submit-btn" 
-                          onClick={() => setActiveTab("create")}
-                        >
-                          Create Team
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <p>No teams match your search criteria.</p>
-                        <button 
-                          className="admin-teams-submit-btn" 
-                          onClick={() => {
-                            setSearchTerm("");
-                            setSportFilter("all");
-                          }}
-                        >
-                          Clear Search
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="admin-teams-grid">
-                    {filteredTeams.map(team => {
-                      const isExpanded = expandedTeams.includes(team.id);
-                      const teamSport = team.sport || 'basketball';
-                      
-                      return (
-                        <div key={team.id} className="admin-teams-card">
-                          <div className="admin-teams-card-header">
-                            <h3>{team.name}</h3>
-                            <span className={`admin-teams-sport-badge admin-teams-sport-${teamSport.toLowerCase()}`}>
-                              {capitalize(teamSport)}
-                            </span>
-                          </div>
-                          <div className="admin-teams-card-info">
-                            <div><strong>Players:</strong> {team.players.length}</div>
-                            <div className="admin-teams-players-list">
-                              {team.players.slice(0, isExpanded ? team.players.length : 3).map((player, i) => {
-                                const isEditing = editingPlayer && 
-                                                editingPlayer.teamId === team.id && 
-                                                editingPlayer.playerIndex === i;
-                                
-                                return isEditing ? (
-                                  // Edit Player Form
-                                  <div key={i} className="admin-teams-player-edit-form">
-                                    <div className="admin-teams-player-edit-inputs">
-                                      <input
-                                        type="text"
-                                        value={editingPlayer.player.name}
-                                        onChange={(e) => handleEditPlayerChange("name", e.target.value)}
-                                        className="admin-teams-player-edit-input"
-                                        placeholder="Player name"
-                                      />
-                                      <input
-                                        type="text"
-                                        value={editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number}
-                                        onChange={(e) => handleEditPlayerChange("jerseyNumber", e.target.value)}
-                                        className="admin-teams-player-edit-input admin-teams-jersey-edit"
-                                        placeholder="Jersey #"
-                                        maxLength="10"
-                                      />
-                                      <select
-                                        value={editingPlayer.player.position}
-                                        onChange={(e) => handleEditPlayerChange("position", e.target.value)}
-                                        className="admin-teams-player-edit-select"
-                                      >
-                                        <option value="">Select position</option>
-                                        {positions[teamSport]?.map(pos => (
-                                          <option key={pos} value={pos}>{pos}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                    <div className="admin-teams-player-edit-actions">
-                                      <button 
-                                        className="admin-teams-submit-btn admin-teams-save-btn"
-                                        onClick={saveEditedPlayer}
-                                      >
-                                        Save
-                                      </button>
-                                      <button 
-                                        className="admin-teams-cancel-btn"
-                                        onClick={cancelEditPlayer}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  // Player Display
-                                  <div key={i} className="admin-teams-player-item">
-                                    <span className="admin-teams-jersey-number">#{player.jersey_number || player.jerseyNumber}</span>
-                                    <span className="admin-teams-player-name">{player.name}</span>
-                                    <span className="admin-teams-player-position">({player.position})</span>
-                                    <button
-                                      className="admin-teams-edit-player-btn"
-                                      onClick={() => startEditPlayer(team.id, i, player)}
-                                      title="Edit player"
-                                    >
-                                      Edit
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                              {!isExpanded && team.players.length > 3 && (
-                                <div className="admin-teams-more-players">+{team.players.length - 3} more players</div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="admin-teams-card-actions">
-                            <button
-                              className="admin-teams-view-btn"
-                              onClick={() => toggleTeamExpansion(team.id)}
-                            >
-                              {isExpanded ? 'Show Less' : 'View All Players'}
-                            </button>
-                            <button
-                              className="admin-teams-delete-btn"
-                              onClick={() => handleDeleteTeam(team.id)}
-                            >
-                              Delete Team
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* View Team Modal */}
+      {viewModal.show && viewModal.team && (
+        <div className="admin-teams-modal-overlay" onClick={closeViewModal}>
+          <div className="admin-teams-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-teams-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                {editingTeamName !== null ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editingTeamName}
+                      onChange={(e) => setEditingTeamName(e.target.value)}
+                      className="admin-teams-modal-name-input"
+                      autoFocus
+                    />
+                    <button onClick={saveTeamName} className="admin-teams-modal-icon-btn" title="Save">
+                      <FaSave />
+                    </button>
+                    <button onClick={cancelEditTeamName} className="admin-teams-modal-icon-btn admin-teams-modal-cancel-btn" title="Cancel">
+                      <FaTimes />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h2 style={{ margin: 0 }}>{viewModal.team.name}</h2>
+                    <button onClick={startEditTeamName} className="admin-teams-modal-icon-btn" title="Edit Team Name">
+                      <FaEdit />
+                    </button>
+                  </>
+                )}
+              </div>
+              <button onClick={closeViewModal} className="admin-teams-modal-close">
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div className="admin-teams-modal-info">
+              <span className={`bracket-sport-badge ${viewModal.team.sport === 'Volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                {viewModal.team.sport}
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                <strong>{viewModal.team.players.length}</strong> Players
+              </span>
+              {viewModal.team.brackets && viewModal.team.brackets.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {viewModal.team.brackets.map((bracket, idx) => (
+                    <span 
+                      key={idx}
+                      className="admin-teams-bracket-badge"
+                      title={`${bracket.event_name} - ${bracket.bracket_name}`}
+                    >
+                      {bracket.event_name}: {bracket.bracket_name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="admin-teams-modal-body">
+              <h3>Players List</h3>
+              <div className="admin-teams-modal-players">
+                {viewModal.team.players.map((player, index) => {
+                  const isEditing = editingPlayer && editingPlayer.index === index;
+                  const teamSport = viewModal.team.sport || 'Basketball';
+                  
+                  return isEditing ? (
+                    <div key={index} className="admin-teams-modal-player-edit">
+                      <input
+                        type="text"
+                        value={editingPlayer.player.name}
+                        onChange={(e) => handleEditPlayerChange("name", e.target.value)}
+                        placeholder="Player name"
+                        className="admin-teams-modal-player-input"
+                      />
+                      <input
+                        type="text"
+                        value={editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number}
+                        onChange={(e) => handleEditPlayerChange("jerseyNumber", e.target.value)}
+                        placeholder="Jersey #"
+                        maxLength="10"
+                        className="admin-teams-modal-jersey-input"
+                      />
+                      <select
+                        value={editingPlayer.player.position}
+                        onChange={(e) => handleEditPlayerChange("position", e.target.value)}
+                        className="admin-teams-modal-position-select"
+                      >
+                        <option value="">Select position</option>
+                        {positions[teamSport]?.map(pos => (
+                          <option key={pos} value={pos}>{pos}</option>
+                        ))}
+                      </select>
+                      <div className="admin-teams-modal-player-actions">
+                        <button onClick={saveEditedPlayer} className="bracket-view-btn" style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--success-color)' }}>
+                          <FaSave />
+                        </button>
+                        <button onClick={cancelEditPlayer} className="bracket-view-btn" style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--text-muted)' }}>
+                          <FaTimes />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={index} className="admin-teams-modal-player">
+                      <span className="admin-teams-modal-jersey">#{player.jersey_number || player.jerseyNumber}</span>
+                      <span className="admin-teams-modal-player-name">{player.name}</span>
+                      <span className="admin-teams-modal-player-position">{player.position}</span>
+                      <button 
+                        onClick={() => startEditPlayer(index)}
+                        className="bracket-view-btn"
+                        style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--purple-color)' }}
+                        title="Edit Player"
+                      >
+                        <FaEdit />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: 'var(--background-card)',
+            border: '2px solid var(--error-color)',
+            borderRadius: 'var(--border-radius-lg)',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: 'var(--shadow-large)'
+          }}>
+            <h3 style={{ color: 'var(--error-color)', marginBottom: '16px', fontSize: '24px' }}>
+              Confirm Delete
+            </h3>
+            <p style={{ color: 'var(--text-primary)', marginBottom: '24px', fontSize: '16px' }}>
+              Are you sure you want to delete this {deleteConfirm.type}?
+            </p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '14px', fontWeight: '600' }}>
+              "{deleteConfirm.name}"
+            </p>
+            <p style={{ color: 'var(--warning-color)', marginBottom: '24px', fontSize: '14px' }}>
+              ⚠️ This action cannot be undone and will delete all players in this team!
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeleteConfirm({ show: false, type: '', id: null, name: '' })}
+                className="bracket-view-btn"
+                style={{ background: 'var(--text-muted)', padding: '10px 20px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="bracket-view-btn"
+                style={{ background: 'var(--error-color)', padding: '10px 20px' }}
+              >
+                <FaTrash /> Delete {deleteConfirm.type}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

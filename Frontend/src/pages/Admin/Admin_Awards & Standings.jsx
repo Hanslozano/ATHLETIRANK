@@ -15,6 +15,11 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [contentTab, setContentTab] = useState("standings");
 
+  // New filter states
+  const [eventSearchTerm, setEventSearchTerm] = useState("");
+  const [sportFilter, setSportFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("date");
+
   const safeNumber = (value, decimals = 1) => {
     const num = Number(value);
     return isNaN(num) ? 0 : Number(num.toFixed(decimals));
@@ -30,7 +35,6 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
       const res = await fetch("http://localhost:5000/api/awards/events/completed");
       const data = await res.json();
       
-      // Fetch brackets for each event
       const eventsWithBrackets = await Promise.all(
         data.map(async (event) => {
           try {
@@ -52,6 +56,39 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
       setLoading(false);
     }
   };
+
+  // Filter and sort events
+  const getFilteredAndSortedEvents = () => {
+    let filtered = events.filter(event => {
+      const matchesSearch = event.name.toLowerCase().includes(eventSearchTerm.toLowerCase());
+      
+      // Filter by sport - check if any bracket matches the sport filter
+      let matchesSport = sportFilter === "all";
+      if (!matchesSport && event.brackets) {
+        matchesSport = event.brackets.some(bracket => 
+          bracket.sport_type === sportFilter
+        );
+      }
+      
+      return matchesSearch && matchesSport;
+    });
+
+    // Sort events
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "date":
+          return new Date(b.start_date) - new Date(a.start_date);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  };
+
+  const filteredEvents = getFilteredAndSortedEvents();
 
   const handleBracketSelect = async (event, bracket) => {
     setSelectedEvent(event);
@@ -233,63 +270,149 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
             {activeTab === "tournaments" && (
               <div className="bracket-view-section">
                 <h2>Select Tournament & Bracket</h2>
+
+                {/* Search and Filter Container */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      placeholder="Search tournaments..."
+                      value={eventSearchTerm}
+                      onChange={(e) => setEventSearchTerm(e.target.value)}
+                      style={{
+                        flex: '1',
+                        minWidth: '200px',
+                        padding: '12px 16px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    <select
+                      value={sportFilter}
+                      onChange={(e) => setSportFilter(e.target.value)}
+                      style={{
+                        padding: '12px 16px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                        minWidth: '150px',
+                      }}
+                    >
+                      <option value="all">All Sports</option>
+                      <option value="basketball">Basketball</option>
+                      <option value="volleyball">Volleyball</option>
+                    </select>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      style={{
+                        padding: '12px 16px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                        minWidth: '150px',
+                      }}
+                    >
+                      <option value="date">Sort by Date</option>
+                      <option value="name">Sort by Name</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Results Info */}
+                {(eventSearchTerm || sportFilter !== "all") && (
+                  <div style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    Showing {filteredEvents.length} of {events.length} tournaments
+                    {eventSearchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{eventSearchTerm}"</span>}
+                    {sportFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Sport: {sportFilter}</span>}
+                  </div>
+                )}
+
                 {loading ? (
                   <div className="awards_standings_loading">
                     <div className="awards_standings_spinner"></div>
                     <p>Loading tournaments...</p>
                   </div>
-                ) : events.length === 0 ? (
+                ) : filteredEvents.length === 0 ? (
                   <div className="bracket-no-brackets">
-                    <p>No completed tournaments found. Complete a tournament first to view awards and standings.</p>
+                    {events.length === 0 ? (
+                      <p>No completed tournaments found. Complete a tournament first to view awards and standings.</p>
+                    ) : (
+                      <>
+                        <p>No tournaments match your search criteria.</p>
+                        <button 
+                          className="bracket-view-btn" 
+                          onClick={() => {
+                            setEventSearchTerm("");
+                            setSportFilter("all");
+                          }}
+                        >
+                          Clear Filters
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="awards_standings_table_container">
                     <table className="awards_standings_table">
                       <thead>
                         <tr>
-                          <th>Tournament</th>
-                          <th>Sport</th>
-                          <th>Dates</th>
-                          <th>Bracket</th>
-                          <th>Type</th>
-                          <th>Champion</th>
-                          <th style={{ textAlign: 'center' }}>Action</th>
+                          <th style={{ fontSize: '15px' }}>Tournament</th>
+                          <th style={{ fontSize: '15px' }}>Sport</th>
+                          <th style={{ fontSize: '15px' }}>Dates</th>
+                          <th style={{ fontSize: '15px' }}>Bracket</th>
+                          <th style={{ fontSize: '15px' }}>Type</th>
+                          <th style={{ fontSize: '15px' }}>Champion</th>
+                          <th style={{ textAlign: 'center', fontSize: '15px' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {events.map(event => 
+                        {filteredEvents.map(event => 
                           event.brackets && event.brackets.length > 0 ? (
                             event.brackets.map((bracket, idx) => (
                               <tr key={`${event.id}-${bracket.id}`}>
                                 {idx === 0 && (
                                   <>
-                                    <td rowSpan={event.brackets.length} style={{ fontWeight: '600', borderRight: '1px solid var(--border-color)' }}>
+                                    <td rowSpan={event.brackets.length} style={{ fontWeight: '600', borderRight: '1px solid var(--border-color)', fontSize: '16px' }}>
                                       {event.name}
                                     </td>
                                     <td rowSpan={event.brackets.length} style={{ borderRight: '1px solid var(--border-color)' }}>
-                                      <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                                      <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
                                         {event.sport?.toUpperCase() || 'MULTI-SPORT'}
                                       </span>
                                     </td>
-                                    <td rowSpan={event.brackets.length} style={{ fontSize: '14px', borderRight: '1px solid var(--border-color)' }}>
+                                    <td rowSpan={event.brackets.length} style={{ fontSize: '15px', borderRight: '1px solid var(--border-color)' }}>
                                       {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
                                     </td>
                                   </>
                                 )}
-                                <td>{bracket.name}</td>
-                                <td style={{ fontSize: '14px' }}>
+                                <td style={{ fontWeight: '600', fontSize: '15px' }}>
+                                  <span className={`bracket-sport-badge ${bracket.sport_type === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '11px', padding: '4px 8px', marginRight: '8px' }}>
+                                    {bracket.sport_type?.toUpperCase()}
+                                  </span>
+                                  {bracket.name}
+                                </td>
+                                <td style={{ fontSize: '15px' }}>
                                   {bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elim.
                                 </td>
-                                <td>
+                                <td style={{ fontSize: '15px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <FaTrophy style={{ color: '#fbbf24' }} />
-                                    <span>{bracket.winner_team_name}</span>
+                                    <span style={{ fontWeight: '600' }}>{bracket.winner_team_name}</span>
                                   </div>
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
                                   <button
                                     onClick={() => handleBracketSelect(event, bracket)}
                                     className="bracket-view-btn"
+                                    style={{ fontSize: '13px', padding: '8px 14px' }}
                                   >
                                     View Results →
                                   </button>
@@ -298,16 +421,16 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                             ))
                           ) : (
                             <tr key={event.id}>
-                              <td style={{ fontWeight: '600' }}>{event.name}</td>
+                              <td style={{ fontWeight: '600', fontSize: '16px' }}>{event.name}</td>
                               <td>
-                                <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                                <span className={`bracket-sport-badge ${event.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
                                   {event.sport?.toUpperCase() || 'MULTI-SPORT'}
                                 </span>
                               </td>
-                              <td style={{ fontSize: '14px' }}>
+                              <td style={{ fontSize: '15px' }}>
                                 {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
                               </td>
-                              <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                              <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '15px' }}>
                                 No completed brackets available
                               </td>
                             </tr>

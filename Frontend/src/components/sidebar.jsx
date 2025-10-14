@@ -34,14 +34,13 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
 
     const adminMenuItems = [
         { icon: <IoIosHome />, label: "Dashboard", id: "dashboard", path: "/AdminDashboard" },
+        { icon: <TbTournament />, label: "Tournament Creator", id: "tournament-creator", path: "/AdminDashboard/tournament-creator" }, // ✅ Fixed
         { icon: <AiFillSchedule />, label: "Events", id: "events", path: "/AdminDashboard/events" },
-        { icon: <TbTournament />, label: "Brackets", id: "bracket", path: "/AdminDashboard/brackets" },
-        { icon: <AiFillSchedule />, label: "Schedules", id: "schedules", path: "/AdminDashboard/schedules" },
         { icon: <RiTeamFill />, label: "Teams", id: "teams", path: "/AdminDashboard/teams" },
         { icon: <LiaAwardSolid />, label: "Awards & Standings", id: "awards&standings", path: "/AdminDashboard/awards&standings" },
         { icon: <IoStatsChart />, label: "Stats", id: "stats", path: "/AdminDashboard/stats" },
         { icon: <HiUsers />, label: "Users", id: "users", path: "/AdminDashboard/users" },
-        { icon: <TbTournament />, label: "Tournament Creator", id: "tournament-creator", path: "/AdminDashboard/tournament-creator" }, // ✅ Fixed
+        
     ];
     const staffMenuItems = [
         { icon: <IoIosHome />, label: "Dashboard", id: "dashboard", path: "/StaffDashboard" },

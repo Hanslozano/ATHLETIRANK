@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaCheckCircle, FaChevronRight, FaChevronLeft } from "react-icons/fa";
+import { FaCheckCircle, FaChevronRight, FaChevronLeft, FaSearch } from "react-icons/fa";
 import "../../style/Admin_Events.css";
 import "../../style/Admin_TeamPage.css";
 import "../../style/Admin_BracketPage.css";
@@ -19,6 +19,9 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
   // Step 2: Teams Data
   const [teams, setTeams] = useState([]);
+  const [teamMode, setTeamMode] = useState("create");
+  const [sportFilter, setSportFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentTeam, setCurrentTeam] = useState({
     teamName: "",
     sport: "",
@@ -55,6 +58,22 @@ const TournamentCreator = ({ sidebarOpen }) => {
     fetchTeams();
   }, []);
 
+  // Step 3: Bracket Creation - Auto-detect sport from created teams
+  useEffect(() => {
+    if (currentStep === 3 && createdTeams.length > 0) {
+      const firstTeamSport = createdTeams[0].sport;
+      const allSameSport = createdTeams.every(team => team.sport === firstTeamSport);
+      
+      if (allSameSport) {
+        setBracketData(prev => ({
+          ...prev,
+          sport: firstTeamSport.toLowerCase(),
+          selectedTeamIds: createdTeams.map(team => team.id)
+        }));
+      }
+    }
+  }, [currentStep, createdTeams]);
+
   // Step 1: Event Creation
   const handleEventInputChange = (e) => {
     const { name, value } = e.target;
@@ -81,7 +100,18 @@ const TournamentCreator = ({ sidebarOpen }) => {
       });
       
       if (res.ok) {
-        const newEvent = await res.json();
+        const response = await res.json();
+        console.log("Event creation response:", response);
+        
+        // Handle both response formats: {id, name, ...} or {eventId, message}
+        const newEvent = {
+          id: response.id || response.eventId,
+          name: eventData.name,
+          start_date: eventData.startDate,
+          end_date: eventData.endDate
+        };
+        
+        console.log("Normalized event object:", newEvent);
         setCreatedEvent(newEvent);
         setCurrentStep(2);
         setValidationError("");
@@ -203,6 +233,37 @@ const TournamentCreator = ({ sidebarOpen }) => {
     setValidationError("");
   };
 
+  // Handle selecting existing team from database
+  const handleSelectExistingTeam = (teamId) => {
+    const team = teams.find(t => t.id === teamId);
+    if (team && !createdTeams.find(t => t.id === team.id)) {
+      setCreatedTeams(prev => [...prev, team]);
+      setValidationError("");
+    }
+  };
+
+  // Handle removing a team from selected teams
+  const handleRemoveTeam = (teamId) => {
+    setCreatedTeams(prev => prev.filter(t => t.id !== teamId));
+  };
+
+  // Get filtered teams based on sport filter and search
+  const getFilteredTeams = () => {
+    let filtered = teams.filter(team => !createdTeams.find(ct => ct.id === team.id));
+    
+    if (sportFilter !== "all") {
+      filtered = filtered.filter(team => team.sport.toLowerCase() === sportFilter.toLowerCase());
+    }
+    
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(team => 
+        team.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  };
+
   // Step 3: Bracket Creation
   const handleBracketInputChange = (e) => {
     const { name, value } = e.target;
@@ -223,35 +284,73 @@ const TournamentCreator = ({ sidebarOpen }) => {
   };
 
   const handleCreateBracket = async () => {
-    if (!bracketData.sport) {
-      setValidationError("Please select a sport");
+    // Enhanced validation with detailed logging
+    console.log("=== BRACKET CREATION DEBUG ===");
+    console.log("Created Event:", createdEvent);
+    console.log("Bracket Data:", bracketData);
+    console.log("Created Teams:", createdTeams);
+    
+    // Validate createdEvent
+    if (!createdEvent) {
+      setValidationError("Event information is missing. Please go back to Step 1 and create an event.");
       return;
     }
 
+    if (!createdEvent.id) {
+      console.error("Event exists but has no ID:", createdEvent);
+      setValidationError("Event ID is missing. Please try recreating the event.");
+      return;
+    }
+    
+    // Validate sport
+    if (!bracketData.sport || bracketData.sport.trim() === '') {
+      setValidationError("Sport is required. Please ensure you have created teams first.");
+      return;
+    }
+
+    // Validate teams
     if (bracketData.selectedTeamIds.length < 2) {
       setValidationError("Please select at least 2 teams");
       return;
     }
 
+    // Validate bracket type
+    if (!bracketData.bracketType) {
+      setValidationError("Please select a bracket type");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Create bracket
+      const sportType = bracketData.sport.toLowerCase();
+      const bracketName = bracketData.bracketName || `${createdEvent.name} - ${capitalize(bracketData.sport)} Bracket`;
+      
+      const requestBody = {
+        event_id: createdEvent.id,
+        name: bracketName,
+        sport_type: sportType,
+        elimination_type: bracketData.bracketType
+      };
+
+      console.log("Sending bracket creation request:", requestBody);
+      
       const bracketRes = await fetch("http://localhost:5000/api/brackets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_id: createdEvent.id,
-          name: bracketData.bracketName || `${createdEvent.name} - ${capitalize(bracketData.sport)} Bracket`,
-          sport_type: bracketData.sport,
-          elimination_type: bracketData.bracketType
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      if (!bracketRes.ok) throw new Error("Failed to create bracket");
+      console.log("Bracket creation response status:", bracketRes.status);
+
+      if (!bracketRes.ok) {
+        const errorData = await bracketRes.json();
+        console.error("Bracket creation failed:", errorData);
+        throw new Error(errorData.error || "Failed to create bracket");
+      }
 
       const newBracket = await bracketRes.json();
+      console.log("Bracket created successfully:", newBracket);
 
-      // Assign teams to bracket
       for (let team_id of bracketData.selectedTeamIds) {
         await fetch("http://localhost:5000/api/bracketTeams", {
           method: "POST",
@@ -263,12 +362,14 @@ const TournamentCreator = ({ sidebarOpen }) => {
         });
       }
 
-      // Generate matches
       const generateRes = await fetch(`http://localhost:5000/api/brackets/${newBracket.id}/generate`, {
         method: "POST"
       });
 
-      if (!generateRes.ok) throw new Error("Failed to generate matches");
+      if (!generateRes.ok) {
+        const errorData = await generateRes.json();
+        throw new Error(errorData.error || "Failed to generate matches");
+      }
 
       setCreatedBracket(newBracket);
       setCurrentStep(4);
@@ -411,146 +512,251 @@ const TournamentCreator = ({ sidebarOpen }) => {
               <div className="bracket-create-section">
                 <div className="bracket-form-container">
                   <h2>Step 2: Add Teams</h2>
-                  <p className="step-description">Create teams for the tournament (minimum 2 teams required)</p>
+                  <p className="step-description">Create new teams or select from existing teams (minimum 2 teams required)</p>
                   
-                  {/* Created Teams Summary */}
+                  {/* Team Mode Toggle */}
+                  <div className="team-mode-toggle">
+                    <button
+                      className={`mode-toggle-btn ${teamMode === "create" ? "active" : ""}`}
+                      onClick={() => setTeamMode("create")}
+                    >
+                      Create New Team
+                    </button>
+                    <button
+                      className={`mode-toggle-btn ${teamMode === "select" ? "active" : ""}`}
+                      onClick={() => setTeamMode("select")}
+                    >
+                      Select Existing Team
+                    </button>
+                  </div>
+
+                  {/* Created/Selected Teams Summary */}
                   {createdTeams.length > 0 && (
                     <div className="created-teams-summary">
-                      <h3>Teams Created ({createdTeams.length})</h3>
+                      <h3>Selected Teams ({createdTeams.length})</h3>
                       <div className="teams-summary-grid">
                         {createdTeams.map(team => (
                           <div key={team.id} className="team-summary-card">
-                            <strong>{team.name}</strong>
-                            <span className={`admin-teams-sport-badge admin-teams-sport-${team.sport.toLowerCase()}`}>
-                              {capitalize(team.sport)}
-                            </span>
-                            <span>{team.players.length} players</span>
+                            <div className="team-summary-content">
+                              <strong>{team.name}</strong>
+                              <span className={`admin-teams-sport-badge admin-teams-sport-${team.sport.toLowerCase()}`}>
+                                {capitalize(team.sport)}
+                              </span>
+                              <span>{team.players?.length || 0} players</span>
+                            </div>
+                            <button
+                              className="remove-team-btn"
+                              onClick={() => handleRemoveTeam(team.id)}
+                              title="Remove team"
+                            >
+                              ×
+                            </button>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  <div className="bracket-form">
-                    <div className="bracket-form-group">
-                      <label htmlFor="teamName">Team Name *</label>
-                      <input
-                        type="text"
-                        id="teamName"
-                        name="teamName"
-                        value={currentTeam.teamName}
-                        onChange={handleTeamInputChange}
-                        placeholder="Enter team name"
-                      />
-                    </div>
-
-                    <div className="bracket-form-group">
-                      <label htmlFor="sport">Sport *</label>
-                      <select
-                        id="sport"
-                        name="sport"
-                        value={currentTeam.sport}
-                        onChange={handleTeamInputChange}
-                      >
-                        <option value="">Select a sport</option>
-                        {Object.keys(positions).map((sport) => (
-                          <option key={sport} value={sport}>{sport}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Players Section */}
-                    {currentTeam.sport && (
-                      <div className="admin-teams-players-section">
-                        <div className="admin-teams-players-header">
-                          <h3>Players</h3>
-                          <div className="admin-teams-player-count">
-                            {validPlayerCount} / 12-15 players
-                            {validPlayerCount < 12 && (
-                              <span className="admin-teams-count-warning"> (Minimum 12 required)</span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            className="admin-teams-submit-btn"
-                            onClick={addPlayer}
-                            disabled={currentTeam.players.length >= 15}
-                          >
-                            Add Player
-                          </button>
-                        </div>
-
-                        {currentTeam.players.map((player, index) => (
-                          <div key={index} className="admin-teams-player-card">
-                            <div className="admin-teams-player-input-row">
-                              <input
-                                type="text"
-                                placeholder="Player name"
-                                value={player.name}
-                                onChange={(e) => handlePlayerChange(index, "name", e.target.value)}
-                                className="admin-teams-player-name-input"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Jersey #"
-                                value={player.jerseyNumber}
-                                onChange={(e) => handlePlayerChange(index, "jerseyNumber", e.target.value)}
-                                className="admin-teams-jersey-input"
-                                maxLength="10"
-                              />
-                              <select
-                                value={player.position}
-                                onChange={(e) => handlePlayerChange(index, "position", e.target.value)}
-                                className="admin-teams-position-select"
-                              >
-                                <option value="">Select position</option>
-                                {positions[currentTeam.sport].map(pos => (
-                                  <option key={pos} value={pos}>{pos}</option>
-                                ))}
-                              </select>
-                              <button
-                                type="button"
-                                className="admin-teams-delete-btn"
-                                onClick={() => removePlayer(index)}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                  {/* Create New Team Mode */}
+                  {teamMode === "create" && (
+                    <div className="bracket-form">
+                      <div className="bracket-form-group">
+                        <label htmlFor="teamName">Team Name *</label>
+                        <input
+                          type="text"
+                          id="teamName"
+                          name="teamName"
+                          value={currentTeam.teamName}
+                          onChange={handleTeamInputChange}
+                          placeholder="Enter team name"
+                        />
                       </div>
-                    )}
 
-                    <div className="bracket-form-actions" style={{ marginTop: '20px' }}>
-                      <button 
-                        onClick={handleAddTeam}
-                        className="bracket-submit-btn"
-                        disabled={loading || validPlayerCount < 12}
-                      >
-                        {loading ? "Adding..." : "Add Team"}
-                      </button>
-                      <button
-                        type="button"
-                        className="bracket-cancel-btn"
-                        onClick={() => setCurrentTeam({ teamName: "", sport: "", players: [] })}
-                      >
-                        Clear Form
-                      </button>
-                    </div>
-
-                    {createdTeams.length >= 2 && (
-                      <div className="bracket-form-actions" style={{ marginTop: '20px', borderTop: '2px solid #e0e0e0', paddingTop: '20px' }}>
-                        <button 
-                          onClick={handleProceedToBracket}
-                          className="bracket-submit-btn"
-                          style={{ width: '100%' }}
+                      <div className="bracket-form-group">
+                        <label htmlFor="sport">Sport *</label>
+                        <select
+                          id="sport"
+                          name="sport"
+                          value={currentTeam.sport}
+                          onChange={handleTeamInputChange}
                         >
-                          Proceed to Create Bracket
-                          <FaChevronRight style={{ marginLeft: '8px' }} />
+                          <option value="">Select a sport</option>
+                          {Object.keys(positions).map((sport) => (
+                            <option key={sport} value={sport}>{sport}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Players Section */}
+                      {currentTeam.sport && (
+                        <div className="admin-teams-players-section">
+                          <div className="admin-teams-players-header">
+                            <h3>Players</h3>
+                            <div className="admin-teams-player-count">
+                              {validPlayerCount} / 12-15 players
+                              {validPlayerCount < 12 && (
+                                <span className="admin-teams-count-warning"> (Minimum 12 required)</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="admin-teams-submit-btn"
+                              onClick={addPlayer}
+                              disabled={currentTeam.players.length >= 15}
+                            >
+                              Add Player
+                            </button>
+                          </div>
+
+                          {currentTeam.players.map((player, index) => (
+                            <div key={index} className="admin-teams-player-card">
+                              <div className="admin-teams-player-input-row">
+                                <input
+                                  type="text"
+                                  placeholder="Player name"
+                                  value={player.name}
+                                  onChange={(e) => handlePlayerChange(index, "name", e.target.value)}
+                                  className="admin-teams-player-name-input"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Jersey #"
+                                  value={player.jerseyNumber}
+                                  onChange={(e) => handlePlayerChange(index, "jerseyNumber", e.target.value)}
+                                  className="admin-teams-jersey-input"
+                                  maxLength="10"
+                                />
+                                <select
+                                  value={player.position}
+                                  onChange={(e) => handlePlayerChange(index, "position", e.target.value)}
+                                  className="admin-teams-position-select"
+                                >
+                                  <option value="">Select position</option>
+                                  {positions[currentTeam.sport].map(pos => (
+                                    <option key={pos} value={pos}>{pos}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  className="admin-teams-delete-btn"
+                                  onClick={() => removePlayer(index)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="bracket-form-actions" style={{ marginTop: '20px' }}>
+                        <button 
+                          onClick={handleAddTeam}
+                          className="bracket-submit-btn"
+                          disabled={loading || validPlayerCount < 12}
+                        >
+                          {loading ? "Adding..." : "Add Team"}
+                        </button>
+                        <button
+                          type="button"
+                          className="bracket-cancel-btn"
+                          onClick={() => setCurrentTeam({ teamName: "", sport: "", players: [] })}
+                        >
+                          Clear Form
                         </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Select Existing Team Mode - TABULAR VIEW */}
+                  {teamMode === "select" && (
+                    <div className="bracket-form">
+                      {/* Compact Search & Filter Bar */}
+                      <div className="team-search-filter-bar">
+                        <div className="search-input-wrapper">
+                          <FaSearch className="search-icon" />
+                          <input
+                            type="text"
+                            placeholder="Search teams..."
+                            className="team-search-input"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        <select 
+                          className="team-sport-filter"
+                          value={sportFilter}
+                          onChange={(e) => setSportFilter(e.target.value)}
+                        >
+                          <option value="all">All Sports ({teams.filter(t => !createdTeams.find(ct => ct.id === t.id)).length})</option>
+                          <option value="basketball">Basketball ({teams.filter(t => t.sport.toLowerCase() === "basketball" && !createdTeams.find(ct => ct.id === t.id)).length})</option>
+                          <option value="volleyball">Volleyball ({teams.filter(t => t.sport.toLowerCase() === "volleyball" && !createdTeams.find(ct => ct.id === t.id)).length})</option>
+                        </select>
+                      </div>
+
+                      {/* Tabular Team List */}
+                      <div className="teams-table-container">
+                        {teams.length === 0 ? (
+                          <p className="empty-state">
+                            No teams available in database. Create a new team first.
+                          </p>
+                        ) : getFilteredTeams().length === 0 ? (
+                          <p className="empty-state">
+                            {sportFilter === "all" 
+                              ? "All available teams have been selected." 
+                              : `No ${capitalize(sportFilter)} teams available.`}
+                          </p>
+                        ) : (
+                          <table className="teams-table">
+                            <thead>
+                              <tr>
+                                <th>Team Name</th>
+                                <th>Sport</th>
+                                <th>Players</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {getFilteredTeams().map(team => (
+                                <tr key={team.id}>
+                                  <td className="team-name-cell">
+                                    <strong>{team.name}</strong>
+                                  </td>
+                                  <td>
+                                    <span className={`sport-badge sport-${team.sport.toLowerCase()}`}>
+                                      {capitalize(team.sport)}
+                                    </span>
+                                  </td>
+                                  <td>{team.players?.length || 0} players</td>
+                                  <td>
+                                    <button
+                                      className="add-team-btn"
+                                      onClick={() => handleSelectExistingTeam(team.id)}
+                                    >
+                                      Add Team
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {createdTeams.length >= 2 && (
+                    <div className="bracket-form-actions" style={{ marginTop: '20px', borderTop: '2px solid rgba(255, 255, 255, 0.1)', paddingTop: '20px' }}>
+                      <button 
+                        onClick={handleProceedToBracket}
+                        className="bracket-submit-btn"
+                        style={{ width: '100%' }}
+                      >
+                        Proceed to Create Bracket
+                        <FaChevronRight style={{ marginLeft: '8px' }} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -577,16 +783,22 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
                     <div className="bracket-form-group">
                       <label htmlFor="sport">Sport *</label>
-                      <select 
-                        id="sport" 
-                        name="sport" 
-                        value={bracketData.sport} 
-                        onChange={handleBracketInputChange}
-                      >
-                        <option value="">Select sport</option>
-                        <option value="basketball">Basketball</option>
-                        <option value="volleyball">Volleyball</option>
-                      </select>
+                      <input
+                        type="text"
+                        id="sport"
+                        name="sport"
+                        value={capitalize(bracketData.sport)}
+                        readOnly
+                        disabled
+                        style={{ 
+                          backgroundColor: '#2d3748', 
+                          cursor: 'not-allowed',
+                          opacity: 0.7 
+                        }}
+                      />
+                      <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                        Sport is auto-selected based on your created teams
+                      </small>
                     </div>
 
                     <div className="bracket-form-group">
@@ -768,7 +980,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .created-teams-summary {
-          background: #f5f5f5;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
           padding: 20px;
           border-radius: 8px;
           margin-bottom: 30px;
@@ -777,6 +990,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .created-teams-summary h3 {
           margin: 0 0 15px 0;
           font-size: 16px;
+          color: #e2e8f0;
         }
 
         .teams-summary-grid {
@@ -786,12 +1000,236 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .team-summary-card {
-          background: white;
+          background: #1a2332;
+          border: 1px solid rgba(255, 255, 255, 0.1);
           padding: 12px;
           border-radius: 6px;
           display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          font-size: 14px;
+          color: #e2e8f0;
+        }
+
+        .team-summary-content {
+          display: flex;
           flex-direction: column;
           gap: 5px;
+          flex: 1;
+        }
+
+        .remove-team-btn {
+          background: #dc2626;
+          color: white;
+          border: none;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          font-size: 20px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          flex-shrink: 0;
+        }
+
+        .remove-team-btn:hover {
+          background: #b91c1c;
+          transform: scale(1.1);
+        }
+
+        .team-mode-toggle {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 30px;
+          background: rgba(0, 0, 0, 0.2);
+          padding: 5px;
+          border-radius: 8px;
+        }
+
+        .mode-toggle-btn {
+          flex: 1;
+          padding: 12px 20px;
+          background: transparent;
+          color: #94a3b8;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.3s ease;
+        }
+
+        .mode-toggle-btn:hover {
+          background: rgba(255, 255, 255, 0.05);
+          color: #e2e8f0;
+        }
+
+        .mode-toggle-btn.active {
+          background: #2196f3;
+          color: white;
+        }
+
+        /* NEW TABULAR STYLES */
+        .team-search-filter-bar {
+          display: flex;
+          gap: 15px;
+          margin-bottom: 20px;
+          align-items: center;
+        }
+
+        .search-input-wrapper {
+          position: relative;
+          flex: 1;
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94a3b8;
+          font-size: 14px;
+        }
+
+        .team-search-input {
+          width: 100%;
+          padding: 10px 12px 10px 36px;
+          background: #1a2332;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          color: #e2e8f0;
+          font-size: 14px;
+        }
+
+        .team-search-input:focus {
+          outline: none;
+          border-color: #2196f3;
+        }
+
+        .team-sport-filter {
+          padding: 10px 15px;
+          background: #1a2332;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          color: #e2e8f0;
+          font-size: 14px;
+          cursor: pointer;
+          min-width: 180px;
+        }
+
+        .team-sport-filter:focus {
+          outline: none;
+          border-color: #2196f3;
+        }
+
+        .teams-table-container {
+          background: #1a2332;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          overflow: hidden;
+          max-height: 500px;
+          overflow-y: auto;
+        }
+
+        .teams-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .teams-table thead {
+          background: #0a0f1c;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+
+        .teams-table th {
+          padding: 15px;
+          text-align: left;
+          font-weight: 600;
+          color: #e2e8f0;
+          font-size: 14px;
+          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+          background: #0a0f1c;
+        }
+
+        .teams-table th:first-child {
+          position: sticky;
+          left: 0;
+          background: #0a0f1c;
+          z-index: 11;
+        }
+
+        .teams-table tbody tr {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          transition: background 0.2s ease;
+        }
+
+        .teams-table tbody tr:hover {
+          background: rgba(33, 150, 243, 0.05);
+        }
+
+        .teams-table td {
+          padding: 15px;
+          color: #cbd5e1;
+          font-size: 14px;
+        }
+
+        .team-name-cell {
+          color: #e2e8f0;
+          position: sticky;
+          left: 0;
+          background: #1a2332;
+          z-index: 1;
+        }
+
+        .teams-table tbody tr:hover .team-name-cell {
+          background: rgba(33, 150, 243, 0.05);
+        }
+
+        .sport-badge {
+          display: inline-block;
+          padding: 4px 12px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .sport-basketball {
+          background: rgba(255, 152, 0, 0.2);
+          color: #ff9800;
+          border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .sport-volleyball {
+          background: rgba(33, 150, 243, 0.2);
+          color: #2196f3;
+          border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+
+        .add-team-btn {
+          padding: 8px 16px;
+          background: #2196f3;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          font-size: 13px;
+          transition: all 0.2s ease;
+        }
+
+        .add-team-btn:hover {
+          background: #1976d2;
+          transform: translateY(-1px);
+        }
+
+        .empty-state {
+          text-align: center;
+          color: #94a3b8;
+          padding: 40px 20px;
           font-size: 14px;
         }
 
@@ -803,7 +1241,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .team-selection-card {
-          border: 2px solid #e0e0e0;
+          border: 2px solid rgba(255, 255, 255, 0.2);
           padding: 15px;
           border-radius: 8px;
           cursor: pointer;
@@ -811,16 +1249,18 @@ const TournamentCreator = ({ sidebarOpen }) => {
           display: flex;
           align-items: center;
           gap: 12px;
+          background: #1a2332;
+          color: #e2e8f0;
         }
 
         .team-selection-card:hover {
           border-color: #2196f3;
-          background: #f5f9ff;
+          background: rgba(33, 150, 243, 0.1);
         }
 
         .team-selection-card.selected {
           border-color: #2196f3;
-          background: #e3f2fd;
+          background: rgba(33, 150, 243, 0.2);
         }
 
         .team-selection-card input[type="checkbox"] {
@@ -834,6 +1274,11 @@ const TournamentCreator = ({ sidebarOpen }) => {
           flex-direction: column;
           gap: 5px;
           font-size: 14px;
+          color: #e2e8f0;
+        }
+
+        .team-selection-info strong {
+          color: #fff;
         }
 
         .selected-teams-count {
@@ -852,7 +1297,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .tournament-summary {
-          background: #f5f5f5;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
           padding: 25px;
           border-radius: 8px;
           margin: 30px 0;
@@ -862,13 +1308,15 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .tournament-summary h3 {
           margin: 0 0 20px 0;
           text-align: center;
+          color: #e2e8f0;
         }
 
         .summary-item {
           padding: 10px 0;
-          border-bottom: 1px solid #ddd;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           display: flex;
           justify-content: space-between;
+          color: #e2e8f0;
         }
 
         .summary-item:last-child {
@@ -893,6 +1341,23 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
           .teams-summary-grid {
             grid-template-columns: 1fr;
+          }
+
+          .team-search-filter-bar {
+            flex-direction: column;
+          }
+
+          .team-sport-filter {
+            width: 100%;
+          }
+
+          .teams-table {
+            font-size: 12px;
+          }
+
+          .teams-table th,
+          .teams-table td {
+            padding: 10px 8px;
           }
         }
       `}</style>
