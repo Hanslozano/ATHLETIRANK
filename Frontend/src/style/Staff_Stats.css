@@ -725,3 +725,71 @@
     font-size: 10px;
   }
 }
+
+/* Shift Team Button Styles */
+.stats-team-shift-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-shift-team-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.stats-shift-team-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.stats-shift-team-button:active {
+  transform: translateY(0);
+}
+
+.stats-team-view-indicator {
+  color: #cbd5e0;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-indicator {
+  background: rgba(66, 153, 225, 0.2);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  border: 1px solid rgba(66, 153, 225, 0.3);
+}
+
+.view-indicator.both {
+  color: #68d391;
+  border-color: rgba(104, 211, 145, 0.3);
+}
+
+.view-indicator.team1 {
+  color: #fc8181;
+  border-color: rgba(252, 129, 129, 0.3);
+}
+
+.view-indicator.team2 {
+  color: #63b3ed;
+  border-color: rgba(99, 179, 237, 0.3);
+}

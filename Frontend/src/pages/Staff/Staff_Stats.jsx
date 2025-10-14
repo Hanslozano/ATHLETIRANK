@@ -11,6 +11,7 @@ import {
   FaChevronUp,
   FaTrophy,
   FaCrown,
+  FaExchangeAlt, // Added for shift team icon
 } from "react-icons/fa";
 import "../../style/Staff_Stats.css";
 
@@ -37,6 +38,7 @@ const StaffStats = ({ sidebarOpen }) => {
     team1: [],
     team2: []
   });
+  const [activeTeamView, setActiveTeamView] = useState('both'); // New state for team view: 'team1', 'team2', or 'both'
 
   const basketballStatsTemplate = {
     points: [0, 0, 0, 0],
@@ -64,6 +66,17 @@ const StaffStats = ({ sidebarOpen }) => {
     volleyball_assists: [0, 0, 0, 0, 0],
     isStarting: false,
     isOnCourt: false
+  };
+
+  // Function to handle team view shifting
+  const shiftTeamView = () => {
+    if (activeTeamView === 'both') {
+      setActiveTeamView('team1');
+    } else if (activeTeamView === 'team1') {
+      setActiveTeamView('team2');
+    } else {
+      setActiveTeamView('both');
+    }
   };
 
   const getMaxStartingPlayers = (sportType) => {
@@ -450,6 +463,7 @@ const StaffStats = ({ sidebarOpen }) => {
     setTeamScores({ team1: [0, 0, 0, 0], team2: [0, 0, 0, 0] });
     setCurrentQuarter(0);
     setExpandedRounds(new Set([1]));
+    setActiveTeamView('both'); // Reset to both teams when going back
     setLoading(true);
     setError(null);
 
@@ -630,6 +644,7 @@ const StaffStats = ({ sidebarOpen }) => {
   const handleGameSelect = async (game) => {
     setSelectedGame(game);
     setLoading(true);
+    setActiveTeamView('both'); // Reset to both teams when selecting a new game
     
     const initialScores = game.sport_type === "basketball"
       ? { team1: [0, 0, 0, 0], team2: [0, 0, 0, 0] }
@@ -1224,6 +1239,25 @@ const StaffStats = ({ sidebarOpen }) => {
                 </div>
               </div>
 
+              {/* Shift Team Button */}
+              <div className="stats-team-shift-container">
+                <button 
+                  onClick={shiftTeamView}
+                  className="stats-shift-team-button"
+                  title="Shift between teams view"
+                >
+                  <FaExchangeAlt /> Shift Team View
+                </button>
+                <div className="stats-team-view-indicator">
+                  Current View: 
+                  <span className={`view-indicator ${activeTeamView}`}>
+                    {activeTeamView === 'both' ? 'Both Teams' : 
+                     activeTeamView === 'team1' ? selectedGame.team1_name : 
+                     selectedGame.team2_name}
+                  </span>
+                </div>
+              </div>
+
               <div className="stats-period-nav">
                 <button
                   onClick={() => changePeriod("prev")}
@@ -1290,8 +1324,19 @@ const StaffStats = ({ sidebarOpen }) => {
                 </div>
               ) : (
                 <div>
-                  {renderPlayerTable(selectedGame.team1_id, selectedGame.team1_name)}
-                  {renderPlayerTable(selectedGame.team2_id, selectedGame.team2_name)}
+                  {/* Conditionally render teams based on activeTeamView */}
+                  {activeTeamView === 'both' && (
+                    <>
+                      {renderPlayerTable(selectedGame.team1_id, selectedGame.team1_name)}
+                      {renderPlayerTable(selectedGame.team2_id, selectedGame.team2_name)}
+                    </>
+                  )}
+                  {activeTeamView === 'team1' && (
+                    renderPlayerTable(selectedGame.team1_id, selectedGame.team1_name)
+                  )}
+                  {activeTeamView === 'team2' && (
+                    renderPlayerTable(selectedGame.team2_id, selectedGame.team2_name)
+                  )}
                 </div>
               )}
             </div>
