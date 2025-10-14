@@ -452,86 +452,11 @@ const handleBackToAdminEvents = () => {
     
     return (
       <div className="adminstats-table-container">
-        <div className="adminstats-table-controls">
-          <div className="adminstats-search-box">
-            <FaSearch />
-            <input
-              type="text"
-              placeholder="Search players or jersey numbers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="adminstats-filter-controls">
-            {isMobile ? (
-              <>
-                <button 
-                  className="adminstats-filter-toggle-btn"
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <FaFilter /> Filters
-                </button>
-                
-                {showFilters && (
-                  <div className="adminstats-mobile-filters">
-                    <div className="adminstats-filter-group">
-                      <select 
-                        value={sportFilter} 
-                        onChange={(e) => setSportFilter(e.target.value)}
-                      >
-                        <option value="all">All Sports</option>
-                        <option value="basketball">Basketball</option>
-                        <option value="volleyball">Volleyball</option>
-                      </select>
-                    </div>
-                    
-                    <div className="adminstats-filter-group">
-                      <select 
-                        value={timeFilter} 
-                        onChange={(e) => setTimeFilter(e.target.value)}
-                      >
-                        <option value="all">All Time</option>
-                        <option value="season">This Season</option>
-                        <option value="month">This Month</option>
-                        <option value="week">This Week</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="adminstats-filter-group">
-                  <select 
-                    value={sportFilter} 
-                    onChange={(e) => setSportFilter(e.target.value)}
-                  >
-                    <option value="all">All Sports</option>
-                    <option value="basketball">Basketball</option>
-                    <option value="volleyball">Volleyball</option>
-                  </select>
-                </div>
-                
-                <div className="adminstats-filter-group">
-                  <select 
-                    value={timeFilter} 
-                    onChange={(e) => setTimeFilter(e.target.value)}
-                  >
-                    <option value="all">All Time</option>
-                    <option value="season">This Season</option>
-                    <option value="month">This Month</option>
-                    <option value="week">This Week</option>
-                  </select>
-                </div>
-              </>
-            )}
-            
-            <button className="adminstats-export-btn" onClick={exportToCSV}>
-              <FaDownload /> Export CSV
-            </button>
-          </div>
-        </div>
+         <div className="adminstats-table-controls" style={{ justifyContent: 'flex-end' }}>
+        <button className="adminstats-export-btn" onClick={exportToCSV}>
+          <FaDownload /> Export CSV
+        </button>
+      </div>
         
         <div className="adminstats-table-wrapper">
           <table className="adminstats-table">
