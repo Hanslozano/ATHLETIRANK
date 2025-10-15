@@ -679,114 +679,117 @@ const StaffStats = ({ sidebarOpen }) => {
   };
 
   const saveStatistics = async () => {
-    if (!selectedGame) return;
-    setLoading(true);
-    try {
-      const statsRes = await fetch(
-        `http://localhost:5000/api/stats/matches/${selectedGame.id}/stats`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            team1_id: selectedGame.team1_id,
-            team2_id: selectedGame.team2_id,
-            players: playerStats.map((p) => ({
-              player_id: p.player_id,
-              team_id: p.team_id,
-              points: p.points ? p.points.reduce((a, b) => a + b, 0) : 0,
-              assists: p.assists ? p.assists.reduce((a, b) => a + b, 0) : 0,
-              rebounds: p.rebounds ? p.rebounds.reduce((a, b) => a + b, 0) : 0,
-              three_points_made: p.three_points_made ? p.three_points_made.reduce((a, b) => a + b, 0) : 0,
-              steals: p.steals ? p.steals.reduce((a, b) => a + b, 0) : 0,
-              blocks: p.blocks ? p.blocks.reduce((a, b) => a + b, 0) : 0,
-              fouls: p.fouls ? p.fouls.reduce((a, b) => a + b, 0) : 0,
-              turnovers: p.turnovers ? p.turnovers.reduce((a, b) => a + b, 0) : 0,
-              kills: p.kills ? p.kills.reduce((a, b) => a + b, 0) : 0,
-              attack_attempts: p.attack_attempts ? p.attack_attempts.reduce((a, b) => a + b, 0) : 0,
-              attack_errors: p.attack_errors ? p.attack_errors.reduce((a, b) => a + b, 0) : 0,
-              serves: p.serves ? p.serves.reduce((a, b) => a + b, 0) : 0,
-              service_aces: p.service_aces ? p.service_aces.reduce((a, b) => a + b, 0) : 0,
-              serve_errors: p.serve_errors ? p.serve_errors.reduce((a, b) => a + b, 0) : 0,
-              receptions: p.receptions ? p.receptions.reduce((a, b) => a + b, 0) : 0,
-              reception_errors: p.reception_errors ? p.reception_errors.reduce((a, b) => a + b, 0) : 0,
-              digs: p.digs ? p.digs.reduce((a, b) => a + b, 0) : 0,
-              volleyball_assists: p.volleyball_assists ? p.volleyball_assists.reduce((a, b) => a + b, 0) : 0,
-            })),
-          }),
-        }
-      );
-      
-      if (!statsRes.ok) {
-        throw new Error(`Failed to save stats: ${statsRes.status}`);
+  if (!selectedGame) return;
+  setLoading(true);
+  try {
+    const statsRes = await fetch(
+      `http://localhost:5000/api/stats/matches/${selectedGame.id}/stats`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          team1_id: selectedGame.team1_id,
+          team2_id: selectedGame.team2_id,
+          players: playerStats.map((p) => ({
+            player_id: p.player_id,
+            team_id: p.team_id,
+            points: p.points ? p.points.reduce((a, b) => a + b, 0) : 0,
+            assists: p.assists ? p.assists.reduce((a, b) => a + b, 0) : 0,
+            rebounds: p.rebounds ? p.rebounds.reduce((a, b) => a + b, 0) : 0,
+            three_points_made: p.three_points_made ? p.three_points_made.reduce((a, b) => a + b, 0) : 0,
+            steals: p.steals ? p.steals.reduce((a, b) => a + b, 0) : 0,
+            blocks: p.blocks ? p.blocks.reduce((a, b) => a + b, 0) : 0,
+            fouls: p.fouls ? p.fouls.reduce((a, b) => a + b, 0) : 0,
+            turnovers: p.turnovers ? p.turnovers.reduce((a, b) => a + b, 0) : 0,
+            kills: p.kills ? p.kills.reduce((a, b) => a + b, 0) : 0,
+            attack_attempts: p.attack_attempts ? p.attack_attempts.reduce((a, b) => a + b, 0) : 0,
+            attack_errors: p.attack_errors ? p.attack_errors.reduce((a, b) => a + b, 0) : 0,
+            serves: p.serves ? p.serves.reduce((a, b) => a + b, 0) : 0,
+            service_aces: p.service_aces ? p.service_aces.reduce((a, b) => a + b, 0) : 0,
+            serve_errors: p.serve_errors ? p.serve_errors.reduce((a, b) => a + b, 0) : 0,
+            receptions: p.receptions ? p.receptions.reduce((a, b) => a + b, 0) : 0,
+            reception_errors: p.reception_errors ? p.reception_errors.reduce((a, b) => a + b, 0) : 0,
+            digs: p.digs ? p.digs.reduce((a, b) => a + b, 0) : 0,
+            volleyball_assists: p.volleyball_assists ? p.volleyball_assists.reduce((a, b) => a + b, 0) : 0,
+          })),
+        }),
       }
-
-      const team1TotalScore = teamScores.team1.reduce((a, b) => a + b, 0);
-      const team2TotalScore = teamScores.team2.reduce((a, b) => a + b, 0);
-      
-      let winner_id;
-      if (team1TotalScore > team2TotalScore) {
-        winner_id = selectedGame.team1_id;
-      } else if (team2TotalScore > team1TotalScore) {
-        winner_id = selectedGame.team2_id;
-      } else {
-        alert("The game is tied! Please enter different scores.");
-        setLoading(false);
-        return;
-      }
-
-      const bracketRes = await fetch(
-        `http://localhost:5000/api/brackets/matches/${selectedGame.id}/complete`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            winner_id: winner_id,
-            scores: {
-              team1: team1TotalScore,
-              team2: team2TotalScore
-            }
-          }),
-        }
-      );
-      
-      if (!bracketRes.ok) {
-        throw new Error(`Failed to complete match: ${bracketRes.status}`);
-      }
-      
-      const bracketData = await bracketRes.json();
-      
-      let message = "Statistics saved successfully!";
-      
-      if (bracketData.bracketReset) {
-        message = "🚨 BRACKET RESET! 🚨\n\nThe Loser's Bracket winner has defeated the Winner's Bracket winner!\nA Reset Final has been scheduled - both teams start fresh!";
-      } else if (bracketData.advanced) {
-        if (selectedGame.elimination_type === 'double') {
-          if (selectedGame.bracket_type === 'winner') {
-            message += " Winner advanced in winner's bracket!";
-          } else if (selectedGame.bracket_type === 'loser') {
-            message += " Winner advanced in loser's bracket!";
-          } else if (selectedGame.bracket_type === 'championship') {
-            message += selectedGame.round_number === 201 ? " Tournament champion determined!" : " Grand Final completed!";
-          }
-        } else {
-          message += " Winner advanced to next round!";
-        }
-      }
-      
-      alert(message);
-      
-      if (selectedEvent && selectedBracket) {
-        handleBracketSelect(selectedBracket);
-      }
-      
-      setSelectedGame(null);
-      
-    } catch (err) {
-      alert("Failed to save stats: " + err.message);
-    } finally {
-      setLoading(false);
+    );
+    
+    if (!statsRes.ok) {
+      throw new Error(`Failed to save stats: ${statsRes.status}`);
     }
-  };
+
+    const team1TotalScore = teamScores.team1.reduce((a, b) => a + b, 0);
+    const team2TotalScore = teamScores.team2.reduce((a, b) => a + b, 0);
+    
+    let winner_id;
+    if (team1TotalScore > team2TotalScore) {
+      winner_id = selectedGame.team1_id;
+    } else if (team2TotalScore > team1TotalScore) {
+      winner_id = selectedGame.team2_id;
+    } else {
+      alert("The game is tied! Please enter different scores.");
+      setLoading(false);
+      return;
+    }
+
+    const bracketRes = await fetch(
+      `http://localhost:5000/api/brackets/matches/${selectedGame.id}/complete`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          winner_id: winner_id,
+          scores: {
+            team1: team1TotalScore,
+            team2: team2TotalScore
+          }
+        }),
+      }
+    );
+    
+    if (!bracketRes.ok) {
+      throw new Error(`Failed to complete match: ${bracketRes.status}`);
+    }
+    
+    const bracketData = await bracketRes.json();
+    
+    let message = "Statistics saved successfully!";
+    
+    if (bracketData.bracketReset) {
+      message = "🚨 BRACKET RESET! 🚨\n\nThe Loser's Bracket winner has defeated the Winner's Bracket winner!\nA Reset Final has been scheduled - both teams start fresh!";
+    } else if (bracketData.advanced) {
+      if (selectedGame.elimination_type === 'double') {
+        if (selectedGame.bracket_type === 'winner') {
+          message += " Winner advanced in winner's bracket!";
+        } else if (selectedGame.bracket_type === 'loser') {
+          message += " Winner advanced in loser's bracket!";
+        } else if (selectedGame.bracket_type === 'championship') {
+          message += selectedGame.round_number === 201 ? " Tournament champion determined!" : " Grand Final completed!";
+        }
+      } else {
+        message += " Winner advanced to next round!";
+      }
+    }
+    
+    alert(message);
+    
+    // Store context and navigate to StaffEvents
+    sessionStorage.setItem('staffEventsContext', JSON.stringify({
+      selectedEvent: selectedEvent,
+      selectedBracket: selectedBracket
+    }));
+    
+    // Navigate back to StaffEvents with the same context
+    navigate('/StaffDashboard/events');
+    
+  } catch (err) {
+    alert("Failed to save stats: " + err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const resetStatistics = () => {
     if (window.confirm("Are you sure you want to reset all statistics?")) {
@@ -1448,9 +1451,14 @@ const StaffStats = ({ sidebarOpen }) => {
                       <span className="reset-final-badge">RESET FINAL</span>
                     )}
                   </h2>
-                  <button 
+                 <button 
                     onClick={() => {
                       if (cameFromStaffEvents) {
+                        // Store context and navigate to StaffEvents
+                        sessionStorage.setItem('staffEventsContext', JSON.stringify({
+                          selectedEvent: selectedEvent,
+                          selectedBracket: selectedBracket
+                        }));
                         navigate('/StaffDashboard/events');
                       } else {
                         setSelectedGame(null);
@@ -1458,8 +1466,8 @@ const StaffStats = ({ sidebarOpen }) => {
                     }}
                     className="stats-back-button"
                   >
-                    ← Back to Games
-                  </button>
+                    Back to Games
+                  </button>  
                 </div>
                 <div className="stats-game-meta">
                   <span><strong>Sport:</strong> {selectedGame.sport_type}</span>
