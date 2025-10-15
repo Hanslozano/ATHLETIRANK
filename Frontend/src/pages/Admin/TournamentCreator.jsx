@@ -22,6 +22,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
   const [teams, setTeams] = useState([]);
   const [teamMode, setTeamMode] = useState("create");
   const [searchTerm, setSearchTerm] = useState("");
+  const [sportFilter, setSportFilter] = useState(""); // NEW: Separate state for sport filter
   const [currentTeam, setCurrentTeam] = useState({
     teamName: "",
     sport: "",
@@ -333,13 +334,21 @@ const TournamentCreator = ({ sidebarOpen }) => {
     }));
   };
 
-  // Get filtered teams based on search
+  // Get filtered teams based on search and sport filter - FIXED VERSION
   const getFilteredTeams = () => {
     let filtered = teams.filter(team => !createdTeams.find(ct => ct.id === team.id));
     
+    // Apply search filter
     if (searchTerm.trim()) {
       filtered = filtered.filter(team => 
         team.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply sport filter
+    if (sportFilter) {
+      filtered = filtered.filter(team => 
+        team.sport.toLowerCase() === sportFilter.toLowerCase()
       );
     }
     
@@ -452,6 +461,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
     setBracketConfigs([]);
     setCreatedBrackets([]);
     setValidationError("");
+    setSearchTerm(""); // Reset search term
+    setSportFilter(""); // Reset sport filter
   };
 
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
@@ -834,82 +845,90 @@ const TournamentCreator = ({ sidebarOpen }) => {
                     </div>
                   )}
 
-                  {/* Select Existing Team Mode - SPORT CONTAINERS */}
+                  {/* Select Existing Team Mode - TABLE LAYOUT */}
                   {teamMode === "select" && (
                     <div className="bracket-form">
-                      {/* Search Bar */}
+                      {/* Search and Filter Bar */}
                       <div className="team-search-filter-bar">
                         <div className="search-input-wrapper">
-                          
+                          <FaSearch className="search-icon" />
                           <input
                             type="text"
-                            placeholder="Search teams..."
+                            placeholder="Search teams by name..."
                             className="team-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                           />
                         </div>
+                        <div className="filter-controls">
+                          <select 
+                            className="sport-filter-select"
+                            onChange={(e) => setSportFilter(e.target.value)}
+                            value={sportFilter}
+                          >
+                            <option value="">All Sports</option>
+                            <option value="basketball">🏀 Basketball</option>
+                            <option value="volleyball">🏐 Volleyball</option>
+                          </select>
+                          {(searchTerm || sportFilter) && (
+                            <button
+                              className="clear-filters-btn"
+                              onClick={() => {
+                                setSearchTerm("");
+                                setSportFilter("");
+                              }}
+                            >
+                              Clear Filters
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Sport Containers */}
-                      <div className="sport-containers">
-                        {/* Basketball Container */}
-                        <div className="sport-container">
-                          <h3 className="sport-container-title">
-                            <span className="sport-icon basketball">🏀</span>
-                            Basketball Teams
-                            <span className="team-count">({getTeamsBySport('basketball').length})</span>
-                          </h3>
-                          <div className="sport-teams-grid">
-                            {getTeamsBySport('basketball').length === 0 ? (
-                              <p className="empty-sport-state">No basketball teams available</p>
+                      {/* Teams Table */}
+                      <div className="teams-table-container">
+                        <table className="teams-table">
+                          <thead>
+                            <tr>
+                              <th>Team Name</th>
+                              <th>Sport</th>
+                              <th>Players</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getFilteredTeams().length === 0 ? (
+                              <tr>
+                                <td colSpan="4" className="no-teams-message">
+                                  {searchTerm || sportFilter ? 'No teams found matching your filters.' : 'No teams available to select.'}
+                                </td>
+                              </tr>
                             ) : (
-                              getTeamsBySport('basketball').map(team => (
-                                <div key={team.id} className="sport-team-card">
-                                  <div className="sport-team-info">
+                              getFilteredTeams().map(team => (
+                                <tr key={team.id} className="team-table-row">
+                                  <td className="team-name-cell">
                                     <strong>{team.name}</strong>
-                                    <span>{team.players?.length || 0} players</span>
-                                  </div>
-                                  <button
-                                    className="add-team-btn"
-                                    onClick={() => handleSelectExistingTeam(team.id)}
-                                  >
-                                    Add Team
-                                  </button>
-                                </div>
+                                  </td>
+                                  <td className="sport-cell">
+                                    <span className={`sport-badge sport-${team.sport.toLowerCase()}`}>
+                                      {team.sport.toLowerCase() === 'basketball' ? '🏀' : '🏐'} {capitalize(team.sport)}
+                                    </span>
+                                  </td>
+                                  <td className="players-cell">
+                                    {team.players?.length || 0} players
+                                  </td>
+                                  <td className="action-cell">
+                                    <button
+                                      className="add-team-btn"
+                                      onClick={() => handleSelectExistingTeam(team.id)}
+                                    >
+                                      Add Team
+                                    </button>
+                                  </td>
+                                </tr>
                               ))
                             )}
-                          </div>
-                        </div>
-
-                        {/* Volleyball Container */}
-                        <div className="sport-container">
-                          <h3 className="sport-container-title">
-                            <span className="sport-icon volleyball">🏐</span>
-                            Volleyball Teams
-                            <span className="team-count">({getTeamsBySport('volleyball').length})</span>
-                          </h3>
-                          <div className="sport-teams-grid">
-                            {getTeamsBySport('volleyball').length === 0 ? (
-                              <p className="empty-sport-state">No volleyball teams available</p>
-                            ) : (
-                              getTeamsBySport('volleyball').map(team => (
-                                <div key={team.id} className="sport-team-card">
-                                  <div className="sport-team-info">
-                                    <strong>{team.name}</strong>
-                                    <span>{team.players?.length || 0} players</span>
-                                  </div>
-                                  <button
-                                    className="add-team-btn"
-                                    onClick={() => handleSelectExistingTeam(team.id)}
-                                  >
-                                    Add Team
-                                  </button>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}
@@ -1136,6 +1155,204 @@ const TournamentCreator = ({ sidebarOpen }) => {
           transition: all 0.3s ease;
         }
 
+        /* Team Table Styles */
+.team-search-filter-bar {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.team-search-input {
+  width: 100%;
+  padding: 12px 12px 12px 40px;
+  background: #1a2332;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+.team-search-input:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+.filter-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.sport-filter-select {
+  padding: 12px 16px;
+  background: #1a2332;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.sport-filter-select:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+.clear-filters-btn {
+  padding: 12px 16px;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.clear-filters-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+
+.teams-table-container {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.teams-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1a2332;
+}
+
+.teams-table th {
+  background: #0a0f1c;
+  color: #e2e8f0;
+  padding: 15px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.teams-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+
+.team-table-row {
+  transition: all 0.3s ease;
+}
+
+.team-table-row:hover {
+  background: rgba(33, 150, 243, 0.05);
+}
+
+.team-name-cell strong {
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+.sport-cell {
+  text-align: center;
+}
+
+.sport-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sport-basketball {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.sport-volleyball {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+  border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.players-cell {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.action-cell {
+  text-align: center;
+}
+
+.add-team-btn {
+  padding: 8px 16px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.add-team-btn:hover {
+  background: #1976d2;
+  transform: translateY(-1px);
+}
+
+.no-teams-message {
+  text-align: center;
+  color: #94a3b8;
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+  .team-search-filter-bar {
+    flex-direction: column;
+  }
+  
+  .teams-table-container {
+    overflow-x: auto;
+  }
+  
+  .teams-table {
+    min-width: 500px;
+  }
+  
+  .teams-table th,
+  .teams-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+}
+
         .progress-step.active .step-circle {
           background: #2196f3;
           color: white;
@@ -1302,142 +1519,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .mode-toggle-btn.active {
           background: #2196f3;
           color: white;
-        }
-
-        /* Sport Containers */
-        .sport-containers {
-          display: flex;
-          flex-direction: column;
-          gap: 25px;
-          margin-top: 20px;
-        }
-
-        .sport-container {
-          background: rgba(0, 0, 0, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 20px;
-        }
-
-        .sport-container-title {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin: 0 0 20px 0;
-          font-size: 18px;
-          color: #e2e8f0;
-          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-          padding-bottom: 10px;
-        }
-
-        .sport-icon {
-          font-size: 24px;
-        }
-
-        .team-count {
-          background: #2196f3;
-          color: white;
-          padding: 2px 8px;
-          border-radius: 12px;
-          font-size: 12px;
-          margin-left: auto;
-        }
-
-        .sport-teams-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 12px;
-        }
-
-        .sport-team-card {
-          background: #1a2332;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          padding: 15px;
-          border-radius: 8px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          transition: all 0.3s ease;
-        }
-
-        .sport-team-card:hover {
-          border-color: #2196f3;
-          background: rgba(33, 150, 243, 0.05);
-        }
-
-        .sport-team-info {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-
-        .sport-team-info strong {
-          color: #e2e8f0;
-          font-size: 14px;
-        }
-
-        .sport-team-info span {
-          color: #94a3b8;
-          font-size: 12px;
-        }
-
-        .empty-sport-state {
-          text-align: center;
-          color: #94a3b8;
-          padding: 30px 20px;
-          font-style: italic;
-          grid-column: 1 / -1;
-        }
-
-        /* Search Bar */
-        .team-search-filter-bar {
-          margin-bottom: 20px;
-        }
-
-        .search-input-wrapper {
-          position: relative;
-        }
-
-        .search-icon {
-          position: absolute;
-          left: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #94a3b8;
-          font-size: 14px;
-        }
-
-        .team-search-input {
-          width: 100%;
-          padding: 12px 12px 12px 40px;
-          background: #1a2332;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          color: #e2e8f0;
-          font-size: 14px;
-        }
-
-        .team-search-input:focus {
-          outline: none;
-          border-color: #2196f3;
-        }
-
-        .add-team-btn {
-          padding: 8px 16px;
-          background: #2196f3;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 13px;
-          transition: all 0.2s ease;
-          white-space: nowrap;
-        }
-
-        .add-team-btn:hover {
-          background: #1976d2;
-          transform: translateY(-1px);
         }
 
         /* Bracket Configuration */
@@ -1697,10 +1778,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           }
 
           .teams-summary-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .sport-teams-grid {
             grid-template-columns: 1fr;
           }
 
