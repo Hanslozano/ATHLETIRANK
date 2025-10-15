@@ -24,6 +24,16 @@ const TeamsPage = ({ sidebarOpen }) => {
   const [showValidationMessage, setShowValidationMessage] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, type: '', id: null, name: '' });
 
+  // NEW: Check for stored sport filter on component mount
+  useEffect(() => {
+    const storedSportFilter = sessionStorage.getItem('teamSportFilter');
+    if (storedSportFilter) {
+      setSportFilter(storedSportFilter);
+      // Clear the stored filter so it doesn't persist on refresh
+      sessionStorage.removeItem('teamSportFilter');
+    }
+  }, []);
+
   // Position options
   const positions = {
     Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaTrophy, FaUsers, FaCalendarAlt, FaChartBar, FaBasketballBall, FaVolleyballBall, FaArrowRight, FaClock, FaFire } from "react-icons/fa";
 
-
 const AdminDashboard = ({ sidebarOpen }) => {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState({
@@ -27,11 +26,17 @@ const AdminDashboard = ({ sidebarOpen }) => {
         const teams = await teamsRes.json();
         const brackets = await bracketsRes.json();
 
-        // Fetch recent matches from all brackets
+        // Fetch recent matches from all brackets with more details
         const recentMatchesPromises = brackets.slice(0, 3).map(bracket =>
           fetch(`http://localhost:5000/api/brackets/${bracket.id}/matches`)
             .then(res => res.json())
-            .then(matches => matches.map(m => ({ ...m, bracket_name: bracket.name, sport_type: bracket.sport_type })))
+            .then(matches => matches.map(m => ({ 
+              ...m, 
+              bracket_name: bracket.name, 
+              sport_type: bracket.sport_type,
+              bracket_id: bracket.id,
+              event_id: bracket.event_id
+            })))
         );
 
         const matchesArrays = await Promise.all(recentMatchesPromises);
@@ -59,7 +64,41 @@ const AdminDashboard = ({ sidebarOpen }) => {
 
   const { events, teams, brackets, recentMatches, loading } = dashboardData;
 
-  // Calculate statistics
+  // Handle match click - navigate to stats with match data
+  const handleMatchClick = (match) => {
+    // Find the event and bracket for this match
+    const bracket = brackets.find(b => b.id === match.bracket_id);
+    const event = events.find(e => e.id === match.event_id);
+    
+    // Store match data and context in session storage
+    const matchData = {
+      matchId: match.id,
+      match: match,
+      eventId: match.event_id,
+      bracketId: match.bracket_id
+    };
+    
+    const contextData = {
+      selectedEvent: event,
+      selectedBracket: bracket
+    };
+    
+    sessionStorage.setItem('selectedMatchData', JSON.stringify(matchData));
+    sessionStorage.setItem('adminEventsContext', JSON.stringify(contextData));
+    
+    // Navigate to stats page
+    navigate("/AdminDashboard/stats");
+  };
+
+  // NEW FUNCTION: Handle sport category click in Teams Overview
+  const handleSportCategoryClick = (sport) => {
+    // Store the selected sport filter in session storage
+    sessionStorage.setItem('teamSportFilter', sport);
+    // Navigate to teams management page
+    navigate("/AdminDashboard/teams");
+  };
+
+  // Calculate statistics (your existing code remains the same)
   const ongoingEvents = events.filter(e => e.status === "ongoing").length;
   const completedEvents = events.filter(e => e.status === "completed").length;
   const basketballTeams = teams.filter(t => t.sport?.toLowerCase() === "basketball").length;
@@ -200,7 +239,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
                   </div>
                 </div>
 
-                {/* Recent Matches */}
+                {/* Recent Matches - UPDATED */}
                 <div className="dashboard-section">
                   <div className="section-header">
                     <h2>Recent Matches</h2>
@@ -219,7 +258,11 @@ const AdminDashboard = ({ sidebarOpen }) => {
                     ) : (
                       <div className="matches-list">
                         {recentMatches.map(match => (
-                          <div key={match.id} className="match-item">
+                          <div 
+                            key={match.id} 
+                            className="match-item clickable-match"
+                            onClick={() => handleMatchClick(match)}
+                          >
                             <div className="match-sport-icon">
                               {match.sport_type?.toLowerCase() === "basketball" ? (
                                 <FaBasketballBall style={{ color: "#ff6b35" }} />
@@ -232,9 +275,12 @@ const AdminDashboard = ({ sidebarOpen }) => {
                                 {match.team1_name} vs {match.team2_name}
                               </div>
                               <div className="match-bracket">{match.bracket_name}</div>
+                              <div className="match-score-small">
+                                {match.score_team1} - {match.score_team2}
+                              </div>
                             </div>
-                            <div className="match-score">
-                              {match.score_team1} - {match.score_team2}
+                            <div className="match-arrow">
+                              <FaArrowRight />
                             </div>
                           </div>
                         ))}
@@ -246,7 +292,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
 
               {/* Teams & Brackets Overview */}
               <div className="dashboard-grid">
-                {/* Teams by Sport */}
+                {/* Teams by Sport - UPDATED */}
                 <div className="dashboard-section">
                   <div className="section-header">
                     <h2>Teams Overview</h2>
@@ -270,7 +316,11 @@ const AdminDashboard = ({ sidebarOpen }) => {
                       </div>
                     ) : (
                       <div className="teams-overview">
-                        <div className="sport-category">
+                        {/* Basketball Category - Now Clickable */}
+                        <div 
+                          className="sport-category clickable-sport"
+                          onClick={() => handleSportCategoryClick("Basketball")}
+                        >
                           <div className="category-header">
                             <FaBasketballBall style={{ color: "#ff6b35" }} />
                             <span>Basketball</span>
@@ -283,7 +333,12 @@ const AdminDashboard = ({ sidebarOpen }) => {
                             </div>
                           </div>
                         </div>
-                        <div className="sport-category">
+                        
+                        {/* Volleyball Category - Now Clickable */}
+                        <div 
+                          className="sport-category clickable-sport"
+                          onClick={() => handleSportCategoryClick("Volleyball")}
+                        >
                           <div className="category-header">
                             <FaVolleyballBall style={{ color: "#4ecdc4" }} />
                             <span>Volleyball</span>

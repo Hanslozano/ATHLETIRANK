@@ -11,7 +11,9 @@ import {
   FaChevronUp,
   FaTrophy,
   FaCrown,
-  FaExchangeAlt, // Added for shift team icon
+  FaExchangeAlt,
+  FaEye,
+  FaEyeSlash
 } from "react-icons/fa";
 import "../../style/Staff_Stats.css";
 
@@ -38,7 +40,11 @@ const StaffStats = ({ sidebarOpen }) => {
     team1: [],
     team2: []
   });
-  const [activeTeamView, setActiveTeamView] = useState('both'); // New state for team view: 'team1', 'team2', or 'both'
+  const [activeTeamView, setActiveTeamView] = useState('both');
+  const [showBenchPlayers, setShowBenchPlayers] = useState({
+    team1: false,
+    team2: false
+  });
 
   const basketballStatsTemplate = {
     points: [0, 0, 0, 0],
@@ -463,7 +469,8 @@ const StaffStats = ({ sidebarOpen }) => {
     setTeamScores({ team1: [0, 0, 0, 0], team2: [0, 0, 0, 0] });
     setCurrentQuarter(0);
     setExpandedRounds(new Set([1]));
-    setActiveTeamView('both'); // Reset to both teams when going back
+    setActiveTeamView('both');
+    setShowBenchPlayers({ team1: false, team2: false });
     setLoading(true);
     setError(null);
 
@@ -644,7 +651,8 @@ const StaffStats = ({ sidebarOpen }) => {
   const handleGameSelect = async (game) => {
     setSelectedGame(game);
     setLoading(true);
-    setActiveTeamView('both'); // Reset to both teams when selecting a new game
+    setActiveTeamView('both');
+    setShowBenchPlayers({ team1: false, team2: false });
     
     const initialScores = game.sport_type === "basketball"
       ? { team1: [0, 0, 0, 0], team2: [0, 0, 0, 0] }
@@ -804,14 +812,35 @@ const StaffStats = ({ sidebarOpen }) => {
     const teamPlayers = getSortedTeamPlayers(teamId);
     const isBasketball = selectedGame.sport_type === "basketball";
     const maxStarters = getMaxStartingPlayers(selectedGame.sport_type);
+    
+    // Separate starters and bench players
+    const starters = teamPlayers.filter(player => player.isOnCourt);
+    const benchPlayers = teamPlayers.filter(player => !player.isOnCourt);
+    
+    const teamKey = teamId === selectedGame.team1_id ? 'team1' : 'team2';
+    const isBenchVisible = showBenchPlayers[teamKey];
 
     return (
       <div className="stats-team-table">
         <div className="stats-team-header">
-          <h3>{teamName}</h3>
-          <span className="stats-team-hint">
-            Max {maxStarters} starters - Click checkbox to set lineup
-          </span>
+          <div className="stats-team-title-section">
+            <h3>{teamName}</h3>
+            <span className="stats-team-hint">
+              Max {maxStarters} starters - Click checkbox to set lineup
+            </span>
+          </div>
+          {benchPlayers.length > 0 && (
+            <button 
+              onClick={() => setShowBenchPlayers(prev => ({
+                ...prev,
+                [teamKey]: !prev[teamKey]
+              }))}
+              className="stats-show-bench-button"
+            >
+              {isBenchVisible ? <FaEyeSlash /> : <FaEye />}
+              {isBenchVisible ? " Hide Bench" : " Show Bench"}
+            </button>
+          )}
         </div>
         
         <div style={{ overflowX: 'auto' }}>
@@ -848,13 +877,219 @@ const StaffStats = ({ sidebarOpen }) => {
               </tr>
             </thead>
             <tbody>
-              {teamPlayers.map((player) => {
+              {/* Starters - Always visible */}
+              {starters.map((player) => {
                 const globalIndex = playerStats.findIndex(p => p.player_id === player.player_id);
-                const teamKey = teamId === selectedGame.team1_id ? 'team1' : 'team2';
                 const isStarter = startingPlayers[teamKey].includes(player.player_id);
                 
                 return (
                   <tr key={player.player_id} className={player.isOnCourt ? 'on-court' : ''}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={isStarter}
+                        onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'left' }}>
+                      {player.player_name}
+                      {isPlayerFouledOut(player) && (
+                        <span className="stats-fouled-out">FO</span>
+                      )}
+                    </td>
+                    <td>#{player.jersey_number}</td>
+                    <td>
+                      <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'}`}>
+                        {player.isOnCourt ? 'On Court' : 'Bench'}
+                      </span>
+                    </td>
+                    
+                    {isBasketball ? (
+                      <>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "points", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.points[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "points", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.assists[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.rebounds[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.three_points_made[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "steals", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.steals[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "steals", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "blocks", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.blocks[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "blocks", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "fouls", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.fouls[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "fouls", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.turnovers[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "kills", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.kills[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "kills", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "volleyball_assists", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.volleyball_assists[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "volleyball_assists", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "digs", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.digs[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "digs", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "service_aces", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.service_aces[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "service_aces", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "serve_errors", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.serve_errors[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "serve_errors", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "attack_errors", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.attack_errors[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "attack_errors", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "reception_errors", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.reception_errors[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "reception_errors", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          {calculateHittingPercentage(player)}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
+              
+              {/* Bench Players - Conditionally visible */}
+              {isBenchVisible && benchPlayers.map((player) => {
+                const globalIndex = playerStats.findIndex(p => p.player_id === player.player_id);
+                const isStarter = startingPlayers[teamKey].includes(player.player_id);
+                
+                return (
+                  <tr key={player.player_id} className="bench-player">
                     <td style={{ textAlign: 'center' }}>
                       <input
                         type="checkbox"
@@ -1100,7 +1335,7 @@ const StaffStats = ({ sidebarOpen }) => {
                       handleBracketSelect(bracket);
                     }}
                     className="selector-dropdown"
-                  >
+                >
                     <option value="">Choose a bracket...</option>
                     {brackets.map(b => (
                       <option key={b.id} value={b.id}>
@@ -1239,25 +1474,6 @@ const StaffStats = ({ sidebarOpen }) => {
                 </div>
               </div>
 
-              {/* Shift Team Button */}
-              <div className="stats-team-shift-container">
-                <button 
-                  onClick={shiftTeamView}
-                  className="stats-shift-team-button"
-                  title="Shift between teams view"
-                >
-                  <FaExchangeAlt /> Shift Team View
-                </button>
-                <div className="stats-team-view-indicator">
-                  Current View: 
-                  <span className={`view-indicator ${activeTeamView}`}>
-                    {activeTeamView === 'both' ? 'Both Teams' : 
-                     activeTeamView === 'team1' ? selectedGame.team1_name : 
-                     selectedGame.team2_name}
-                  </span>
-                </div>
-              </div>
-
               <div className="stats-period-nav">
                 <button
                   onClick={() => changePeriod("prev")}
@@ -1316,6 +1532,25 @@ const StaffStats = ({ sidebarOpen }) => {
                 >
                   <FaSave /> {loading ? "Saving..." : "Save Statistics"}
                 </button>
+              </div>
+
+              {/* Shift Team Button - Moved under the action buttons */}
+              <div className="stats-team-shift-container">
+                <button 
+                  onClick={shiftTeamView}
+                  className="stats-shift-team-button"
+                  title="Shift between teams view"
+                >
+                  <FaExchangeAlt /> Shift Team View
+                </button>
+                <div className="stats-team-view-indicator">
+                  Current View: 
+                  <span className={`view-indicator ${activeTeamView}`}>
+                    {activeTeamView === 'both' ? 'Both' : 
+                     activeTeamView === 'team1' ? selectedGame.team1_name : 
+                     selectedGame.team2_name}
+                  </span>
+                </div>
               </div>
 
               {loading ? (
