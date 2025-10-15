@@ -56,8 +56,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
   }, []);
 
 
-  // Initialize brackets when moving to step 3 and pre-assign teams
-// Initialize brackets when moving to step 3 and pre-assign teams
+ // Initialize brackets when moving to step 3 and pre-assign teams
 useEffect(() => {
   if (currentStep === 3 && brackets.length === 0) {
     const initialBrackets = Array.from({ length: eventData.numberOfBrackets }, (_, index) => ({
@@ -73,9 +72,15 @@ useEffect(() => {
     
     // Pre-assign teams to brackets based on teamBracketAssignments
     const updatedBrackets = initialBrackets.map(bracket => {
-      const assignedTeamIds = Object.entries(teamBracketAssignments)
+      let assignedTeamIds = Object.entries(teamBracketAssignments)
         .filter(([teamId, bracketId]) => bracketId === bracket.id)
         .map(([teamId]) => teamId);
+      
+      // SPECIAL CASE: If only 1 bracket and no assignments, assign ALL teams to bracket-1
+      if (eventData.numberOfBrackets === 1 && bracket.id === 'bracket-1' && assignedTeamIds.length === 0) {
+        assignedTeamIds = createdTeams.map(t => String(t.id));
+        console.log(`Single bracket mode - Auto-assigning all ${assignedTeamIds.length} teams to bracket-1`);
+      }
       
       console.log(`Bracket ${bracket.id} - Assigned Team IDs:`, assignedTeamIds); // Debug log
       
