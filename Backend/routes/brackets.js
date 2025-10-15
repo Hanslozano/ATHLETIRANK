@@ -590,7 +590,7 @@ router.post("/:id/generate", async (req, res) => {
   }
 });
 
-// ENHANCED POST complete a match - WITH COMPREHENSIVE BRACKET RESET LOGIC
+// FIXED POST complete a match - WITH CORRECTED LOSER BRACKET PROGRESSION
 router.post("/matches/:id/complete", async (req, res) => {
   const matchId = req.params.id;
   const { winner_id, scores } = req.body;
@@ -660,7 +660,6 @@ router.post("/matches/:id/complete", async (req, res) => {
         );
         winnerAdvanced = true;
       } else {
-        // This is the final match - update bracket winner
         await db.pool.query(
           "UPDATE brackets SET winner_team_id = ? WHERE id = ?",
           [winner_id, match.bracket_id]
@@ -668,7 +667,7 @@ router.post("/matches/:id/complete", async (req, res) => {
         tournamentComplete = true;
       }
     } else if (eliminationType === "double") {
-      // ENHANCED DOUBLE ELIMINATION WITH COMPREHENSIVE BRACKET RESET LOGIC
+      // FIXED DOUBLE ELIMINATION LOGIC
       
       if (match.bracket_type === 'winner') {
         // WINNER BRACKET LOGIC
@@ -703,7 +702,7 @@ router.post("/matches/:id/complete", async (req, res) => {
             winnerAdvanced = true;
           }
         } else {
-          // Winner's bracket final - advance to Grand Final
+          // Winner's bracket final - advance to Grand Final as team1
           const [grandFinalMatches] = await db.pool.query(
             `SELECT * FROM matches 
              WHERE bracket_id = ? AND bracket_type = 'championship' AND round_number = 200`,
@@ -716,38 +715,60 @@ router.post("/matches/:id/complete", async (req, res) => {
               [winner_id, grandFinalMatches[0].id]
             );
             winnerAdvanced = true;
-            console.log(`Winner bracket champion ${winner_id} advanced to Grand Final`);
+            console.log(`Winner bracket champion ${winner_id} advanced to Grand Final (team1)`);
           }
         }
         
-        // 2. Drop losers to correct loser's bracket round
+        // 2. Drop losers to correct loser's bracket round - FIXED LOGIC
         if (loser_id) {
           const targetLoserRound = getLoserBracketRound(match.round_number, totalTeams);
           
+          // Find the appropriate loser bracket match
+          // For initial rounds, place in first available slot
+          // For later rounds that feed into specific matches, calculate position
           const [loserBracketMatches] = await db.pool.query(
             `SELECT * FROM matches 
              WHERE bracket_id = ? AND bracket_type = 'loser' 
              AND round_number = ?
-             AND (team1_id IS NULL OR team2_id IS NULL)
              ORDER BY match_order`,
             [match.bracket_id, targetLoserRound]
           );
           
           if (loserBracketMatches.length > 0) {
-            const targetMatch = loserBracketMatches[0];
-            const updateField = targetMatch.team1_id === null ? 'team1_id' : 'team2_id';
+            let targetMatch = null;
             
-            await db.pool.query(
-              `UPDATE matches SET ${updateField} = ? WHERE id = ?`,
-              [loser_id, targetMatch.id]
-            );
-            loserAdvanced = true;
-            console.log(`WB R${match.round_number} loser ${loser_id} placed in LB R${targetLoserRound - 100}`);
+            // For first loser round, match teams by position
+            if (targetLoserRound === 101) {
+              // Map winner bracket position to loser bracket position
+              const loserMatchIndex = Math.floor(match.match_order / 2);
+              if (loserMatchIndex < loserBracketMatches.length) {
+                targetMatch = loserBracketMatches[loserMatchIndex];
+              } else {
+                targetMatch = loserBracketMatches[0];
+              }
+            } else {
+              // For subsequent rounds, find first available slot
+              targetMatch = loserBracketMatches.find(m => 
+                m.team1_id === null || m.team2_id === null
+              );
+              if (!targetMatch) targetMatch = loserBracketMatches[0];
+            }
+            
+            if (targetMatch) {
+              const updateField = targetMatch.team1_id === null ? 'team1_id' : 'team2_id';
+              
+              await db.pool.query(
+                `UPDATE matches SET ${updateField} = ? WHERE id = ?`,
+                [loser_id, targetMatch.id]
+              );
+              loserAdvanced = true;
+              console.log(`WB R${match.round_number} loser ${loser_id} placed in LB R${targetLoserRound - 100} match ${targetMatch.id}`);
+            }
           }
         }
         
       } else if (match.bracket_type === 'loser') {
-        // LOSER BRACKET LOGIC
+        // LOSER BRACKET LOGIC - FIXED
         const [maxLoserRound] = await db.pool.query(
           `SELECT MAX(round_number) as max_round FROM matches 
            WHERE bracket_id = ? AND bracket_type = 'loser'`,
@@ -755,30 +776,42 @@ router.post("/matches/:id/complete", async (req, res) => {
         );
         
         if (match.round_number < maxLoserRound[0].max_round) {
-          // Continue in loser's bracket
+          // Continue in loser's bracket - find the next available match
           const [nextLoserMatches] = await db.pool.query(
             `SELECT * FROM matches 
              WHERE bracket_id = ? AND bracket_type = 'loser' 
              AND round_number > ?
-             AND (team1_id IS NULL OR team2_id IS NULL)
-             ORDER BY round_number, match_order
-             LIMIT 1`,
+             ORDER BY round_number, match_order`,
             [match.bracket_id, match.round_number]
           );
           
           if (nextLoserMatches.length > 0) {
-            const nextMatch = nextLoserMatches[0];
-            const updateField = nextMatch.team1_id === null ? 'team1_id' : 'team2_id';
-            
-            await db.pool.query(
-              `UPDATE matches SET ${updateField} = ? WHERE id = ?`,
-              [winner_id, nextMatch.id]
+            // Find the first match with an empty slot
+            let targetMatch = nextLoserMatches.find(m => 
+              m.team1_id === null || m.team2_id === null
             );
-            winnerAdvanced = true;
-            console.log(`LB winner ${winner_id} advanced to LB R${nextMatch.round_number - 100}`);
+            
+            // If no empty slots, take the first match of next immediate round
+            if (!targetMatch) {
+              const nextRoundNum = match.round_number + 1;
+              targetMatch = nextLoserMatches.find(m => 
+                m.round_number === nextRoundNum
+              );
+            }
+            
+            if (targetMatch) {
+              const updateField = targetMatch.team1_id === null ? 'team1_id' : 'team2_id';
+              
+              await db.pool.query(
+                `UPDATE matches SET ${updateField} = ? WHERE id = ?`,
+                [winner_id, targetMatch.id]
+              );
+              winnerAdvanced = true;
+              console.log(`LB winner ${winner_id} advanced to LB R${targetMatch.round_number - 100} match ${targetMatch.id}`);
+            }
           }
         } else {
-          // Loser's bracket final - advance to Grand Final
+          // Loser's bracket final - advance to Grand Final as team2
           const [grandFinalMatches] = await db.pool.query(
             `SELECT * FROM matches 
              WHERE bracket_id = ? AND bracket_type = 'championship' AND round_number = 200`,
@@ -791,7 +824,7 @@ router.post("/matches/:id/complete", async (req, res) => {
               [winner_id, grandFinalMatches[0].id]
             );
             winnerAdvanced = true;
-            console.log(`Loser bracket champion ${winner_id} advanced to Grand Final`);
+            console.log(`Loser bracket champion ${winner_id} advanced to Grand Final (team2)`);
           }
         }
         
@@ -806,7 +839,6 @@ router.post("/matches/:id/complete", async (req, res) => {
             // BRACKET RESET! Loser's bracket winner beat winner's bracket winner
             console.log("BRACKET RESET! Activating reset match...");
             
-            // Activate the reset match (round 201)
             const [resetMatches] = await db.pool.query(
               `SELECT * FROM matches 
                WHERE bracket_id = ? AND bracket_type = 'championship' AND round_number = 201`,
@@ -816,12 +848,12 @@ router.post("/matches/:id/complete", async (req, res) => {
             if (resetMatches.length > 0) {
               const resetMatch = resetMatches[0];
               
-              // Set up reset match: both participants are the same as Grand Final
+              // Set up reset match: same teams, swap positions
               await db.pool.query(
                 `UPDATE matches SET 
                  team1_id = ?, team2_id = ?, status = 'scheduled' 
                  WHERE id = ?`,
-                [match.team1_id, match.team2_id, resetMatch.id]
+                [match.team2_id, match.team1_id, resetMatch.id]
               );
               
               bracketReset = true;
@@ -839,7 +871,7 @@ router.post("/matches/:id/complete", async (req, res) => {
           }
           
         } else if (match.round_number === 201) {
-          // Reset match completed - tournament definitely over
+          // Reset match completed - tournament over
           await db.pool.query(
             "UPDATE brackets SET winner_team_id = ? WHERE id = ?",
             [winner_id, match.bracket_id]

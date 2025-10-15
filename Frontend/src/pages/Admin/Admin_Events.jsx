@@ -87,101 +87,50 @@ const AdminEvents = ({ sidebarOpen }) => {
     fetchEvents();
   }, []);
 
-
-  useEffect(() => {
-  const checkReturnContext = async () => {
-    const returnContext = sessionStorage.getItem('adminEventsReturnContext');
-    
-    if (returnContext) {
-      try {
-        const { selectedEvent: eventContext, selectedBracket: bracketContext } = JSON.parse(returnContext);
-        
-        if (eventContext && bracketContext) {
-          // Set the selected event and bracket
-          setSelectedEvent(eventContext);
-          setSelectedBracket(bracketContext);
-          setActiveTab("results");
-          setContentTab("matches");
-          setLoadingDetails(true);
-          
-          // Load the matches for the bracket
-          try {
-            const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            
-            const data = await res.json();
-            const visibleMatches = data.filter(match => match.status !== 'hidden');
-            setMatches(visibleMatches);
-            setBracketMatches(visibleMatches);
-
-            if (visibleMatches.length === 0) {
-              setError("No matches found for this bracket.");
-            }
-          } catch (err) {
-            setError("Failed to load matches: " + err.message);
-          } finally {
-            setLoadingDetails(false);
-          }
-        }
-      } catch (err) {
-        console.error("Error loading return context:", err);
-      } finally {
-        // Clear the return context
-        sessionStorage.removeItem('adminEventsReturnContext');
-      }
-    }
-  };
-  
-  checkReturnContext();
-  }, []);
-  
   // Check for return context from AdminStats
-useEffect(() => {
-  const checkReturnContext = async () => {
-    const returnContext = sessionStorage.getItem('adminEventsReturnContext');
-    
-    if (returnContext) {
-      try {
-        const { selectedEvent: eventContext, selectedBracket: bracketContext } = JSON.parse(returnContext);
-        
-        if (eventContext && bracketContext) {
-          // Set the selected event and bracket
-          setSelectedEvent(eventContext);
-          setSelectedBracket(bracketContext);
-          setActiveTab("results");
-          setContentTab("matches");
-          setLoadingDetails(true);
+  useEffect(() => {
+    const checkReturnContext = async () => {
+      const returnContext = sessionStorage.getItem('adminEventsReturnContext');
+      
+      if (returnContext) {
+        try {
+          const { selectedEvent: eventContext, selectedBracket: bracketContext } = JSON.parse(returnContext);
           
-          // Load the matches for the bracket
-          try {
-            const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          if (eventContext && bracketContext) {
+            setSelectedEvent(eventContext);
+            setSelectedBracket(bracketContext);
+            setActiveTab("results");
+            setContentTab("matches");
+            setLoadingDetails(true);
             
-            const data = await res.json();
-            const visibleMatches = data.filter(match => match.status !== 'hidden');
-            setMatches(visibleMatches);
-            setBracketMatches(visibleMatches);
+            try {
+              const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
+              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+              
+              const data = await res.json();
+              const visibleMatches = data.filter(match => match.status !== 'hidden');
+              setMatches(visibleMatches);
+              setBracketMatches(visibleMatches);
 
-            if (visibleMatches.length === 0) {
-              setError("No matches found for this bracket.");
+              if (visibleMatches.length === 0) {
+                setError("No matches found for this bracket.");
+              }
+            } catch (err) {
+              setError("Failed to load matches: " + err.message);
+            } finally {
+              setLoadingDetails(false);
             }
-          } catch (err) {
-            setError("Failed to load matches: " + err.message);
-          } finally {
-            setLoadingDetails(false);
           }
+        } catch (err) {
+          console.error("Error loading return context:", err);
+        } finally {
+          sessionStorage.removeItem('adminEventsReturnContext');
         }
-      } catch (err) {
-        console.error("Error loading return context:", err);
-      } finally {
-        // Clear the return context
-        sessionStorage.removeItem('adminEventsReturnContext');
       }
-    }
-  };
-  
-  checkReturnContext();
-}, []);
+    };
+    
+    checkReturnContext();
+  }, []);
 
   // Filter events based on search term and status filter
   const filteredEvents = events.filter(event => {
@@ -251,10 +200,6 @@ useEffect(() => {
     console.log("Edit bracket:", bracket);
   };
 
-  const handleEditMatch = (match) => {
-    console.log("Edit match:", match);
-  };
-
   // Save edited event
   const saveEventEdit = async () => {
     if (!editingEventName.trim()) {
@@ -281,12 +226,10 @@ useEffect(() => {
       if (res.ok) {
         const updatedEvent = await res.json();
         
-        // Update events state
         setEvents(prev => prev.map(event => 
           event.id === editModal.event.id ? { ...event, ...updatedEvent } : event
         ));
 
-        // Update selected event if it's the one being edited
         if (selectedEvent && selectedEvent.id === editModal.event.id) {
           setSelectedEvent(prev => ({ ...prev, ...updatedEvent }));
         }
@@ -314,9 +257,25 @@ useEffect(() => {
     setEditingEndDate("");
   };
 
-  // Create bracket handler
+  // Create bracket handler - Navigate to tournament creator
   const handleCreateBracket = (event) => {
-    console.log("Create bracket for event:", event);
+    console.log("Creating bracket for event:", event);
+    
+    // Store event in sessionStorage
+    sessionStorage.setItem('selectedEventForBracket', JSON.stringify({
+      id: event.id,
+      name: event.name,
+      start_date: event.start_date,
+      end_date: event.end_date
+    }));
+    
+    // Navigate to tournament creator
+    navigate('/AdminDashboard/tournament', { 
+      state: { 
+        selectedEvent: event,
+        fromEvents: true 
+      } 
+    });
   };
 
   // Delete handlers
@@ -338,15 +297,6 @@ useEffect(() => {
     });
   };
 
-  const handleDeleteMatch = (match) => {
-    setDeleteConfirm({
-      show: true,
-      type: 'match',
-      id: match.id,
-      name: `${match.team1_name || 'TBD'} vs ${match.team2_name || 'TBD'}`
-    });
-  };
-
   const confirmDelete = async () => {
     const { type, id } = deleteConfirm;
     
@@ -354,12 +304,10 @@ useEffect(() => {
       let endpoint = '';
       if (type === 'event') endpoint = `http://localhost:5000/api/events/${id}`;
       else if (type === 'bracket') endpoint = `http://localhost:5000/api/brackets/${id}`;
-      else if (type === 'match') endpoint = `http://localhost:5000/api/matches/${id}`;
 
       const res = await fetch(endpoint, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
 
-      // Refresh data
       if (type === 'event') {
         await fetchEvents();
         setActiveTab("events");
@@ -371,11 +319,10 @@ useEffect(() => {
           setActiveTab("events");
           setSelectedBracket(null);
         }
-      } else if (type === 'match') {
-        await handleBracketSelect(selectedEvent, selectedBracket);
       }
 
       setDeleteConfirm({ show: false, type: '', id: null, name: '' });
+      alert(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`);
     } catch (err) {
       alert(`Failed to delete ${type}: ${err.message}`);
     }
@@ -416,7 +363,7 @@ useEffect(() => {
             {/* Events Selection Tab */}
             {activeTab === "events" && (
               <div className="bracket-view-section">
-                {/* Search Container - Same design as Teams Page */}
+                {/* Search Container */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
                   <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
                     <input
@@ -454,7 +401,7 @@ useEffect(() => {
                   </div>
                   <button 
                     className="awards_standings_export_btn" 
-                    onClick={() => console.log('Create new event')}
+                    onClick={() => navigate('/AdminDashboard/tournament')}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
                     <FaPlus /> Create Event
@@ -482,7 +429,7 @@ useEffect(() => {
                         <p>No events found. Create an event first to view matches.</p>
                         <button 
                           className="bracket-view-btn" 
-                          onClick={() => console.log('Create new event')}
+                          onClick={() => navigate('/AdminDashboard/tournament')}
                         >
                           Create Event
                         </button>
@@ -547,38 +494,44 @@ useEffect(() => {
                                   {bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elim.
                                 </td>
                                 <td style={{ fontSize: '15px' }}>{bracket.team_count || 0}</td>
-                                <td>
-                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                    {idx === 0 && (
-                                      <>
-                                        <button
-                                          onClick={() => handleEditEvent(event)}
-                                          className="bracket-view-btn"
-                                          style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--purple-color)', flex: '1 1 auto', minWidth: '55px' }}
-                                          title="Edit Event"
-                                        >
-                                          <FaEdit />
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteEvent(event)}
-                                          className="bracket-view-btn"
-                                          style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--error-color)', flex: '1 1 auto', minWidth: '55px' }}
-                                          title="Delete Event"
-                                        >
-                                          <FaTrash />
-                                        </button>
-                                      </>
-                                    )}
-                                    <button
-                                      onClick={() => handleBracketSelect(event, bracket)}
-                                      className="bracket-view-btn"
-                                      style={{ fontSize: '13px', padding: '8px 14px', flex: '1 1 auto', minWidth: '55px' }}
-                                      title="View Matches"
-                                    >
-                                      <FaEye />
-                                    </button>
-                                  </div>
-                                </td>
+                                {idx === 0 && (
+                                  <td rowSpan={event.brackets.length}>
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                      <button
+                                        onClick={() => handleEditEvent(event)}
+                                        className="bracket-view-btn"
+                                        style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--purple-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                        title="Edit Event"
+                                      >
+                                        <FaEdit />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteEvent(event)}
+                                        className="bracket-view-btn"
+                                        style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--error-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                        title="Delete Event"
+                                      >
+                                        <FaTrash />
+                                      </button>
+                                      <button
+                                        onClick={() => handleCreateBracket(event)}
+                                        className="bracket-view-btn"
+                                        style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--success-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                        title="Create Bracket"
+                                      >
+                                        <FaPlus />
+                                      </button>
+                                      <button
+                                        onClick={() => handleBracketSelect(event, bracket)}
+                                        className="bracket-view-btn"
+                                        style={{ fontSize: '13px', padding: '8px 14px', flex: '1 1 auto', minWidth: '55px' }}
+                                        title="View Matches"
+                                      >
+                                        <FaEye />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             ))
                           ) : (
@@ -592,7 +545,7 @@ useEffect(() => {
                               <td style={{ fontSize: '15px' }}>
                                 {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
                               </td>
-                              <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '15px' }}>
+                              <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '15px', fontStyle: 'italic' }}>
                                 No brackets available for this event
                               </td>
                               <td>
@@ -637,7 +590,6 @@ useEffect(() => {
             {activeTab === "results" && selectedEvent && selectedBracket && (
               <div className="bracket-visualization-section">
                 <div className="event-details-header">
-                  {/* Change this line: */}
                   <h2>{selectedBracket.name}</h2>
                   <div className="event-details-info">
                     <span><strong>Event:</strong> {selectedEvent.name}</span>
@@ -756,7 +708,6 @@ useEffect(() => {
                                           >
                                             <FaChartBar />
                                           </button>
-                               
                                         </div>
                                       </td>
                                     </tr>
@@ -837,7 +788,7 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Edit Event Modal - Similar to Teams Page Modal */}
+      {/* Edit Event Modal */}
       {editModal.show && editModal.event && (
         <div className="admin-teams-modal-overlay" onClick={closeEditModal}>
           <div className="admin-teams-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
