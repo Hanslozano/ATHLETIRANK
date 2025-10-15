@@ -465,7 +465,7 @@ const AdminEvents = ({ sidebarOpen }) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredEvents.map(event => 
+                         {filteredEvents.map(event => 
                           event.brackets && event.brackets.length > 0 ? (
                             event.brackets.map((bracket, idx) => (
                               <tr key={`${event.id}-${bracket.id}`}>
@@ -494,44 +494,37 @@ const AdminEvents = ({ sidebarOpen }) => {
                                   {bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elim.
                                 </td>
                                 <td style={{ fontSize: '15px' }}>{bracket.team_count || 0}</td>
-                                {idx === 0 && (
-                                  <td rowSpan={event.brackets.length}>
-                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                      <button
-                                        onClick={() => handleEditEvent(event)}
-                                        className="bracket-view-btn"
-                                        style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--purple-color)', flex: '1 1 auto', minWidth: '55px' }}
-                                        title="Edit Event"
-                                      >
-                                        <FaEdit />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteEvent(event)}
-                                        className="bracket-view-btn"
-                                        style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--error-color)', flex: '1 1 auto', minWidth: '55px' }}
-                                        title="Delete Event"
-                                      >
-                                        <FaTrash />
-                                      </button>
-                                      <button
-                                        onClick={() => handleCreateBracket(event)}
-                                        className="bracket-view-btn"
-                                        style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--success-color)', flex: '1 1 auto', minWidth: '55px' }}
-                                        title="Create Bracket"
-                                      >
-                                        <FaPlus />
-                                      </button>
-                                      <button
-                                        onClick={() => handleBracketSelect(event, bracket)}
-                                        className="bracket-view-btn"
-                                        style={{ fontSize: '13px', padding: '8px 14px', flex: '1 1 auto', minWidth: '55px' }}
-                                        title="View Matches"
-                                      >
-                                        <FaEye />
-                                      </button>
-                                    </div>
-                                  </td>
-                                )}
+                                <td>
+                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                    {/* Show Edit Event button on all bracket rows */}
+                                    <button
+                                      onClick={() => handleEditEvent(event)}
+                                      className="bracket-view-btn"
+                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--purple-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                      title="Edit Event"
+                                    >
+                                      <FaEdit />
+                                    </button>
+                                    {/* Show Delete Event button on all bracket rows */}
+                                    <button
+                                      onClick={() => handleDeleteEvent(event)}
+                                      className="bracket-view-btn"
+                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--error-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                      title="Delete Event"
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                    {/* Show View Matches button on all bracket rows */}
+                                    <button
+                                      onClick={() => handleBracketSelect(event, bracket)}
+                                      className="bracket-view-btn"
+                                      style={{ fontSize: '13px', padding: '8px 14px', flex: '1 1 auto', minWidth: '55px' }}
+                                      title="View Matches"
+                                    >
+                                      <FaEye />
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
                             ))
                           ) : (
