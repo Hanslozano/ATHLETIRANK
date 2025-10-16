@@ -23,6 +23,7 @@ const TeamsPage = ({ sidebarOpen }) => {
   const [validationError, setValidationError] = useState("");
   const [showValidationMessage, setShowValidationMessage] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, type: '', id: null, name: '' });
+  
 
   // NEW: Check for stored sport filter on component mount
   useEffect(() => {
@@ -363,47 +364,87 @@ const TeamsPage = ({ sidebarOpen }) => {
   };
 
   // Delete team
-  const handleDeleteTeam = (team) => {
+  const handleDeleteTeam = async (team) => {
+  try {
+    // First check if team is used anywhere
+    const checkRes = await fetch(`http://localhost:5000/api/teams/${team.id}/usage`);
+    const usageData = await checkRes.json();
+    
+    if (usageData.totalUsage > 0) {
+      // Get detailed usage information
+      const detailsRes = await fetch(`http://localhost:5000/api/teams/${team.id}/usage-details`);
+      const usageDetails = await detailsRes.json();
+      
+      let errorMessage = `Cannot delete team "${team.name}" because it is currently used in:\n\n`;
+      
+      if (usageDetails.winnerBrackets.length > 0) {
+        errorMessage += `• Winner of ${usageDetails.winnerBrackets.length} bracket(s)\n`;
+      }
+      
+      if (usageDetails.teamMatches.length > 0) {
+        errorMessage += `• Participant in ${usageDetails.teamMatches.length} match(es)\n`;
+      }
+      
+      if (usageDetails.bracketRegistrations.length > 0) {
+        errorMessage += `• Registered in ${usageDetails.bracketRegistrations.length} bracket(s)\n`;
+      }
+      
+      errorMessage += "\nPlease remove the team from all brackets and matches first.";
+      
+      setValidationError(errorMessage);
+      setShowValidationMessage(true);
+      return;
+    }
+
+    // If no usage, proceed with deletion confirmation
     setDeleteConfirm({
       show: true,
       type: 'team',
       id: team.id,
       name: team.name
     });
-  };
+  } catch (err) {
+    console.error("Error checking team usage:", err);
+    setValidationError("Error checking team usage. Please try again.");
+    setShowValidationMessage(true);
+  }
+};
 
   const confirmDelete = async () => {
-    const { type, id } = deleteConfirm;
+  const { type, id } = deleteConfirm;
+  
+  try {
+    const res = await fetch(`http://localhost:5000/api/teams/${id}`, { 
+      method: "DELETE" 
+    });
     
-    try {
-      const res = await fetch(`http://localhost:5000/api/teams/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setTeams(prev => prev.filter(team => team.id !== id));
+      setValidationError("Team deleted successfully!");
+      setShowValidationMessage(true);
       
-      if (res.ok) {
-        setTeams(prev => prev.filter(team => team.id !== id));
-        setValidationError("Team deleted successfully!");
-        setShowValidationMessage(true);
-        
-        // Close modal if we're viewing the deleted team
-        if (viewModal.show && viewModal.team.id === id) {
-          closeViewModal();
-        }
-        
-        setTimeout(() => {
-          setValidationError("");
-          setShowValidationMessage(false);
-        }, 3000);
-      } else {
-        setValidationError("Error deleting team");
-        setShowValidationMessage(true);
+      // Close modal if we're viewing the deleted team
+      if (viewModal.show && viewModal.team.id === id) {
+        closeViewModal();
       }
-    } catch (err) {
-      console.error("Error deleting team:", err);
-      setValidationError("Error deleting team");
+      
+      setTimeout(() => {
+        setValidationError("");
+        setShowValidationMessage(false);
+      }, 3000);
+    } else {
+      const errorData = await res.json();
+      setValidationError(errorData.error || "Error deleting team");
       setShowValidationMessage(true);
     }
-    
-    setDeleteConfirm({ show: false, type: '', id: null, name: '' });
-  };
+  } catch (err) {
+    console.error("Error deleting team:", err);
+    setValidationError("Error deleting team. Please try again.");
+    setShowValidationMessage(true);
+  }
+  
+  setDeleteConfirm({ show: false, type: '', id: null, name: '' });
+};
 
   // Capitalize first letter
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";

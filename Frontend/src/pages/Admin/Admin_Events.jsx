@@ -37,6 +37,9 @@ const AdminEvents = ({ sidebarOpen }) => {
   const [editingStartDate, setEditingStartDate] = useState("");
   const [editingEndDate, setEditingEndDate] = useState("");
 
+  // Round filter state for matches
+  const [roundFilter, setRoundFilter] = useState("all");
+
   // Format round display based on bracket type and round number
   const formatRoundDisplay = (match) => {
     const roundNum = match.round_number;
@@ -57,6 +60,21 @@ const AdminEvents = ({ sidebarOpen }) => {
     
     return `Round ${roundNum}`;
   };
+
+  // Get unique rounds for filter dropdown
+  const getUniqueRounds = () => {
+    const rounds = matches.map(match => match.round_number);
+    const uniqueRounds = [...new Set(rounds)].sort((a, b) => a - b);
+    return uniqueRounds.map(round => ({
+      value: round,
+      label: formatRoundDisplay({ round_number: round, bracket_type: matches.find(m => m.round_number === round)?.bracket_type })
+    }));
+  };
+
+  // Filter matches by selected round
+  const filteredMatches = roundFilter === "all" 
+    ? matches 
+    : matches.filter(match => match.round_number === parseInt(roundFilter));
 
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
@@ -175,18 +193,18 @@ const AdminEvents = ({ sidebarOpen }) => {
   // Matches pagination calculations
   const indexOfLastMatch = currentMatchesPage * matchesPerPage;
   const indexOfFirstMatch = indexOfLastMatch - matchesPerPage;
-  const currentMatches = matches.slice(indexOfFirstMatch, indexOfLastMatch);
-  const totalMatchesPages = Math.ceil(matches.length / matchesPerPage);
+  const currentMatches = filteredMatches.slice(indexOfFirstMatch, indexOfLastMatch);
+  const totalMatchesPages = Math.ceil(filteredMatches.length / matchesPerPage);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, itemsPerPage]);
 
-  // Reset matches page when matches change
+  // Reset matches page when matches or round filter changes
   useEffect(() => {
     setCurrentMatchesPage(1);
-  }, [matches]);
+  }, [matches, roundFilter]);
 
   // Events pagination handlers
   const goToPage = (page) => {
@@ -222,6 +240,7 @@ const AdminEvents = ({ sidebarOpen }) => {
     setContentTab("matches");
     setLoadingDetails(true);
     setError(null);
+    setRoundFilter("all"); // Reset round filter when selecting new bracket
 
     try {
       const res = await fetch(`http://localhost:5000/api/brackets/${bracket.id}/matches`);
@@ -823,61 +842,62 @@ const AdminEvents = ({ sidebarOpen }) => {
                   <>
                     {contentTab === "matches" && (
                       <div className="awards_standings_tab_content">
-                        {/* Matches Search and Filter */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
-                          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
-                            <input
-                              type="text"
-                              placeholder="Search matches..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
+                        {/* Round Filter Only - Removed Show per page */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '30px' }}>
+                          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', minWidth: '200px' }}>
+                            {/* Add this label */}
+                            <label style={{ 
+                              fontSize: '14px', 
+                              color: 'var(--text-secondary)',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              Sort Rounds:
+                            </label>
+                            <select
+                              value={roundFilter}
+                              onChange={(e) => setRoundFilter(e.target.value)}
                               style={{
-                                flex: '1',
                                 padding: '12px 16px',
                                 border: '2px solid var(--border-color)',
                                 borderRadius: '8px',
                                 fontSize: '14px',
                                 backgroundColor: 'var(--background-secondary)',
                                 color: 'var(--text-primary)',
-                              }}
-                            />
-                          </div>
-                          
-                          {/* Matches Per Page Selector */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Show:</label>
-                            <select
-                              value={matchesPerPage}
-                              onChange={(e) => setMatchesPerPage(Number(e.target.value))}
-                              style={{
-                                padding: '8px 12px',
-                                border: '2px solid var(--border-color)',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                backgroundColor: 'var(--background-secondary)',
-                                color: 'var(--text-primary)',
-                                cursor: 'pointer'
+                                minWidth: '200px',
                               }}
                             >
-                              <option value={5}>5</option>
-                              <option value={10}>10</option>
-                              <option value={20}>20</option>
-                              <option value={50}>50</option>
+                              <option value="all">All Rounds</option>
+                              {getUniqueRounds().map(round => (
+                                <option key={round.value} value={round.value}>
+                                  {round.label}
+                                </option>
+                              ))}
                             </select>
-                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>per page</span>
                           </div>
                         </div>
 
                         {/* Matches Count Info */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
                           <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                            Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, matches.length)} of {matches.length} matches
+                            {roundFilter === "all" ? (
+                              <>Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches</>
+                            ) : (
+                              <>Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches in {getUniqueRounds().find(r => r.value === parseInt(roundFilter))?.label}</>
+                            )}
                           </div>
                         </div>
 
-                        {matches.length === 0 ? (
+                        {filteredMatches.length === 0 ? (
                           <div className="bracket-no-brackets">
-                            <p>No matches available for this bracket.</p>
+                            <p>No matches available {roundFilter !== "all" ? "for the selected round" : "for this bracket"}.</p>
+                            {roundFilter !== "all" && (
+                              <button 
+                                className="bracket-view-btn" 
+                                onClick={() => setRoundFilter("all")}
+                              >
+                                Show All Rounds
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <>

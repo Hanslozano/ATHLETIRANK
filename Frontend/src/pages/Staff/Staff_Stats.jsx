@@ -40,7 +40,8 @@ const StaffStats = ({ sidebarOpen }) => {
     team1: [],
     team2: []
   });
-  const [activeTeamView, setActiveTeamView] = useState('both');
+  const [activeTeamView, setActiveTeamView] = useState('team1');
+  const [showBothTeams, setShowBothTeams] = useState(false);
   const [showBenchPlayers, setShowBenchPlayers] = useState({
     team1: false,
     team2: false
@@ -74,15 +75,9 @@ const StaffStats = ({ sidebarOpen }) => {
     isOnCourt: false
   };
 
-  // Function to handle team view shifting
+  // Function to handle team view shifting - only two options now
   const shiftTeamView = () => {
-    if (activeTeamView === 'both') {
-      setActiveTeamView('team1');
-    } else if (activeTeamView === 'team1') {
-      setActiveTeamView('team2');
-    } else {
-      setActiveTeamView('both');
-    }
+    setActiveTeamView(prev => prev === 'team1' ? 'team2' : 'team1');
   };
 
   const getMaxStartingPlayers = (sportType) => {
@@ -469,7 +464,8 @@ const StaffStats = ({ sidebarOpen }) => {
     setTeamScores({ team1: [0, 0, 0, 0], team2: [0, 0, 0, 0] });
     setCurrentQuarter(0);
     setExpandedRounds(new Set([1]));
-    setActiveTeamView('both');
+    setActiveTeamView('team1');
+    setShowBothTeams(false);
     setShowBenchPlayers({ team1: false, team2: false });
     setLoading(true);
     setError(null);
@@ -651,7 +647,8 @@ const StaffStats = ({ sidebarOpen }) => {
   const handleGameSelect = async (game) => {
     setSelectedGame(game);
     setLoading(true);
-    setActiveTeamView('both');
+    setActiveTeamView('team1');
+    setShowBothTeams(false);
     setShowBenchPlayers({ team1: false, team2: false });
     
     const initialScores = game.sport_type === "basketball"
@@ -1542,22 +1539,32 @@ const StaffStats = ({ sidebarOpen }) => {
                 </button>
               </div>
 
-              {/* Shift Team Button - Moved under the action buttons */}
+              {/* Centered Shift Team View Section */}
               <div className="stats-team-shift-container">
-                <button 
-                  onClick={shiftTeamView}
-                  className="stats-shift-team-button"
-                  title="Shift between teams view"
-                >
-                  <FaExchangeAlt /> Shift Team View
-                </button>
-                <div className="stats-team-view-indicator">
-                  Current View: 
-                  <span className={`view-indicator ${activeTeamView}`}>
-                    {activeTeamView === 'both' ? 'Both' : 
-                     activeTeamView === 'team1' ? selectedGame.team1_name : 
-                     selectedGame.team2_name}
-                  </span>
+                <div className="stats-team-view-controls">
+                  <button 
+                    onClick={shiftTeamView}
+                    className="stats-shift-team-button"
+                    title="Switch between teams"
+                  >
+                    <FaExchangeAlt /> Switch Team View
+                  </button>
+                  
+                  <div className="stats-team-view-indicator">
+                    Current View: 
+                    <span className={`view-indicator ${activeTeamView}`}>
+                      {showBothTeams ? 'Both Teams' : (activeTeamView === 'team1' ? selectedGame.team1_name : selectedGame.team2_name)}
+                    </span>
+                  </div>
+                  
+                  <label className="show-both-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={showBothTeams}
+                      onChange={() => setShowBothTeams(!showBothTeams)}
+                    />
+                    Show Both Teams
+                  </label>
                 </div>
               </div>
 
@@ -1567,18 +1574,17 @@ const StaffStats = ({ sidebarOpen }) => {
                 </div>
               ) : (
                 <div>
-                  {/* Conditionally render teams based on activeTeamView */}
-                  {activeTeamView === 'both' && (
+                  {/* Conditionally render teams based on showBothTeams and activeTeamView */}
+                  {showBothTeams ? (
                     <>
                       {renderPlayerTable(selectedGame.team1_id, selectedGame.team1_name)}
                       {renderPlayerTable(selectedGame.team2_id, selectedGame.team2_name)}
                     </>
-                  )}
-                  {activeTeamView === 'team1' && (
-                    renderPlayerTable(selectedGame.team1_id, selectedGame.team1_name)
-                  )}
-                  {activeTeamView === 'team2' && (
-                    renderPlayerTable(selectedGame.team2_id, selectedGame.team2_name)
+                  ) : (
+                    renderPlayerTable(
+                      activeTeamView === 'team1' ? selectedGame.team1_id : selectedGame.team2_id,
+                      activeTeamView === 'team1' ? selectedGame.team1_name : selectedGame.team2_name
+                    )
                   )}
                 </div>
               )}

@@ -315,4 +315,141 @@ router.get("/:teamId/brackets", async (req, res) => {
   }
 });
 
+// ✅ CHECK team usage before deletion
+router.get("/:id/usage", async (req, res) => {
+  try {
+    const teamId = req.params.id;
+    
+    // Check brackets usage
+    const [bracketsUsage] = await db.pool.query(
+      'SELECT COUNT(*) as count FROM brackets WHERE winner_team_id = ?',
+      [teamId]
+    );
+    
+    // Check matches usage
+    const [matchesUsage] = await db.pool.query(
+      'SELECT COUNT(*) as count FROM matches WHERE team1_id = ? OR team2_id = ? OR winner_id = ?',
+      [teamId, teamId, teamId]
+    );
+    
+    // Check bracket_teams usage
+    const [bracketTeamsUsage] = await db.pool.query(
+      'SELECT COUNT(*) as count FROM bracket_teams WHERE team_id = ?',
+      [teamId]
+    );
+    
+    res.json({
+      usedInBrackets: bracketsUsage[0].count,
+      usedInMatches: matchesUsage[0].count,
+      usedInBracketTeams: bracketTeamsUsage[0].count,
+      totalUsage: bracketsUsage[0].count + matchesUsage[0].count + bracketTeamsUsage[0].count
+    });
+  } catch (error) {
+    console.error('Error checking team usage:', error);
+    res.status(500).json({ error: 'Error checking team usage' });
+  }
+});
+
+// ✅ GET detailed team usage information
+router.get("/:id/usage-details", async (req, res) => {
+  try {
+    const teamId = req.params.id;
+    
+    // Get brackets where team is winner
+    const [winnerBrackets] = await db.pool.query(`
+      SELECT b.id, b.name, e.name as event_name 
+      FROM brackets b 
+      JOIN events e ON b.event_id = e.id 
+      WHERE b.winner_team_id = ?
+    `, [teamId]);
+    
+    // Get matches where team is involved
+    const [teamMatches] = await db.pool.query(`
+      SELECT m.id, m.round_number, b.name as bracket_name, e.name as event_name,
+             CASE 
+               WHEN m.team1_id = ? THEN 'Team 1'
+               WHEN m.team2_id = ? THEN 'Team 2' 
+               WHEN m.winner_id = ? THEN 'Winner'
+             END as team_role
+      FROM matches m
+      JOIN brackets b ON m.bracket_id = b.id
+      JOIN events e ON b.event_id = e.id
+      WHERE m.team1_id = ? OR m.team2_id = ? OR m.winner_id = ?
+    `, [teamId, teamId, teamId, teamId, teamId, teamId]);
+    
+    // Get brackets where team is registered
+    const [bracketRegistrations] = await db.pool.query(`
+      SELECT b.id, b.name, e.name as event_name
+      FROM bracket_teams bt
+      JOIN brackets b ON bt.bracket_id = b.id
+      JOIN events e ON b.event_id = e.id
+      WHERE bt.team_id = ?
+    `, [teamId]);
+    
+    res.json({
+      winnerBrackets,
+      teamMatches,
+      bracketRegistrations
+    });
+  } catch (error) {
+    console.error('Error getting team usage details:', error);
+    res.status(500).json({ error: 'Error getting team usage details' });
+  }
+});
+
+// ✅ UPDATE the existing DELETE endpoint to check constraints
+router.delete("/:id", async (req, res) => {
+  const conn = await db.pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    
+    const teamId = req.params.id;
+    
+    // First, check if team is used in any active brackets or matches
+    const [bracketsUsage] = await conn.query(
+      'SELECT COUNT(*) as count FROM brackets WHERE winner_team_id = ?',
+      [teamId]
+    );
+    
+    const [matchesUsage] = await conn.query(
+      'SELECT COUNT(*) as count FROM matches WHERE team1_id = ? OR team2_id = ? OR winner_id = ?',
+      [teamId, teamId, teamId]
+    );
+
+    const [bracketTeamsUsage] = await conn.query(
+      'SELECT COUNT(*) as count FROM bracket_teams WHERE team_id = ?',
+      [teamId]
+    );
+    
+    if (bracketsUsage[0].count > 0 || matchesUsage[0].count > 0 || bracketTeamsUsage[0].count > 0) {
+      await conn.rollback();
+      return res.status(400).json({ 
+        error: 'Cannot delete team because it is used in brackets or matches. Please remove the team from all brackets and matches first.' 
+      });
+    }
+    
+    // First delete players
+    await conn.query("DELETE FROM players WHERE team_id = ?", [teamId]);
+    
+    // Then delete the team
+    await conn.query("DELETE FROM teams WHERE id = ?", [teamId]);
+    
+    await conn.commit();
+    res.json({ message: "Team and associated players deleted successfully" });
+  } catch (err) {
+    await conn.rollback();
+    console.error("Error deleting team:", err);
+    
+    // Handle specific MySQL foreign key constraint errors
+    if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_ROW_IS_REFERENCED') {
+      return res.status(400).json({ 
+        error: 'Cannot delete team because it is currently being used in tournaments or matches. Please remove the team from all brackets first.' 
+      });
+    }
+    
+    res.status(500).json({ error: "Database error" });
+  } finally {
+    conn.release();
+  }
+});
 module.exports = router;
