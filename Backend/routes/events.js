@@ -3,12 +3,66 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
-// ✅ GET all events
+// Helper function to check and update event status
+async function updateEventStatus(eventId) {
+  try {
+    // Get all brackets for this event
+    const [brackets] = await db.pool.query(
+      'SELECT id FROM brackets WHERE event_id = ?',
+      [eventId]
+    );
+
+    if (brackets.length === 0) {
+      return; // No brackets, keep status as is
+    }
+
+    // Check if all matches in all brackets are completed
+    let allMatchesCompleted = true;
+    let hasMatches = false;
+
+    for (const bracket of brackets) {
+      const [matches] = await db.pool.query(
+        'SELECT status FROM matches WHERE bracket_id = ? AND status != ?',
+        [bracket.id, 'hidden']
+      );
+
+      if (matches.length > 0) {
+        hasMatches = true;
+        // Check if any match is not completed
+        const hasIncompleteMatch = matches.some(match => match.status !== 'completed');
+        if (hasIncompleteMatch) {
+          allMatchesCompleted = false;
+          break;
+        }
+      }
+    }
+
+    // Update event status if all matches are completed
+    if (hasMatches && allMatchesCompleted) {
+      await db.pool.query(
+        'UPDATE events SET status = ? WHERE id = ?',
+        ['completed', eventId]
+      );
+    }
+  } catch (error) {
+    console.error('Error updating event status:', error);
+  }
+}
+
+// ✅ GET all events with dynamic status check
 router.get('/', async (req, res) => {
   try {
     const query = 'SELECT * FROM events ORDER BY id DESC';
     const [results] = await db.pool.query(query);
-    res.json(results);
+
+    // Update status for each event
+    for (const event of results) {
+      await updateEventStatus(event.id);
+    }
+
+    // Fetch updated events
+    const [updatedResults] = await db.pool.query(query);
+    res.json(updatedResults);
   } catch (error) {
     res.status(500).json({
       message: 'Error fetching events',
@@ -18,9 +72,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ GET single event by ID (FIXED: removed /events prefix)
+// ✅ GET single event by ID
 router.get("/:id", async (req, res) => {
   try {
+    // Update status before fetching
+    await updateEventStatus(req.params.id);
+
     const [rows] = await db.pool.query("SELECT * FROM events WHERE id = ?", [req.params.id]);
 
     if (rows.length === 0) {
@@ -110,6 +167,78 @@ router.post('/', async (req, res) => {
       error: error.message,
       code: error.code,
       sqlMessage: error.sqlMessage || 'No SQL message'
+    });
+  }
+});
+
+// ✅ Update event
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, start_date, end_date, status } = req.body;
+
+    if (!name || !start_date || !end_date) {
+      return res.status(400).json({ message: 'Name, start date, and end date are required' });
+    }
+
+    // Build update query dynamically based on provided fields
+    let updateFields = [];
+    let values = [];
+
+    updateFields.push('name = ?');
+    values.push(name);
+
+    updateFields.push('start_date = ?');
+    values.push(start_date);
+
+    updateFields.push('end_date = ?');
+    values.push(end_date);
+
+    if (status) {
+      updateFields.push('status = ?');
+      values.push(status);
+    }
+
+    values.push(id);
+
+    const query = `UPDATE events SET ${updateFields.join(', ')} WHERE id = ?`;
+    const [result] = await db.pool.query(query, values);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Fetch and return updated event
+    const [updatedEvent] = await db.pool.query('SELECT * FROM events WHERE id = ?', [id]);
+    res.json(updatedEvent[0]);
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error updating event',
+      error: error.message
+    });
+  }
+});
+
+// ✅ Manually update event status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Update the event status
+    await updateEventStatus(id);
+
+    // Fetch and return updated event
+    const [updatedEvent] = await db.pool.query('SELECT * FROM events WHERE id = ?', [id]);
+    
+    if (updatedEvent.length === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    res.json(updatedEvent[0]);
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error updating event status',
+      error: error.message
     });
   }
 });
