@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaCheckCircle, FaChevronRight, FaChevronLeft, FaSearch, FaPlus, FaTrash } from "react-icons/fa";
+import { FaCheckCircle, FaChevronRight, FaChevronLeft, FaSearch, FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import "../../style/Admin_Events.css";
 import "../../style/Admin_TeamPage.css";
 import "../../style/Admin_BracketPage.css";
@@ -29,11 +29,14 @@ const TournamentCreator = ({ sidebarOpen }) => {
     players: []
   });
   const [createdTeams, setCreatedTeams] = useState([]);
-  const [teamBracketAssignments, setTeamBracketAssignments] = useState({}); // New: Track which bracket each team is assigned to
+  const [teamBracketAssignments, setTeamBracketAssignments] = useState({});
 
   // Step 3: Multiple Brackets Data
   const [brackets, setBrackets] = useState([]);
   const [createdBrackets, setCreatedBrackets] = useState([]);
+
+  // NEW: State for expanded team details in Step 3
+  const [expandedTeams, setExpandedTeams] = useState({});
 
   // Position options
   const positions = {
@@ -55,60 +58,67 @@ const TournamentCreator = ({ sidebarOpen }) => {
     fetchTeams();
   }, []);
 
-
- // Initialize brackets when moving to step 3 and pre-assign teams
-useEffect(() => {
-  if (currentStep === 3 && brackets.length === 0) {
-    const initialBrackets = Array.from({ length: eventData.numberOfBrackets }, (_, index) => ({
-      id: `bracket-${index + 1}`,
-      bracketName: "",
-      bracketType: "single",
-      sport: "",
-      selectedTeamIds: []
-    }));
-    
-    console.log("Team Bracket Assignments:", teamBracketAssignments); // Debug log
-    console.log("Created Teams:", createdTeams); // Debug log
-    
-    // Pre-assign teams to brackets based on teamBracketAssignments
-    const updatedBrackets = initialBrackets.map(bracket => {
-      let assignedTeamIds = Object.entries(teamBracketAssignments)
-        .filter(([teamId, bracketId]) => bracketId === bracket.id)
-        .map(([teamId]) => teamId);
+  // Initialize brackets when moving to step 3 and pre-assign teams
+  useEffect(() => {
+    if (currentStep === 3) {
+      const initialBrackets = Array.from({ length: eventData.numberOfBrackets }, (_, index) => ({
+        id: `bracket-${index + 1}`,
+        bracketName: "",
+        bracketType: "single",
+        sport: "",
+        selectedTeamIds: []
+      }));
       
-      // SPECIAL CASE: If only 1 bracket and no assignments, assign ALL teams to bracket-1
-      if (eventData.numberOfBrackets === 1 && bracket.id === 'bracket-1' && assignedTeamIds.length === 0) {
-        assignedTeamIds = createdTeams.map(t => String(t.id));
-        console.log(`Single bracket mode - Auto-assigning all ${assignedTeamIds.length} teams to bracket-1`);
-      }
+      console.log("Team Bracket Assignments:", teamBracketAssignments);
+      console.log("Created Teams:", createdTeams);
       
-      console.log(`Bracket ${bracket.id} - Assigned Team IDs:`, assignedTeamIds); // Debug log
-      
-      // AUTO-DETECT SPORT: If teams are assigned, get the sport from the first team
-      let detectedSport = "";
-      if (assignedTeamIds.length > 0) {
-        // Try to find team by both string and number ID
-        const firstTeam = createdTeams.find(t => 
-          String(t.id) === String(assignedTeamIds[0]) || 
-          Number(t.id) === Number(assignedTeamIds[0])
-        );
-        if (firstTeam) {
-          detectedSport = firstTeam.sport;
-          console.log(`Bracket ${bracket.id} - Detected Sport:`, detectedSport); // Debug log
+      // Pre-assign teams to brackets based on teamBracketAssignments
+      const updatedBrackets = initialBrackets.map(bracket => {
+        let assignedTeamIds = Object.entries(teamBracketAssignments)
+          .filter(([teamId, bracketId]) => bracketId === bracket.id)
+          .map(([teamId]) => teamId);
+        
+        // SPECIAL CASE: If only 1 bracket and no assignments, assign ALL teams to bracket-1
+        if (eventData.numberOfBrackets === 1 && bracket.id === 'bracket-1' && assignedTeamIds.length === 0) {
+          assignedTeamIds = createdTeams.map(t => String(t.id));
+          console.log(`Single bracket mode - Auto-assigning all ${assignedTeamIds.length} teams to bracket-1`);
         }
-      }
+        
+        console.log(`Bracket ${bracket.id} - Assigned Team IDs:`, assignedTeamIds);
+        
+        // AUTO-DETECT SPORT: If teams are assigned, get the sport from the first team
+        let detectedSport = "";
+        if (assignedTeamIds.length > 0) {
+          // Try to find team by both string and number ID
+          const firstTeam = createdTeams.find(t => 
+            String(t.id) === String(assignedTeamIds[0]) || 
+            Number(t.id) === Number(assignedTeamIds[0])
+          );
+          if (firstTeam) {
+            detectedSport = firstTeam.sport;
+            console.log(`Bracket ${bracket.id} - Detected Sport:`, detectedSport);
+          }
+        }
+        
+        return {
+          ...bracket,
+          sport: detectedSport,
+          selectedTeamIds: assignedTeamIds
+        };
+      });
       
-      return {
-        ...bracket,
-        sport: detectedSport, // Auto-set the sport
-        selectedTeamIds: assignedTeamIds
-      };
-    });
-    
-    console.log("Final Updated Brackets:", updatedBrackets); // Debug log
-    setBrackets(updatedBrackets);
-  }
-}, [currentStep, eventData.numberOfBrackets, brackets.length, teamBracketAssignments, createdTeams]);
+      console.log("Final Updated Brackets:", updatedBrackets);
+      setBrackets(updatedBrackets);
+    }
+  }, [currentStep, eventData.numberOfBrackets, teamBracketAssignments, createdTeams]);
+
+  // NEW: Toggle team details expansion
+  const toggleTeamDetails = (teamId) => {
+    setExpandedTeams(prev => ({
+      ...prev,
+      [teamId]: !prev[teamId]
+    }));
+  };
 
   // Step 1: Event Creation
   const handleEventInputChange = (e) => {
@@ -269,11 +279,13 @@ useEffect(() => {
       setValidationError("You need at least 2 teams to create brackets");
       return;
     }
+    // Reset brackets state to force re-initialization with new teams
+    setBrackets([]);
     setCurrentStep(3);
     setValidationError("");
   };
 
-  // NEW: Handle selecting existing team with bracket assignment
+  // Handle selecting existing team with bracket assignment
   const handleSelectExistingTeam = (teamId, bracketId = null) => {
     const team = teams.find(t => t.id === teamId);
     if (team && !createdTeams.find(t => t.id === team.id)) {
@@ -291,7 +303,7 @@ useEffect(() => {
     }
   };
 
-  // NEW: Handle bracket assignment for existing teams
+  // Handle bracket assignment for existing teams
   const handleAssignTeamToBracket = (teamId, bracketId) => {
     setTeamBracketAssignments(prev => ({
       ...prev,
@@ -299,7 +311,7 @@ useEffect(() => {
     }));
   };
 
-  // NEW: Handle removing team assignment
+  // Handle removing team assignment
   const handleRemoveTeamAssignment = (teamId) => {
     setTeamBracketAssignments(prev => {
       const newAssignments = { ...prev };
@@ -329,7 +341,7 @@ useEffect(() => {
     return filtered;
   };
 
-  // NEW: Get bracket options for team assignment
+  // Get bracket options for team assignment
   const getBracketOptions = () => {
     return Array.from({ length: eventData.numberOfBrackets }, (_, index) => ({
       id: `bracket-${index + 1}`,
@@ -337,7 +349,7 @@ useEffect(() => {
     }));
   };
 
-  // NEW: Get assigned bracket name for a team
+  // Get assigned bracket name for a team
   const getAssignedBracketName = (teamId) => {
     const bracketId = teamBracketAssignments[teamId];
     if (!bracketId) return "Not assigned";
@@ -371,23 +383,23 @@ useEffect(() => {
     }));
   };
 
- const getAvailableTeamsForBracket = (bracketId) => {
-  const currentBracket = brackets.find(b => b.id === bracketId);
-  if (!currentBracket) return [];
+  const getAvailableTeamsForBracket = (bracketId) => {
+    const currentBracket = brackets.find(b => b.id === bracketId);
+    if (!currentBracket) return [];
 
-  // If no sport selected yet, return empty
-  if (!currentBracket.sport) return [];
+    // If no sport selected yet, return empty
+    if (!currentBracket.sport) return [];
 
-  const otherBracketsTeams = brackets
-    .filter(b => b.id !== bracketId)
-    .flatMap(b => b.selectedTeamIds);
+    const otherBracketsTeams = brackets
+      .filter(b => b.id !== bracketId)
+      .flatMap(b => b.selectedTeamIds);
 
-  // Return teams that match the sport AND (are not in other brackets OR are already selected in this bracket)
-  return createdTeams.filter(team => 
-    team.sport.toLowerCase() === currentBracket.sport.toLowerCase() &&
-    (!otherBracketsTeams.includes(team.id) || currentBracket.selectedTeamIds.includes(team.id))
-  );
-};
+    // Return teams that match the sport AND (are not in other brackets OR are already selected in this bracket)
+    return createdTeams.filter(team => 
+      team.sport.toLowerCase() === currentBracket.sport.toLowerCase() &&
+      (!otherBracketsTeams.includes(team.id) || currentBracket.selectedTeamIds.includes(team.id))
+    );
+  };
 
   const handleCreateAllBrackets = async () => {
     console.log("=== CREATING MULTIPLE BRACKETS ===");
@@ -397,11 +409,10 @@ useEffect(() => {
       return;
     }
 
-
     // Validate all brackets
     for (let i = 0; i < brackets.length; i++) {
       const bracket = brackets[i];
-      console.log(`Validating Bracket ${i + 1}:`, bracket); // Debug log
+      console.log(`Validating Bracket ${i + 1}:`, bracket);
       
       if (!bracket.sport || bracket.sport.trim() === '') {
         setValidationError(`Bracket ${i + 1}: Please select a sport.`);
@@ -425,7 +436,7 @@ useEffect(() => {
         const bracket = brackets[i];
         const sportType = bracket.sport.toLowerCase();
         const bracketName = bracket.bracketName || 
-          `${createdEvent.name} - ${capitalize(bracket.sport)} Bracket ${i + 1}`;
+          `${createdEvent.name} - ${capitalize(bracket.sport)} Bracket`;
         
         const requestBody = {
           event_id: createdEvent.id,
@@ -498,6 +509,7 @@ useEffect(() => {
     setTeamBracketAssignments({});
     setBrackets([]);
     setCreatedBrackets([]);
+    setExpandedTeams({});
     setValidationError("");
   };
 
@@ -664,12 +676,12 @@ useEffect(() => {
                     </button>
                   </div>
 
-                  {/* Created/Selected Teams Summary - UPDATED WITH BRACKET ASSIGNMENT */}
+                  {/* Created/Selected Teams Summary */}
                   {createdTeams.length > 0 && (
                     <div className="created-teams-summary">
                       <h3>Selected Teams ({createdTeams.length})</h3>
                       <div className="teams-summary-grid">
-                         {createdTeams.map(team => (
+                        {createdTeams.map(team => (
                           <div key={team.id} className="team-summary-card">
                             <div className="team-summary-content">
                               <div className="team-info-top">
@@ -682,11 +694,11 @@ useEffect(() => {
                                   ×
                                 </button>
                               </div>
-                             <span className={`admin-teams-sport-badge admin-teams-sport-${team.sport.toLowerCase()}`}>
-                              {capitalize(team.sport)}
-                            </span>
+                              <span className={`admin-teams-sport-badge admin-teams-sport-${team.sport.toLowerCase()}`}>
+                                {capitalize(team.sport)}
+                              </span>
                               <span>{team.players?.length || 0} players</span>
-                              {/* NEW: Bracket Assignment Dropdown at bottom */}
+                              {/* Bracket Assignment Dropdown */}
                               {eventData.numberOfBrackets > 1 && (
                                 <select
                                   value={teamBracketAssignments[team.id] || ""}
@@ -714,7 +726,6 @@ useEffect(() => {
                             </div>
                           </div>
                         ))}
-
                       </div>
                     </div>
                   )}
@@ -830,33 +841,33 @@ useEffect(() => {
                     </div>
                   )}
 
-                  {/* Select Existing Team Mode - TABULAR VIEW WITH BRACKET ASSIGNMENT */}
+                  {/* Select Existing Team Mode */}
                   {teamMode === "select" && (
                     <div className="bracket-form">
                       {/* Compact Search & Filter Bar */}
-                     <div className="team-search-filter-bar">
-                      <div className="search-input-wrapper">
-                        <FaSearch className="search-icon" />
-                        <input
-                          type="text"
-                          placeholder="Search teams..."
-                          className="team-search-input"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                      <div className="team-search-filter-bar">
+                        <div className="search-input-wrapper">
+                          <FaSearch className="search-icon" />
+                          <input
+                            type="text"
+                            placeholder="Search teams..."
+                            className="team-search-input"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        <select 
+                          className="team-sport-filter"
+                          value={sportFilter}
+                          onChange={(e) => setSportFilter(e.target.value)}
+                        >
+                          <option value="all">All Sports ({teams.filter(t => !createdTeams.find(ct => ct.id === t.id)).length})</option>
+                          <option value="basketball">Basketball ({teams.filter(t => t.sport.toLowerCase() === "basketball" && !createdTeams.find(ct => ct.id === t.id)).length})</option>
+                          <option value="volleyball">Volleyball ({teams.filter(t => t.sport.toLowerCase() === "volleyball" && !createdTeams.find(ct => ct.id === t.id)).length})</option>
+                        </select>
                       </div>
-                      <select 
-                        className="team-sport-filter"
-                        value={sportFilter}
-                        onChange={(e) => setSportFilter(e.target.value)}
-                      >
-                        <option value="all">All Sports ({teams.filter(t => !createdTeams.find(ct => ct.id === t.id)).length})</option>
-                        <option value="basketball">Basketball ({teams.filter(t => t.sport.toLowerCase() === "basketball" && !createdTeams.find(ct => ct.id === t.id)).length})</option>
-                        <option value="volleyball">Volleyball ({teams.filter(t => t.sport.toLowerCase() === "volleyball" && !createdTeams.find(ct => ct.id === t.id)).length})</option>
-                      </select>
-                    </div>
 
-                      {/* Tabular Team List - UPDATED WITH BRACKET ASSIGNMENT */}
+                      {/* Tabular Team List */}
                       <div className="teams-table-container">
                         {teams.length === 0 ? (
                           <p className="empty-state">
@@ -891,7 +902,7 @@ useEffect(() => {
                                     </span>
                                   </td>
                                   <td>{team.players?.length || 0} players</td>
-                                  {/* NEW: Bracket Assignment Column */}
+                                  {/* Bracket Assignment Column */}
                                   {eventData.numberOfBrackets > 1 && (
                                     <td>
                                       <select
@@ -968,7 +979,7 @@ useEffect(() => {
                     <div key={bracket.id} className="multi-bracket-section">
                       <div className="bracket-section-header">
                         <h3>Bracket {index + 1}</h3>
-                        {/* NEW: Show pre-assigned teams count */}
+                        {/* Show pre-assigned teams count */}
                         {bracket.selectedTeamIds.length > 0 && (
                           <div style={{ 
                             color: '#10b981', 
@@ -997,26 +1008,26 @@ useEffect(() => {
                           />
                         </div>
 
-                       <div className="bracket-form-group">
-                      <label htmlFor={`sport-${bracket.id}`}>Sport *</label>
-                      <select
-                        id={`sport-${bracket.id}`}
-                        name="sport"
-                        value={bracket.sport}
-                        onChange={(e) => handleBracketInputChange(bracket.id, 'sport', e.target.value)}
-                        disabled={bracket.selectedTeamIds.length > 0} // Disable if teams already assigned
-                      >
-                        <option value="">Select a sport</option>
-                        {Object.keys(positions).map((sport) => (
-                          <option key={sport} value={sport}>{sport}</option>
-                        ))}
-                      </select>
-                      {bracket.selectedTeamIds.length > 0 && (
-                        <small style={{ color: '#10b981', fontSize: '12px', marginTop: '5px', display: 'block' }}>
-                          Sport auto-detected from assigned teams
-                        </small>
-                      )}
-                    </div>
+                        <div className="bracket-form-group">
+                          <label htmlFor={`sport-${bracket.id}`}>Sport *</label>
+                          <select
+                            id={`sport-${bracket.id}`}
+                            name="sport"
+                            value={bracket.sport}
+                            onChange={(e) => handleBracketInputChange(bracket.id, 'sport', e.target.value)}
+                            disabled={bracket.selectedTeamIds.length > 0} // Disable if teams already assigned
+                          >
+                            <option value="">Select a sport</option>
+                            {Object.keys(positions).map((sport) => (
+                              <option key={sport} value={sport}>{sport}</option>
+                            ))}
+                          </select>
+                          {bracket.selectedTeamIds.length > 0 && (
+                            <small style={{ color: '#10b981', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                              Sport auto-detected from assigned teams
+                            </small>
+                          )}
+                        </div>
 
                         <div className="bracket-form-group">
                           <label htmlFor={`bracketType-${bracket.id}`}>Bracket Type *</label>
@@ -1050,10 +1061,7 @@ useEffect(() => {
                                   createdTeams
                                     .filter(team => bracket.selectedTeamIds.includes(String(team.id)) || bracket.selectedTeamIds.includes(Number(team.id)))
                                     .map((team, idx) => (
-                                      <div 
-                                        key={team.id} 
-                                        className="assigned-team-item"
-                                      >
+                                      <div key={team.id} className="assigned-team-item">
                                         <div className="team-number">{idx + 1}</div>
                                         <div className="assigned-team-details">
                                           <div className="team-name-row">
@@ -1061,16 +1069,72 @@ useEffect(() => {
                                             <span className={`bracket-sport-badge ${team.sport.toLowerCase() === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
                                               {capitalize(team.sport)}
                                             </span>
+                                            <button 
+                                              className="team-expand-btn"
+                                              onClick={() => toggleTeamDetails(team.id)}
+                                            >
+                                              {expandedTeams[team.id] ? <FaChevronUp /> : <FaChevronDown />}
+                                            </button>
                                           </div>
                                           <div className="team-meta">
                                             {team.players?.length || 0} players registered
                                           </div>
                                         </div>
+
+                                        {/* Team Players Dropdown */}
+                                        {expandedTeams[team.id] && (
+                                          <div className="team-players-dropdown">
+                                            <div className="players-dropdown-header">
+                                              <h4>Players in {team.name}</h4>
+                                              <span className="players-count">
+                                                {team.players?.length || 0} players
+                                              </span>
+                                            </div>
+                                            <div className="players-table-container">
+                                              <table className="players-table">
+                                                <thead>
+                                                  <tr>
+                                                    <th>Jersey #</th>
+                                                    <th>Player Name</th>
+                                                    <th>Position</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {team.players && team.players.length > 0 ? (
+                                                    team.players.map((player, playerIndex) => (
+                                                      <tr key={playerIndex}>
+                                                        <td className="jersey-cell">
+                                                          <span className="jersey-number">
+                                                            {player.jerseyNumber}
+                                                          </span>
+                                                        </td>
+                                                        <td className="player-name-cell">
+                                                          {player.name}
+                                                        </td>
+                                                        <td className="position-cell">
+                                                          <span className="position-badge">
+                                                            {player.position}
+                                                          </span>
+                                                        </td>
+                                                      </tr>
+                                                    ))
+                                                  ) : (
+                                                    <tr>
+                                                      <td colSpan="3" className="no-players-message">
+                                                        No players registered for this team
+                                                      </td>
+                                                    </tr>
+                                                  )}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
                                     ))
                                 )}
                               </div>
-                             <div className="assigned-teams-summary">
+                              <div className="assigned-teams-summary">
                                 <FaCheckCircle style={{ color: '#10b981', marginRight: '6px' }} />
                                 <strong>{bracket.selectedTeamIds.length} teams </strong>assigned from Step 2
                               </div>
@@ -1150,84 +1214,221 @@ useEffect(() => {
       </div>
 
       <style jsx>{`
+        .assigned-teams-list {
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          padding: 15px;
+          margin-top: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
 
-      .assigned-teams-list {
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        padding: 15px;
-        margin-top: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
+        .assigned-team-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          padding: 12px;
+          background: #1a2332;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          transition: all 0.2s ease;
+        }
 
-      .assigned-team-item {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        padding: 12px;
-        background: #1a2332;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 6px;
-        transition: all 0.2s ease;
-      }
+        .assigned-team-item:hover {
+          background: rgba(33, 150, 243, 0.1);
+          border-color: rgba(33, 150, 243, 0.3);
+        }
 
-      .assigned-team-item:hover {
-        background: rgba(33, 150, 243, 0.1);
-        border-color: rgba(33, 150, 243, 0.3);
-      }
+        .team-number {
+          width: 32px;
+          height: 32px;
+          background: #2196f3;
+          color: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 14px;
+          flex-shrink: 0;
+        }
 
-      .team-number {
-        width: 32px;
-        height: 32px;
-        background: #2196f3;
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 14px;
-        flex-shrink: 0;
-      }
+        .assigned-team-details {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
 
-      .assigned-team-details {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
+        .team-name-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
 
-      .team-name-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
+        .team-name-row strong {
+          color: #e2e8f0;
+          font-size: 15px;
+          flex: 1;
+        }
 
-      .team-name-row strong {
-        color: #e2e8f0;
-        font-size: 15px;
-      }
+        .team-meta {
+          color: #94a3b8;
+          font-size: 13px;
+        }
 
-      .team-meta {
-        color: #94a3b8;
-        font-size: 13px;
-      }
+        .team-expand-btn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: #e2e8f0;
+          width: 28px;
+          height: 28px;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
 
-      .assigned-teams-summary {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 12px;
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        border-radius: 6px;
-        margin-top: 10px;
-        color: #10b981;
-        font-size: 14px;
-      }
+        .team-expand-btn:hover {
+          background: rgba(33, 150, 243, 0.3);
+          border-color: #2196f3;
+        }
+
+        .team-players-dropdown {
+          margin-top: 15px;
+          padding: 15px;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .players-dropdown-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .players-dropdown-header h4 {
+          margin: 0;
+          color: #e2e8f0;
+          font-size: 16px;
+        }
+
+        .players-count {
+          color: #94a3b8;
+          font-size: 14px;
+          background: rgba(255, 255, 255, 0.1);
+          padding: 4px 8px;
+          border-radius: 12px;
+        }
+
+        .players-table-container {
+          overflow-x: auto;
+        }
+
+        .players-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+        }
+
+        .players-table th {
+          background: rgba(0, 0, 0, 0.4);
+          color: #e2e8f0;
+          padding: 12px 15px;
+          text-align: left;
+          font-weight: 600;
+          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .players-table td {
+          padding: 12px 15px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          color: #cbd5e1;
+        }
+
+        .players-table tr:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .jersey-cell {
+          width: 80px;
+        }
+
+        .jersey-number {
+          display: inline-block;
+          background: #2196f3;
+          color: white;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 12px;
+        }
+
+        .player-name-cell {
+          color: #e2e8f0;
+          font-weight: 500;
+        }
+
+        .position-cell {
+          width: 150px;
+        }
+
+        .position-badge {
+          display: inline-block;
+          background: rgba(255, 255, 255, 0.1);
+          color: #cbd5e1;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .no-players-message {
+          text-align: center;
+          color: #94a3b8;
+          font-style: italic;
+          padding: 20px;
+        }
+
+        .assigned-teams-summary {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          border-radius: 6px;
+          margin-top: 10px;
+          color: #10b981;
+          font-size: 14px;
+        }
+
         .multi-bracket-section {
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1258,10 +1459,6 @@ useEffect(() => {
 
         .bracket-summary-item:last-child {
           border-bottom: none;
-        }
-
-        .bracket-assignment-info {
-          margin-top: 5px;
         }
 
         /* Rest of the existing styles remain the same */
@@ -1393,7 +1590,6 @@ useEffect(() => {
           background: #b91c1c;
         }
 
-
         .remove-team-btn {
           background: #dc2626;
           color: white;
@@ -1453,7 +1649,7 @@ useEffect(() => {
           align-items: stretch;
         }
 
-       .search-input-wrapper {
+        .search-input-wrapper {
           position: relative;
           flex: 1;
           min-width: 0;
@@ -1470,22 +1666,21 @@ useEffect(() => {
           z-index: 2;
         }
 
+        .team-search-input {
+          width: 100%;
+          padding: 10px 12px 10px 36px;
+          background: #1a2332;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          color: #e2e8f0;
+          font-size: 14px;
+          box-sizing: border-box;
+        }
 
-      .team-search-input {
-        width: 100%;
-        padding: 10px 12px 10px 36px;
-        background: #1a2332;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 6px;
-        color: #e2e8f0;
-        font-size: 14px;
-        box-sizing: border-box;
-      }
-
-       .team-search-input:focus {
-        outline: none;
-        border-color: #2196f3;
-      }
+        .team-search-input:focus {
+          outline: none;
+          border-color: #2196f3;
+        }
 
         .team-sport-filter {
           padding: 10px 15px;
@@ -1723,6 +1918,22 @@ useEffect(() => {
 
           .multi-bracket-section {
             padding: 15px;
+          }
+
+          .team-name-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+          }
+
+          .team-expand-btn {
+            align-self: flex-end;
+          }
+
+          .players-table th,
+          .players-table td {
+            padding: 8px 10px;
+            font-size: 12px;
           }
         }
       `}</style>
