@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaTrophy, FaCrown, FaChartBar, FaEye, FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaTrophy, FaCrown, FaChartBar, FaEye, FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaChevronLeft, FaChevronRight, FaUsers, FaUserPlus, FaUserEdit } from "react-icons/fa";
 import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import "../../style/Admin_Events.css";
@@ -39,6 +39,79 @@ const AdminEvents = ({ sidebarOpen }) => {
 
   // Round filter state for matches
   const [roundFilter, setRoundFilter] = useState("all");
+
+  // Edit Team modal state - UPDATED FOR PLAYER MANAGEMENT WITH POSITION DROPDOWN
+  const [editTeamModal, setEditTeamModal] = useState({ 
+    show: false, 
+    bracket: null, 
+    teams: [], 
+    loading: false,
+    selectedTeam: null,
+    editingPlayer: null,
+    newPlayer: { name: '', position: '', jersey_number: '' }
+  });
+
+  // Sport position mappings
+  const sportPositions = {
+    basketball: [
+      'Point Guard',
+      'Shooting Guard', 
+      'Small Forward',
+      'Power Forward',
+      'Center'
+    ],
+    volleyball: [
+      'Setter',
+      'Outside Hitter',
+      'Opposite Hitter',
+      'Middle Blocker',
+      'Libero',
+      'Defensive Specialist'
+    ],
+    football: [
+      'Quarterback',
+      'Running Back',
+      'Wide Receiver',
+      'Tight End',
+      'Offensive Lineman',
+      'Defensive Lineman',
+      'Linebacker',
+      'Cornerback',
+      'Safety',
+      'Kicker',
+      'Punter'
+    ],
+    soccer: [
+      'Goalkeeper',
+      'Defender',
+      'Center Back',
+      'Full Back',
+      'Midfielder',
+      'Defensive Midfielder',
+      'Attacking Midfielder',
+      'Winger',
+      'Forward',
+      'Striker'
+    ],
+    baseball: [
+      'Pitcher',
+      'Catcher',
+      'First Baseman',
+      'Second Baseman',
+      'Third Baseman',
+      'Shortstop',
+      'Left Fielder',
+      'Center Fielder',
+      'Right Fielder',
+      'Designated Hitter'
+    ]
+  };
+
+  // Get positions for current bracket sport
+  const getPositionsForSport = (sportType) => {
+    const sport = sportType?.toLowerCase() || 'basketball';
+    return sportPositions[sport] || sportPositions.basketball;
+  };
 
   // Format round display based on bracket type and round number
   const formatRoundDisplay = (match) => {
@@ -291,6 +364,268 @@ const AdminEvents = ({ sidebarOpen }) => {
 
   const handleEditBracket = (bracket) => {
     console.log("Edit bracket:", bracket);
+  };
+
+  // Edit Team handler - FIXED ENDPOINT
+  const handleEditTeam = async (bracket) => {
+    setEditTeamModal({ 
+      show: true, 
+      bracket: bracket, 
+      teams: [], 
+      loading: true,
+      selectedTeam: null,
+      editingPlayer: null,
+      newPlayer: { name: '', position: '', jersey_number: '' }
+    });
+
+    try {
+      // Fetch teams in this bracket - USE CORRECT ENDPOINT
+      const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}`);
+      
+      if (!teamsRes.ok) {
+        throw new Error(`HTTP error! status: ${teamsRes.status}`);
+      }
+      
+      const teams = await teamsRes.json();
+      
+      // Fetch players for each team
+      const teamsWithPlayers = await Promise.all(
+        teams.map(async (team) => {
+          try {
+            const playersRes = await fetch(`http://localhost:5000/api/teams/${team.id}`);
+            if (playersRes.ok) {
+              const teamWithPlayers = await playersRes.json();
+              return { ...team, players: teamWithPlayers.players || [] };
+            }
+            return { ...team, players: [] };
+          } catch (err) {
+            console.error(`Error fetching players for team ${team.id}:`, err);
+            return { ...team, players: [] };
+          }
+        })
+      );
+      
+      setEditTeamModal(prev => ({
+        ...prev,
+        teams: teamsWithPlayers,
+        loading: false,
+        error: null
+      }));
+    } catch (err) {
+      console.error('Error fetching teams:', err);
+      setEditTeamModal(prev => ({
+        ...prev,
+        loading: false,
+        error: `Failed to load teams: ${err.message}`
+      }));
+    }
+  };
+
+  // Select a team to manage players
+  const handleSelectTeam = (team) => {
+    setEditTeamModal(prev => ({
+      ...prev,
+      selectedTeam: team,
+      editingPlayer: null,
+      newPlayer: { name: '', position: '', jersey_number: '' }
+    }));
+  };
+
+  // Back to team list
+  const handleBackToTeams = () => {
+    setEditTeamModal(prev => ({
+      ...prev,
+      selectedTeam: null,
+      editingPlayer: null,
+      newPlayer: { name: '', position: '', jersey_number: '' }
+    }));
+  };
+
+  // Start editing a player
+  const handleEditPlayer = (player) => {
+    setEditTeamModal(prev => ({
+      ...prev,
+      editingPlayer: { ...player },
+      newPlayer: { name: '', position: '', jersey_number: '' }
+    }));
+  };
+
+  // Cancel editing player
+  const handleCancelEditPlayer = () => {
+    setEditTeamModal(prev => ({
+      ...prev,
+      editingPlayer: null,
+      newPlayer: { name: '', position: '', jersey_number: '' }
+    }));
+  };
+
+  // Update player - FIXED FOR IMMEDIATE UPDATE
+  // Update player - FIXED FOR IMMEDIATE UPDATE
+const handleUpdatePlayer = async () => {
+  const { editingPlayer, selectedTeam } = editTeamModal;
+  
+  if (!editingPlayer.name || !editingPlayer.position || !editingPlayer.jersey_number) {
+    alert("Please fill in all player fields");
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players/${editingPlayer.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: editingPlayer.name,
+        position: editingPlayer.position,
+        jerseyNumber: editingPlayer.jersey_number
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    // Update the UI immediately - FIXED STATE UPDATE
+    setEditTeamModal(prev => {
+      const updatedTeams = prev.teams.map(team => {
+        if (team.id === selectedTeam.id) {
+          const updatedPlayers = team.players.map(player => 
+            player.id === editingPlayer.id ? { ...editingPlayer } : player
+          );
+          return { ...team, players: updatedPlayers };
+        }
+        return team;
+      });
+
+      // Also update selectedTeam if it's the current one
+      const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
+
+      return {
+        ...prev,
+        teams: updatedTeams,
+        selectedTeam: updatedSelectedTeam,
+        editingPlayer: null
+      };
+    });
+
+    alert("Player updated successfully!");
+  } catch (err) {
+    console.error('Error updating player:', err);
+    alert('Failed to update player: ' + err.message);
+  }
+};
+
+// Add new player - FIXED FOR IMMEDIATE UPDATE
+const handleAddPlayer = async () => {
+  const { newPlayer, selectedTeam } = editTeamModal;
+  
+  if (!newPlayer.name || !newPlayer.position || !newPlayer.jersey_number) {
+    alert("Please fill in all player fields");
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: newPlayer.name,
+        position: newPlayer.position,
+        jerseyNumber: newPlayer.jersey_number
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    const newPlayerData = await res.json();
+
+    // Update the UI immediately - FIXED STATE UPDATE
+    setEditTeamModal(prev => {
+      const updatedTeams = prev.teams.map(team => {
+        if (team.id === selectedTeam.id) {
+          const updatedPlayers = [...team.players, { ...newPlayerData }];
+          return { ...team, players: updatedPlayers };
+        }
+        return team;
+      });
+
+      // Also update selectedTeam if it's the current one
+      const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
+
+      return {
+        ...prev,
+        teams: updatedTeams,
+        selectedTeam: updatedSelectedTeam,
+        newPlayer: { name: '', position: '', jersey_number: '' }
+      };
+    });
+
+    alert("Player added successfully!");
+  } catch (err) {
+    console.error('Error adding player:', err);
+    alert('Failed to add player: ' + err.message);
+  }
+};
+
+// Delete player - FIXED FOR IMMEDIATE UPDATE
+const handleDeletePlayer = async (playerId) => {
+  if (!confirm('Are you sure you want to delete this player?')) {
+    return;
+  }
+
+  const { selectedTeam } = editTeamModal;
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players/${playerId}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    // Update the UI immediately - FIXED STATE UPDATE
+    setEditTeamModal(prev => {
+      const updatedTeams = prev.teams.map(team => {
+        if (team.id === selectedTeam.id) {
+          const updatedPlayers = team.players.filter(player => player.id !== playerId);
+          return { ...team, players: updatedPlayers };
+        }
+        return team;
+      });
+
+      // Also update selectedTeam if it's the current one
+      const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
+
+      return {
+        ...prev,
+        teams: updatedTeams,
+        selectedTeam: updatedSelectedTeam
+      };
+    });
+
+    alert("Player deleted successfully!");
+  } catch (err) {
+    console.error('Error deleting player:', err);
+    alert('Failed to delete player: ' + err.message);
+  }
+};
+
+
+
+
+  // Close edit team modal
+  const closeEditTeamModal = () => {
+    setEditTeamModal({ 
+      show: false, 
+      bracket: null, 
+      teams: [], 
+      loading: false,
+      selectedTeam: null,
+      editingPlayer: null,
+      newPlayer: { name: '', position: '', jersey_number: '' }
+    });
   };
 
   // Save edited event
@@ -621,7 +956,7 @@ const AdminEvents = ({ sidebarOpen }) => {
                                     <button
                                       onClick={() => handleEditEvent(event)}
                                       className="bracket-view-btn"
-                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--purple-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--primary-color)', flex: '1 1 auto', minWidth: '55px' }}
                                       title="Edit Event"
                                     >
                                       <FaEdit />
@@ -664,7 +999,7 @@ const AdminEvents = ({ sidebarOpen }) => {
                                     <button
                                       onClick={() => handleEditEvent(event)}
                                       className="bracket-view-btn"
-                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--purple-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--primary-color)', flex: '1 1 auto', minWidth: '55px' }}
                                       title="Edit Event"
                                     >
                                       <FaEdit />
@@ -801,11 +1136,6 @@ const AdminEvents = ({ sidebarOpen }) => {
             {/* Results Tab */}
             {activeTab === "results" && selectedEvent && selectedBracket && (
               <div className="bracket-visualization-section">
-                {/* Back to Events Button */}
-                <div style={{ marginBottom: '20px' }}>
-                
-                </div>
-
                 <div className="event-details-header">
                   <h2>{selectedBracket.name}</h2>
                   <div className="event-details-info">
@@ -845,7 +1175,6 @@ const AdminEvents = ({ sidebarOpen }) => {
                         {/* Round Filter Only - Removed Show per page */}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '30px' }}>
                           <div style={{ display: 'flex', gap: '15px', alignItems: 'center', minWidth: '200px' }}>
-                            {/* Add this label */}
                             <label style={{ 
                               fontSize: '14px', 
                               color: 'var(--text-secondary)',
@@ -1096,11 +1425,32 @@ const AdminEvents = ({ sidebarOpen }) => {
                       <div className="awards_standings_tab_content">
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '24px' }}>
                           <button
+                            onClick={() => handleEditTeam(selectedBracket)}
+                            style={{ 
+                              fontSize: '13px', 
+                              padding: '10px 16px', 
+                              background: 'var(--success-color)', 
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 'var(--border-radius)',
+                              cursor: 'pointer',
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '8px', 
+                              width: 'auto',
+                              whiteSpace: 'nowrap',
+                              transition: 'var(--transition)'
+                            }}
+                            title="Manage Team Players"
+                          >
+                            <FaUsers /> Edit Teams
+                          </button>
+                          <button
                             onClick={() => handleEditBracket(selectedBracket)}
                             style={{ 
                               fontSize: '13px', 
                               padding: '10px 16px', 
-                              background: 'var(--purple-color)', 
+                              background: 'var(--primary-color)', 
                               color: 'white',
                               border: 'none',
                               borderRadius: 'var(--border-radius)',
@@ -1224,9 +1574,350 @@ const AdminEvents = ({ sidebarOpen }) => {
                 <button
                   onClick={saveEventEdit}
                   className="admin-teams-submit-btn"
-                  style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--primary-color)' }}
                 >
                   <FaSave /> Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Team Modal - UPDATED FOR PLAYER MANAGEMENT WITH POSITION DROPDOWN */}
+      {editTeamModal.show && editTeamModal.bracket && (
+        <div className="admin-teams-modal-overlay" onClick={closeEditTeamModal}>
+          <div className="admin-teams-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1000px', maxHeight: '90vh' }}>
+            <div className="admin-teams-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <FaUsers style={{ color: 'var(--success-color)' }} />
+                <h2 style={{ margin: 0 }}>
+                  {editTeamModal.selectedTeam 
+                    ? `Manage Players - ${editTeamModal.selectedTeam.name}` 
+                    : `Manage Teams - ${editTeamModal.bracket.name}`}
+                </h2>
+              </div>
+              <button onClick={closeEditTeamModal} className="admin-teams-modal-close">
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div className="admin-teams-modal-body" style={{ overflow: 'auto' }}>
+              {editTeamModal.loading ? (
+                <div className="awards_standings_loading">
+                  <div className="awards_standings_spinner"></div>
+                  <p>Loading teams...</p>
+                </div>
+              ) : editTeamModal.error ? (
+                <div className="bracket-error">
+                  <p>{editTeamModal.error}</p>
+                  <button 
+                    onClick={() => handleEditTeam(editTeamModal.bracket)}
+                    className="bracket-view-btn"
+                    style={{ marginTop: '10px' }}
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : !editTeamModal.selectedTeam ? (
+                // Team Selection View
+                <div>
+                  <h3 style={{ marginBottom: '15px', color: 'var(--text-primary)' }}>
+                    Select a Team to Manage Players ({editTeamModal.teams.length})
+                  </h3>
+                  {editTeamModal.teams.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
+                      No teams assigned to this bracket yet.
+                    </p>
+                  ) : (
+                    <div className="awards_standings_table_container">
+                      <table className="awards_standings_table">
+                        <thead>
+                          <tr>
+                            <th>Team Name</th>
+                            <th>Sport</th>
+                            <th>Players</th>
+                            <th style={{ width: '150px', textAlign: 'center' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editTeamModal.teams.map(team => (
+                            <tr key={team.assignment_id || team.id}>
+                              <td style={{ fontWeight: '600' }}>{team.name}</td>
+                              <td>
+                                <span className={`bracket-sport-badge ${team.sport === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                                  {team.sport?.toUpperCase() || 'N/A'}
+                                </span>
+                              </td>
+                              <td>{team.players?.length || 0} players</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <button
+                                  onClick={() => handleSelectTeam(team)}
+                                  className="bracket-view-btn"
+                                  style={{ 
+                                    fontSize: '12px', 
+                                    padding: '6px 12px', 
+                                    background: 'var(--primary-color)',
+                                    width: '100%'
+                                  }}
+                                  title="Manage Players"
+                                >
+                                  <FaUserEdit /> Manage Players
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Player Management View
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <button
+                      onClick={handleBackToTeams}
+                      className="bracket-player-management-back-btn"
+                      style={{ 
+                        fontSize: '12px', 
+                        padding: '6px 12px',
+                        background: 'var(--text-muted)'
+                      }}
+                    >
+                      ← Back to Teams
+                    </button>
+                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>
+                      {editTeamModal.selectedTeam.name} - Players ({editTeamModal.selectedTeam.players?.length || 0})
+                    </h3>
+                  </div>
+
+                  {/* Sport Info - REMOVED THE TEXT YOU WANTED TO REMOVE */}
+                  <div style={{ 
+                    background: 'var(--primary-color)', 
+                    color: 'white',
+                    padding: '12px 16px', 
+                    borderRadius: '6px', 
+                    marginBottom: '20px',
+                    fontSize: '14px'
+                  }}>
+                    <strong>Sport:</strong> {editTeamModal.bracket.sport_type?.toUpperCase() || 'BASKETBALL'}
+                  </div>
+
+                  {/* Add New Player Form */}
+                  <div style={{ background: 'var(--background-secondary)', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+                    <h4 style={{ marginBottom: '15px', color: 'var(--text-primary)' }}>
+                      <FaUserPlus style={{ marginRight: '8px' }} /> Add New Player
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Name *</label>
+                        <input
+                          type="text"
+                          value={editTeamModal.newPlayer.name}
+                          onChange={(e) => setEditTeamModal(prev => ({
+                            ...prev,
+                            newPlayer: { ...prev.newPlayer, name: e.target.value }
+                          }))}
+                          placeholder="Player name"
+                          style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Position *</label>
+                        <select
+                          value={editTeamModal.newPlayer.position}
+                          onChange={(e) => setEditTeamModal(prev => ({
+                            ...prev,
+                            newPlayer: { ...prev.newPlayer, position: e.target.value }
+                          }))}
+                          style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                        >
+                          <option value="">Select Position</option>
+                          {getPositionsForSport(editTeamModal.bracket.sport_type).map(position => (
+                            <option key={position} value={position}>{position}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Jersey Number *</label>
+                        <input
+                          type="number"
+                          value={editTeamModal.newPlayer.jersey_number}
+                          onChange={(e) => setEditTeamModal(prev => ({
+                            ...prev,
+                            newPlayer: { ...prev.newPlayer, jersey_number: e.target.value }
+                          }))}
+                          placeholder="e.g., 23"
+                          style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                        />
+                      </div>
+                      <button
+                        onClick={handleAddPlayer}
+                        className="bracket-view-btn"
+                        style={{ 
+                          padding: '8px 16px',
+                          background: 'var(--success-color)',
+                          height: 'fit-content'
+                        }}
+                      >
+                        <FaPlus /> Add
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Edit Player Form */}
+                  {editTeamModal.editingPlayer && (
+                    <div style={{ background: 'var(--primary-color)', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+                      <h4 style={{ marginBottom: '15px', color: 'white' }}>
+                        <FaUserEdit style={{ marginRight: '8px' }} /> Edit Player
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: '10px', alignItems: 'end' }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'white' }}>Name *</label>
+                          <input
+                            type="text"
+                            value={editTeamModal.editingPlayer.name}
+                            onChange={(e) => setEditTeamModal(prev => ({
+                              ...prev,
+                              editingPlayer: { ...prev.editingPlayer, name: e.target.value }
+                            }))}
+                            style={{ width: '100%', padding: '8px 12px', border: '1px solid white', borderRadius: '4px' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'white' }}>Position *</label>
+                          <select
+                            value={editTeamModal.editingPlayer.position}
+                            onChange={(e) => setEditTeamModal(prev => ({
+                              ...prev,
+                              editingPlayer: { ...prev.editingPlayer, position: e.target.value }
+                            }))}
+                            style={{ width: '100%', padding: '8px 12px', border: '1px solid white', borderRadius: '4px' }}
+                          >
+                            <option value="">Select Position</option>
+                            {getPositionsForSport(editTeamModal.bracket.sport_type).map(position => (
+                              <option key={position} value={position}>{position}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'white' }}>Jersey Number *</label>
+                          <input
+                            type="number"
+                            value={editTeamModal.editingPlayer.jersey_number}
+                            onChange={(e) => setEditTeamModal(prev => ({
+                              ...prev,
+                              editingPlayer: { ...prev.editingPlayer, jersey_number: e.target.value }
+                            }))}
+                            style={{ width: '100%', padding: '8px 12px', border: '1px solid white', borderRadius: '4px' }}
+                          />
+                        </div>
+                        <button
+                          onClick={handleUpdatePlayer}
+                          className="bracket-view-btn"
+                          style={{ 
+                            padding: '8px 16px',
+                            background: 'var(--success-color)',
+                            height: 'fit-content'
+                          }}
+                        >
+                          <FaSave /> Save
+                        </button>
+                        <button
+                          onClick={handleCancelEditPlayer}
+                          className="bracket-view-btn"
+                          style={{ 
+                            padding: '8px 16px',
+                            background: 'var(--text-muted)',
+                            height: 'fit-content'
+                          }}
+                        >
+                          <FaTimes /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Players List */}
+                  <div className="awards_standings_table_container">
+                    <table className="awards_standings_table">
+                      <thead>
+                        <tr>
+                          <th>Jersey #</th>
+                          <th>Name</th>
+                          <th>Position</th>
+                          <th style={{ width: '150px', textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editTeamModal.selectedTeam.players?.length === 0 ? (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>
+                              No players found. Add players using the form above.
+                            </td>
+                          </tr>
+                        ) : (
+                          editTeamModal.selectedTeam.players?.map(player => (
+                            <tr key={player.id}>
+                              <td style={{ fontWeight: '600', fontSize: '16px' }}>#{player.jersey_number}</td>
+                              <td style={{ fontWeight: '600' }}>{player.name}</td>
+                              <td>
+                                <span style={{
+                                  background: 'var(--primary-color)',
+                                  color: 'white',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  fontWeight: '600'
+                                }}>
+                                  {player.position}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                                  <button
+                                    onClick={() => handleEditPlayer(player)}
+                                    className="bracket-view-btn"
+                                    style={{ 
+                                      fontSize: '11px', 
+                                      padding: '4px 8px', 
+                                      background: 'var(--primary-color)'
+                                    }}
+                                    title="Edit Player"
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePlayer(player.id)}
+                                    className="bracket-view-btn"
+                                    style={{ 
+                                      fontSize: '11px', 
+                                      padding: '4px 8px', 
+                                      background: 'var(--error-color)'
+                                    }}
+                                    title="Delete Player"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+                <button
+                  onClick={closeEditTeamModal}
+                  className="admin-teams-cancel-btn"
+                  style={{ padding: '12px 24px' }}
+                >
+                  Close
                 </button>
               </div>
             </div>

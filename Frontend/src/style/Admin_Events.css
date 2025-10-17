@@ -542,6 +542,30 @@
   flex: 1;
 }
 
+
+/* Unique class for back button in player management */
+.bracket-player-management-back-btn {
+  font-size: 12px !important;
+  padding: 6px 12px !important;
+  background: var(--text-muted) !important;
+  border: none !important;
+  border-radius: 4px !important;
+  color: white !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  height: auto !important;
+  min-height: auto !important;
+  line-height: normal !important;
+}
+
+.bracket-player-management-back-btn:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+
 .event-match-teams h4 {
   margin: 0 0 10px 0;
   color: var(--text-primary);
