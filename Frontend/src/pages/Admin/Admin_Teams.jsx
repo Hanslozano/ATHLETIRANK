@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaEye } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaEye, FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
 import "../../style/Admin_TeamPage.css";
 
 const TeamsPage = ({ sidebarOpen }) => {
@@ -23,7 +23,10 @@ const TeamsPage = ({ sidebarOpen }) => {
   const [validationError, setValidationError] = useState("");
   const [showValidationMessage, setShowValidationMessage] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, type: '', id: null, name: '' });
-  
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // NEW: Check for stored sport filter on component mount
   useEffect(() => {
@@ -84,6 +87,31 @@ const TeamsPage = ({ sidebarOpen }) => {
     
     return matchesSearch && matchesSport;
   });
+
+  // Pagination calculations
+  const totalTeams = filteredTeams.length;
+  const totalPages = Math.ceil(totalTeams / itemsPerPage);
+  const indexOfLastTeam = currentPage * itemsPerPage;
+  const indexOfFirstTeam = indexOfLastTeam - itemsPerPage;
+  const currentTeams = filteredTeams.slice(indexOfFirstTeam, indexOfLastTeam);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sportFilter, itemsPerPage]);
+
+  // Pagination handlers
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
 
   // Handle form inputs
   const handleInputChange = (e) => {
@@ -365,86 +393,86 @@ const TeamsPage = ({ sidebarOpen }) => {
 
   // Delete team
   const handleDeleteTeam = async (team) => {
-  try {
-    // First check if team is used anywhere
-    const checkRes = await fetch(`http://localhost:5000/api/teams/${team.id}/usage`);
-    const usageData = await checkRes.json();
-    
-    if (usageData.totalUsage > 0) {
-      // Get detailed usage information
-      const detailsRes = await fetch(`http://localhost:5000/api/teams/${team.id}/usage-details`);
-      const usageDetails = await detailsRes.json();
+    try {
+      // First check if team is used anywhere
+      const checkRes = await fetch(`http://localhost:5000/api/teams/${team.id}/usage`);
+      const usageData = await checkRes.json();
       
-      let errorMessage = `Cannot delete team "${team.name}" because it is currently used in:\n\n`;
-      
-      if (usageDetails.winnerBrackets.length > 0) {
-        errorMessage += `• Winner of ${usageDetails.winnerBrackets.length} bracket(s)\n`;
+      if (usageData.totalUsage > 0) {
+        // Get detailed usage information
+        const detailsRes = await fetch(`http://localhost:5000/api/teams/${team.id}/usage-details`);
+        const usageDetails = await detailsRes.json();
+        
+        let errorMessage = `Cannot delete team "${team.name}" because it is currently used in:\n\n`;
+        
+        if (usageDetails.winnerBrackets.length > 0) {
+          errorMessage += `• Winner of ${usageDetails.winnerBrackets.length} bracket(s)\n`;
+        }
+        
+        if (usageDetails.teamMatches.length > 0) {
+          errorMessage += `• Participant in ${usageDetails.teamMatches.length} match(es)\n`;
+        }
+        
+        if (usageDetails.bracketRegistrations.length > 0) {
+          errorMessage += `• Registered in ${usageDetails.bracketRegistrations.length} bracket(s)\n`;
+        }
+        
+        errorMessage += "\nPlease remove the team from all brackets and matches first.";
+        
+        setValidationError(errorMessage);
+        setShowValidationMessage(true);
+        return;
       }
-      
-      if (usageDetails.teamMatches.length > 0) {
-        errorMessage += `• Participant in ${usageDetails.teamMatches.length} match(es)\n`;
-      }
-      
-      if (usageDetails.bracketRegistrations.length > 0) {
-        errorMessage += `• Registered in ${usageDetails.bracketRegistrations.length} bracket(s)\n`;
-      }
-      
-      errorMessage += "\nPlease remove the team from all brackets and matches first.";
-      
-      setValidationError(errorMessage);
-      setShowValidationMessage(true);
-      return;
-    }
 
-    // If no usage, proceed with deletion confirmation
-    setDeleteConfirm({
-      show: true,
-      type: 'team',
-      id: team.id,
-      name: team.name
-    });
-  } catch (err) {
-    console.error("Error checking team usage:", err);
-    setValidationError("Error checking team usage. Please try again.");
-    setShowValidationMessage(true);
-  }
-};
+      // If no usage, proceed with deletion confirmation
+      setDeleteConfirm({
+        show: true,
+        type: 'team',
+        id: team.id,
+        name: team.name
+      });
+    } catch (err) {
+      console.error("Error checking team usage:", err);
+      setValidationError("Error checking team usage. Please try again.");
+      setShowValidationMessage(true);
+    }
+  };
 
   const confirmDelete = async () => {
-  const { type, id } = deleteConfirm;
-  
-  try {
-    const res = await fetch(`http://localhost:5000/api/teams/${id}`, { 
-      method: "DELETE" 
-    });
+    const { type, id } = deleteConfirm;
     
-    if (res.ok) {
-      setTeams(prev => prev.filter(team => team.id !== id));
-      setValidationError("Team deleted successfully!");
-      setShowValidationMessage(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/teams/${id}`, { 
+        method: "DELETE" 
+      });
       
-      // Close modal if we're viewing the deleted team
-      if (viewModal.show && viewModal.team.id === id) {
-        closeViewModal();
+      if (res.ok) {
+        setTeams(prev => prev.filter(team => team.id !== id));
+        setValidationError("Team deleted successfully!");
+        setShowValidationMessage(true);
+        
+        // Close modal if we're viewing the deleted team
+        if (viewModal.show && viewModal.team.id === id) {
+          closeViewModal();
+        }
+        
+        setTimeout(() => {
+          setValidationError("");
+          setShowValidationMessage(false);
+        }, 3000);
+      } else {
+        const errorData = await res.json();
+        setValidationError(errorData.error || "Error deleting team");
+        setShowValidationMessage(true);
       }
-      
-      setTimeout(() => {
-        setValidationError("");
-        setShowValidationMessage(false);
-      }, 3000);
-    } else {
-      const errorData = await res.json();
-      setValidationError(errorData.error || "Error deleting team");
+    } catch (err) {
+      console.error("Error deleting team:", err);
+      setValidationError("Error deleting team. Please try again.");
       setShowValidationMessage(true);
     }
-  } catch (err) {
-    console.error("Error deleting team:", err);
-    setValidationError("Error deleting team. Please try again.");
-    setShowValidationMessage(true);
-  }
-  
-  setDeleteConfirm({ show: false, type: '', id: null, name: '' });
-};
+    
+    setDeleteConfirm({ show: false, type: '', id: null, name: '' });
+  };
 
   // Capitalize first letter
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
@@ -496,6 +524,7 @@ const TeamsPage = ({ sidebarOpen }) => {
             {/* View Teams */}
             {activeTab === "view" && (
               <div className="bracket-view-section">
+                {/* Search Container */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
                   <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
                     <input
@@ -540,21 +569,50 @@ const TeamsPage = ({ sidebarOpen }) => {
                   </button>
                 </div>
 
-                {/* Results Info */}
-                {(searchTerm || sportFilter !== "all") && (
-                  <div style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>
-                    Showing {filteredTeams.length} of {teams.length} teams
-                    {searchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{searchTerm}"</span>}
-                    {sportFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Sport: {sportFilter}</span>}
+                {/* Results Info & Items Per Page */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    {(searchTerm || sportFilter !== "all") && (
+                      <>
+                        Showing {currentTeams.length} of {totalTeams} results
+                        {searchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{searchTerm}"</span>}
+                        {sportFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Sport: {sportFilter}</span>}
+                      </>
+                    )}
+                    {!searchTerm && sportFilter === "all" && (
+                      <>Showing {indexOfFirstTeam + 1}-{Math.min(indexOfLastTeam, totalTeams)} of {totalTeams} teams</>
+                    )}
                   </div>
-                )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Show:</label>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                      style={{
+                        padding: '8px 12px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>per page</span>
+                  </div>
+                </div>
 
                 {loading ? (
                   <div className="awards_standings_loading">
                     <div className="awards_standings_spinner"></div>
                     <p>Loading teams...</p>
                   </div>
-                ) : filteredTeams.length === 0 ? (
+                ) : totalTeams === 0 ? (
                   <div className="bracket-no-brackets">
                     {teams.length === 0 ? (
                       <>
@@ -582,75 +640,177 @@ const TeamsPage = ({ sidebarOpen }) => {
                     )}
                   </div>
                 ) : (
-                  <div className="awards_standings_table_container">
-                    <table className="awards_standings_table">
-                      <thead>
-                        <tr>
-                          <th style={{ fontSize: '15px', minWidth: '200px' }}>Team Name</th>
-                          <th style={{ fontSize: '15px' }}>Sport</th>
-                          <th style={{ fontSize: '15px' }}>Players</th>
-                          <th style={{ fontSize: '15px' }}>Brackets</th>
-                          <th style={{ textAlign: 'center', width: '180px', fontSize: '15px' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredTeams.map(team => {
-                          const teamSport = team.sport || 'Basketball';
-                          
-                          return (
-                            <tr key={team.id}>
-                              <td style={{ fontWeight: '600', fontSize: '16px' }}>
-                                {team.name}
-                              </td>
-                              <td>
-                                <span className={`bracket-sport-badge ${teamSport === 'Volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
-                                  {teamSport}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: '15px', fontWeight: '600' }}>{team.players.length}</td>
-                              <td>
-                                {team.brackets && team.brackets.length > 0 ? (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    {team.brackets.map((bracket, idx) => (
-                                      <span 
-                                        key={idx}
-                                        className="admin-teams-bracket-badge"
-                                        title={`${bracket.event_name} - ${bracket.bracket_name}`}
-                                      >
-                                        {bracket.event_name}: {bracket.bracket_name}
-                                      </span>
-                                    ))}
+                  <>
+                    <div className="awards_standings_table_container">
+                      <table className="awards_standings_table">
+                        <thead>
+                          <tr>
+                            <th style={{ fontSize: '15px', minWidth: '200px' }}>Team Name</th>
+                            <th style={{ fontSize: '15px' }}>Sport</th>
+                            <th style={{ fontSize: '15px' }}>Players</th>
+                            <th style={{ fontSize: '15px' }}>Brackets</th>
+                            <th style={{ textAlign: 'center', width: '180px', fontSize: '15px' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentTeams.map(team => {
+                            const teamSport = team.sport || 'Basketball';
+                            
+                            return (
+                              <tr key={team.id}>
+                                <td style={{ fontWeight: '600', fontSize: '16px' }}>
+                                  {team.name}
+                                </td>
+                                <td>
+                                  <span className={`bracket-sport-badge ${teamSport === 'Volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
+                                    {teamSport}
+                                  </span>
+                                </td>
+                                <td style={{ fontSize: '15px', fontWeight: '600' }}>{team.players.length}</td>
+                                <td>
+                                  {team.brackets && team.brackets.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      {team.brackets.map((bracket, idx) => (
+                                        <span 
+                                          key={idx}
+                                          className="admin-teams-bracket-badge"
+                                          title={`${bracket.event_name} - ${bracket.bracket_name}`}
+                                        >
+                                          {bracket.event_name}: {bracket.bracket_name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Not in any bracket</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                    <button
+                                      onClick={() => openViewModal(team)}
+                                      className="bracket-view-btn"
+                                      style={{ fontSize: '13px', padding: '8px 12px', flex: '1 1 auto', minWidth: '45px' }}
+                                      title="View All Players"
+                                    >
+                                      <FaEye />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteTeam(team)}
+                                      className="bracket-view-btn"
+                                      style={{ fontSize: '13px', padding: '8px 12px', background: 'var(--error-color)', flex: '1 1 auto', minWidth: '45px' }}
+                                      title="Delete Team"
+                                    >
+                                      <FaTrash />
+                                    </button>
                                   </div>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Not in any bracket</span>
-                                )}
-                              </td>
-                              <td>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                  <button
-                                    onClick={() => openViewModal(team)}
-                                    className="bracket-view-btn"
-                                    style={{ fontSize: '13px', padding: '8px 12px', flex: '1 1 auto', minWidth: '45px' }}
-                                    title="View All Players"
-                                  >
-                                    <FaEye />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteTeam(team)}
-                                    className="bracket-view-btn"
-                                    style={{ fontSize: '13px', padding: '8px 12px', background: 'var(--error-color)', flex: '1 1 auto', minWidth: '45px' }}
-                                    title="Delete Team"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginTop: '30px',
+                        padding: '20px',
+                        background: 'var(--background-secondary)',
+                        borderRadius: '8px',
+                        flexWrap: 'wrap',
+                        gap: '15px'
+                      }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                          Page {currentPage} of {totalPages}
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <button
+                            onClick={goToPrevPage}
+                            disabled={currentPage === 1}
+                            style={{
+                              padding: '10px 16px',
+                              background: currentPage === 1 ? 'var(--text-muted)' : 'var(--primary-color)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '14px',
+                              opacity: currentPage === 1 ? 0.5 : 1,
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <FaChevronLeft /> Previous
+                          </button>
+
+                          {/* Page Numbers */}
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (currentPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = currentPage - 2 + i;
+                              }
+
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => goToPage(pageNum)}
+                                  style={{
+                                    padding: '10px 14px',
+                                    background: currentPage === pageNum ? 'var(--primary-color)' : 'var(--background-card)',
+                                    color: currentPage === pageNum ? 'white' : 'var(--text-primary)',
+                                    border: currentPage === pageNum ? 'none' : '2px solid var(--border-color)',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: currentPage === pageNum ? '600' : '400',
+                                    minWidth: '40px',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <button
+                            onClick={goToNextPage}
+                            disabled={currentPage === totalPages}
+                            style={{
+                              padding: '10px 16px',
+                              background: currentPage === totalPages ? 'var(--text-muted)' : 'var(--primary-color)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '14px',
+                              opacity: currentPage === totalPages ? 0.5 : 1,
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            Next <FaChevronRight />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

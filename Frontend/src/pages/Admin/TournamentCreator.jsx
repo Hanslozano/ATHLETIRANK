@@ -231,17 +231,40 @@ const TournamentCreator = ({ sidebarOpen }) => {
     setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
   };
 
+  // Add new player (up to 15 maximum)
+  const handleAddPlayer = () => {
+    if (currentTeam.players.length < 15) {
+      setCurrentTeam(prev => ({
+        ...prev,
+        players: [...prev.players, { name: "", position: "", jerseyNumber: "" }]
+      }));
+    }
+  };
+
+  // Remove player (minimum 12 players required)
+  const handleRemovePlayer = (index) => {
+    if (currentTeam.players.length > 12) {
+      const newPlayers = [...currentTeam.players];
+      newPlayers.splice(index, 1);
+      setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
+    }
+  };
+
   const validateTeam = () => {
     if (!currentTeam.teamName.trim()) return "Please enter a team name";
     if (!currentTeam.sport) return "Please select a sport";
     
-    // Check if all 12 players are filled
+    // Check if we have between 12-15 players
     const validPlayers = currentTeam.players.filter(p => 
       p.name.trim() && p.position && p.jerseyNumber.trim()
     );
     
     if (validPlayers.length < 12) {
-      return `All 12 players must be filled. Currently you have ${validPlayers.length} valid players.`;
+      return `Minimum 12 players required. Currently you have ${validPlayers.length} valid players.`;
+    }
+
+    if (validPlayers.length > 15) {
+      return `Maximum 15 players allowed. Currently you have ${validPlayers.length} valid players.`;
     }
     
     // Check for invalid player names (must be letters only)
@@ -574,7 +597,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
-  // Calculate valid player count (all 12 must be valid)
+  // Calculate valid player count (12-15 must be valid)
   const validPlayerCount = currentTeam.players.filter(p => 
     p.name.trim() && p.position && p.jerseyNumber.trim()
   ).length;
@@ -824,14 +847,14 @@ const TournamentCreator = ({ sidebarOpen }) => {
                       {currentTeam.sport && (
                         <div className="admin-teams-players-section">
                           <div className="admin-teams-players-header">
-                            <h3>Players</h3>
+                            <h3>Players ({currentTeam.players.length}/15)</h3>
                             <div className="admin-teams-player-count">
-                              {validPlayerCount} / 12 players
+                              {validPlayerCount} / 12-15 players
                               {validPlayerCount < 12 && (
-                                <span className="admin-teams-count-warning"> (All 12 players required)</span>
+                                <span className="admin-teams-count-warning"> (Minimum 12 players required)</span>
                               )}
-                              {validPlayerCount === 12 && (
-                                <span className="admin-teams-count-success"> ✓ All players filled</span>
+                              {validPlayerCount >= 12 && validPlayerCount <= 15 && (
+                                <span className="admin-teams-count-success"> ✓ Valid team size</span>
                               )}
                             </div>
                           </div>
@@ -870,9 +893,33 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                     <option key={pos} value={pos}>{pos}</option>
                                   ))}
                                 </select>
+                                {currentTeam.players.length > 12 && (
+                                  <button
+                                    type="button"
+                                    className="remove-player-btn"
+                                    onClick={() => handleRemovePlayer(index)}
+                                    title="Remove player"
+                                  >
+                                    ×
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))}
+                          
+                          {/* Add More Players Button */}
+                          {currentTeam.players.length < 15 && (
+                            <div className="add-players-section">
+                              <button
+                                type="button"
+                                className="add-player-btn"
+                                onClick={handleAddPlayer}
+                              >
+                                <FaPlus style={{ marginRight: '8px' }} />
+                                Add More Players ({15 - currentTeam.players.length} slots available)
+                              </button>
+                            </div>
+                          )}
                           
                           {/* Information message */}
                           <div style={{
@@ -884,7 +931,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             fontSize: '13px',
                             color: '#93c5fd'
                           }}>
-                            <strong>Note:</strong> All 12 players must be filled. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
+                            <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
                           </div>
                         </div>
                       )}
@@ -893,7 +940,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                         <button 
                           onClick={handleAddTeam}
                           className="bracket-submit-btn"
-                          disabled={loading || validPlayerCount < 12}
+                          disabled={loading || validPlayerCount < 12 || validPlayerCount > 15}
                         >
                           {loading ? "Adding..." : "Add Team"}
                         </button>
@@ -1201,10 +1248,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                     ))
                                 )}
                               </div>
-                              <div className="assigned-teams-summary">
-                                <FaCheckCircle style={{ color: '#10b981', marginRight: '6px' }} />
-                                <strong>{bracket.selectedTeamIds.length} teams </strong>assigned from Step 2
-                              </div>
                             </>
                           )}
                         </div>
@@ -1225,7 +1268,11 @@ const TournamentCreator = ({ sidebarOpen }) => {
                       className="bracket-submit-btn"
                       disabled={loading}
                     >
-                      {loading ? "Creating All Brackets..." : "Create All Brackets"}
+                      {loading 
+                        ? "Creating..." 
+                        : eventData.numberOfBrackets === 1 
+                          ? "Create Bracket" 
+                          : "Create Brackets"}
                     </button>
                   </div>
                 </div>
@@ -1298,6 +1345,56 @@ const TournamentCreator = ({ sidebarOpen }) => {
           font-weight: 600;
           flex-shrink: 0;
           margin-right: 12px;
+        }
+
+        .remove-player-btn {
+          background: #dc2626;
+          color: white;
+          border: none;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          font-size: 16px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+          margin-left: 8px;
+        }
+
+        .remove-player-btn:hover {
+          background: #b91c1c;
+          transform: scale(1.1);
+        }
+
+        .add-players-section {
+          margin-top: 15px;
+          padding: 15px;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          border-radius: 6px;
+          text-align: center;
+        }
+
+        .add-player-btn {
+          background: #10b981;
+          color: white;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          font-size: 14px;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .add-player-btn:hover {
+          background: #059669;
+          transform: translateY(-1px);
         }
 
         .admin-teams-count-success {
@@ -1509,19 +1606,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           color: #94a3b8;
           font-style: italic;
           padding: 20px;
-        }
-
-        .assigned-teams-summary {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 12px;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.3);
-          border-radius: 6px;
-          margin-top: 10px;
-          color: #10b981;
-          font-size: 14px;
         }
 
         .multi-bracket-section {
