@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaTrophy, FaCrown, FaChartBar, FaEye, FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaChevronLeft, FaChevronRight, FaUsers, FaUserPlus, FaUserEdit } from "react-icons/fa";
+import { FaTrophy, FaCrown, FaChartBar, FaEye, FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaChevronLeft, FaChevronRight, FaUsers, FaUserPlus, FaUserEdit, FaMedal, FaStar, FaDownload, FaSearch } from "react-icons/fa";
 import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import "../../style/Admin_Events.css";
@@ -40,7 +40,7 @@ const AdminEvents = ({ sidebarOpen }) => {
   // Round filter state for matches
   const [roundFilter, setRoundFilter] = useState("all");
 
-  // Edit Team modal state - UPDATED FOR PLAYER MANAGEMENT WITH POSITION DROPDOWN
+  // Edit Team modal state
   const [editTeamModal, setEditTeamModal] = useState({ 
     show: false, 
     bracket: null, 
@@ -50,6 +50,20 @@ const AdminEvents = ({ sidebarOpen }) => {
     editingPlayer: null,
     newPlayer: { name: '', position: '', jersey_number: '' }
   });
+
+  // Awards & Standings states
+  const [standings, setStandings] = useState([]);
+  const [mvpData, setMvpData] = useState(null);
+  const [awards, setAwards] = useState(null);
+  const [loadingAwards, setLoadingAwards] = useState(false);
+  const [errorAwards, setErrorAwards] = useState(null);
+  const [searchTermStandings, setSearchTermStandings] = useState("");
+  const [awardsTab, setAwardsTab] = useState("standings");
+
+  const safeNumber = (value, decimals = 1) => {
+    const num = Number(value);
+    return isNaN(num) ? 0 : Number(num.toFixed(decimals));
+  };
 
   // Sport position mappings
   const sportPositions = {
@@ -148,6 +162,11 @@ const AdminEvents = ({ sidebarOpen }) => {
   const filteredMatches = roundFilter === "all" 
     ? matches 
     : matches.filter(match => match.round_number === parseInt(roundFilter));
+
+  // Filter standings by search term
+  const filteredStandings = standings.filter(team =>
+    team.team.toLowerCase().includes(searchTermStandings.toLowerCase())
+  );
 
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
@@ -351,6 +370,155 @@ const AdminEvents = ({ sidebarOpen }) => {
     navigate('/AdminDashboard/stats');
   };
 
+  // Load awards data when awards tab is selected
+  useEffect(() => {
+    const loadAwardsData = async () => {
+      if (contentTab === "awards" && selectedBracket) {
+        setLoadingAwards(true);
+        setErrorAwards(null);
+
+        try {
+          const standingsRes = await fetch(`http://localhost:5000/api/awards/brackets/${selectedBracket.id}/standings`);
+          const standingsData = await standingsRes.json();
+          setStandings(standingsData.standings || []);
+
+          const awardsRes = await fetch(`http://localhost:5000/api/awards/brackets/${selectedBracket.id}/mvp-awards`);
+          const awardsData = await awardsRes.json();
+          
+          setMvpData(awardsData.awards?.mvp || null);
+          setAwards(awardsData.awards || null);
+        } catch (err) {
+          setErrorAwards("Failed to load awards data: " + err.message);
+          console.error("Error loading awards:", err);
+        } finally {
+          setLoadingAwards(false);
+        }
+      }
+    };
+
+    loadAwardsData();
+  }, [contentTab, selectedBracket]);
+
+  // Export standings to CSV
+  const exportStandings = () => {
+    if (standings.length === 0 || !selectedBracket) return;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    
+    if (selectedBracket.sport_type === "basketball") {
+      csvContent += "Position,Team,Wins,Losses,Points For,Points Against,Point Diff,Win%\n";
+      standings.forEach(team => {
+        csvContent += `${team.position},${team.team},${team.wins},${team.losses},${team.points_for},${team.points_against},${team.point_diff},${team.win_percentage}\n`;
+      });
+    } else {
+      csvContent += "Position,Team,Wins,Losses,Sets For,Sets Against,Set Ratio,Win%\n";
+      standings.forEach(team => {
+        csvContent += `${team.position},${team.team},${team.wins},${team.losses},${team.sets_for},${team.sets_against},${team.set_ratio},${team.win_percentage}\n`;
+      });
+    }
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${selectedEvent?.name}_${selectedBracket?.name}_standings.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Get awards for display
+  const getAwardsForDisplay = () => {
+    if (!awards || !selectedBracket) return [];
+    
+    const awardsArray = [];
+    
+    if (selectedBracket.sport_type === "basketball") {
+      if (awards.mvp) {
+        awardsArray.push({
+          category: "Most Valuable Player",
+          winner: awards.mvp.player_name || 'Unknown',
+          team: awards.mvp.team_name || 'Unknown',
+          stat: `${safeNumber(awards.mvp.ppg)} PPG`
+        });
+      }
+      if (awards.best_playmaker) {
+        awardsArray.push({
+          category: "Best Playmaker",
+          winner: awards.best_playmaker.player_name || 'Unknown',
+          team: awards.best_playmaker.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_playmaker.apg)} APG`
+        });
+      }
+      if (awards.best_defender) {
+        awardsArray.push({
+          category: "Best Defender",
+          winner: awards.best_defender.player_name || 'Unknown',
+          team: awards.best_defender.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_defender.spg)} SPG`
+        });
+      }
+      if (awards.best_rebounder) {
+        awardsArray.push({
+          category: "Best Rebounder",
+          winner: awards.best_rebounder.player_name || 'Unknown',
+          team: awards.best_rebounder.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_rebounder.rpg)} RPG`
+        });
+      }
+      if (awards.best_blocker) {
+        awardsArray.push({
+          category: "Best Blocker",
+          winner: awards.best_blocker.player_name || 'Unknown',
+          team: awards.best_blocker.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_blocker.bpg)} BPG`
+        });
+      }
+    } else {
+      if (awards.mvp) {
+        awardsArray.push({
+          category: "Most Valuable Player",
+          winner: awards.mvp.player_name || 'Unknown',
+          team: awards.mvp.team_name || 'Unknown',
+          stat: `${safeNumber(awards.mvp.kpg)} K/G`
+        });
+      }
+      if (awards.best_blocker) {
+        awardsArray.push({
+          category: "Best Blocker",
+          winner: awards.best_blocker.player_name || 'Unknown',
+          team: awards.best_blocker.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_blocker.bpg)} BPG, ${safeNumber(awards.best_blocker.hitting_percentage)}% Hit`
+        });
+      }
+      if (awards.best_setter) {
+        awardsArray.push({
+          category: "Best Setter",
+          winner: awards.best_setter.player_name || 'Unknown',
+          team: awards.best_setter.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_setter.apg)} A/G`
+        });
+      }
+      if (awards.best_libero) {
+        awardsArray.push({
+          category: "Best Libero",
+          winner: awards.best_libero.player_name || 'Unknown',
+          team: awards.best_libero.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_libero.dpg)} D/G, ${safeNumber(awards.best_libero.reception_percentage)}% Rec`
+        });
+      }
+      if (awards.best_server) {
+        awardsArray.push({
+          category: "Best Server",
+          winner: awards.best_server.player_name || 'Unknown',
+          team: awards.best_server.team_name || 'Unknown',
+          stat: `${safeNumber(awards.best_server.acepg)} ACE/G, ${safeNumber(awards.best_server.service_percentage)}% Srv`
+        });
+      }
+    }
+    
+    return awardsArray.filter(a => a.winner && a.winner !== 'Unknown');
+  };
+
   // Edit handlers
   const handleEditEvent = (event) => {
     setEditModal({ 
@@ -366,7 +534,7 @@ const AdminEvents = ({ sidebarOpen }) => {
     console.log("Edit bracket:", bracket);
   };
 
-  // Edit Team handler - FIXED ENDPOINT
+  // Edit Team handler
   const handleEditTeam = async (bracket) => {
     setEditTeamModal({ 
       show: true, 
@@ -379,7 +547,7 @@ const AdminEvents = ({ sidebarOpen }) => {
     });
 
     try {
-      // Fetch teams in this bracket - USE CORRECT ENDPOINT
+      // Fetch teams in this bracket
       const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}`);
       
       if (!teamsRes.ok) {
@@ -459,161 +627,157 @@ const AdminEvents = ({ sidebarOpen }) => {
     }));
   };
 
-  // Update player - FIXED FOR IMMEDIATE UPDATE
-  // Update player - FIXED FOR IMMEDIATE UPDATE
-const handleUpdatePlayer = async () => {
-  const { editingPlayer, selectedTeam } = editTeamModal;
-  
-  if (!editingPlayer.name || !editingPlayer.position || !editingPlayer.jersey_number) {
-    alert("Please fill in all player fields");
-    return;
-  }
-
-  try {
-    const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players/${editingPlayer.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: editingPlayer.name,
-        position: editingPlayer.position,
-        jerseyNumber: editingPlayer.jersey_number
-      })
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
+  // Update player
+  const handleUpdatePlayer = async () => {
+    const { editingPlayer, selectedTeam } = editTeamModal;
+    
+    if (!editingPlayer.name || !editingPlayer.position || !editingPlayer.jersey_number) {
+      alert("Please fill in all player fields");
+      return;
     }
 
-    // Update the UI immediately - FIXED STATE UPDATE
-    setEditTeamModal(prev => {
-      const updatedTeams = prev.teams.map(team => {
-        if (team.id === selectedTeam.id) {
-          const updatedPlayers = team.players.map(player => 
-            player.id === editingPlayer.id ? { ...editingPlayer } : player
-          );
-          return { ...team, players: updatedPlayers };
-        }
-        return team;
+    try {
+      const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players/${editingPlayer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingPlayer.name,
+          position: editingPlayer.position,
+          jerseyNumber: editingPlayer.jersey_number
+        })
       });
 
-      // Also update selectedTeam if it's the current one
-      const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-      return {
-        ...prev,
-        teams: updatedTeams,
-        selectedTeam: updatedSelectedTeam,
-        editingPlayer: null
-      };
-    });
+      // Update the UI immediately
+      setEditTeamModal(prev => {
+        const updatedTeams = prev.teams.map(team => {
+          if (team.id === selectedTeam.id) {
+            const updatedPlayers = team.players.map(player => 
+              player.id === editingPlayer.id ? { ...editingPlayer } : player
+            );
+            return { ...team, players: updatedPlayers };
+          }
+          return team;
+        });
 
-    alert("Player updated successfully!");
-  } catch (err) {
-    console.error('Error updating player:', err);
-    alert('Failed to update player: ' + err.message);
-  }
-};
+        // Also update selectedTeam if it's the current one
+        const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
 
-// Add new player - FIXED FOR IMMEDIATE UPDATE
-const handleAddPlayer = async () => {
-  const { newPlayer, selectedTeam } = editTeamModal;
-  
-  if (!newPlayer.name || !newPlayer.position || !newPlayer.jersey_number) {
-    alert("Please fill in all player fields");
-    return;
-  }
+        return {
+          ...prev,
+          teams: updatedTeams,
+          selectedTeam: updatedSelectedTeam,
+          editingPlayer: null
+        };
+      });
 
-  try {
-    const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: newPlayer.name,
-        position: newPlayer.position,
-        jerseyNumber: newPlayer.jersey_number
-      })
-    });
+      alert("Player updated successfully!");
+    } catch (err) {
+      console.error('Error updating player:', err);
+      alert('Failed to update player: ' + err.message);
+    }
+  };
 
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
+  // Add new player
+  const handleAddPlayer = async () => {
+    const { newPlayer, selectedTeam } = editTeamModal;
+    
+    if (!newPlayer.name || !newPlayer.position || !newPlayer.jersey_number) {
+      alert("Please fill in all player fields");
+      return;
     }
 
-    const newPlayerData = await res.json();
-
-    // Update the UI immediately - FIXED STATE UPDATE
-    setEditTeamModal(prev => {
-      const updatedTeams = prev.teams.map(team => {
-        if (team.id === selectedTeam.id) {
-          const updatedPlayers = [...team.players, { ...newPlayerData }];
-          return { ...team, players: updatedPlayers };
-        }
-        return team;
+    try {
+      const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newPlayer.name,
+          position: newPlayer.position,
+          jerseyNumber: newPlayer.jersey_number
+        })
       });
 
-      // Also update selectedTeam if it's the current one
-      const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-      return {
-        ...prev,
-        teams: updatedTeams,
-        selectedTeam: updatedSelectedTeam,
-        newPlayer: { name: '', position: '', jersey_number: '' }
-      };
-    });
+      const newPlayerData = await res.json();
 
-    alert("Player added successfully!");
-  } catch (err) {
-    console.error('Error adding player:', err);
-    alert('Failed to add player: ' + err.message);
-  }
-};
+      // Update the UI immediately
+      setEditTeamModal(prev => {
+        const updatedTeams = prev.teams.map(team => {
+          if (team.id === selectedTeam.id) {
+            const updatedPlayers = [...team.players, { ...newPlayerData }];
+            return { ...team, players: updatedPlayers };
+          }
+          return team;
+        });
 
-// Delete player - FIXED FOR IMMEDIATE UPDATE
-const handleDeletePlayer = async (playerId) => {
-  if (!confirm('Are you sure you want to delete this player?')) {
-    return;
-  }
+        // Also update selectedTeam if it's the current one
+        const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
 
-  const { selectedTeam } = editTeamModal;
+        return {
+          ...prev,
+          teams: updatedTeams,
+          selectedTeam: updatedSelectedTeam,
+          newPlayer: { name: '', position: '', jersey_number: '' }
+        };
+      });
 
-  try {
-    const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players/${playerId}`, {
-      method: 'DELETE'
-    });
+      alert("Player added successfully!");
+    } catch (err) {
+      console.error('Error adding player:', err);
+      alert('Failed to add player: ' + err.message);
+    }
+  };
 
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
+  // Delete player
+  const handleDeletePlayer = async (playerId) => {
+    if (!confirm('Are you sure you want to delete this player?')) {
+      return;
     }
 
-    // Update the UI immediately - FIXED STATE UPDATE
-    setEditTeamModal(prev => {
-      const updatedTeams = prev.teams.map(team => {
-        if (team.id === selectedTeam.id) {
-          const updatedPlayers = team.players.filter(player => player.id !== playerId);
-          return { ...team, players: updatedPlayers };
-        }
-        return team;
+    const { selectedTeam } = editTeamModal;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/teams/${selectedTeam.id}/players/${playerId}`, {
+        method: 'DELETE'
       });
 
-      // Also update selectedTeam if it's the current one
-      const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-      return {
-        ...prev,
-        teams: updatedTeams,
-        selectedTeam: updatedSelectedTeam
-      };
-    });
+      // Update the UI immediately
+      setEditTeamModal(prev => {
+        const updatedTeams = prev.teams.map(team => {
+          if (team.id === selectedTeam.id) {
+            const updatedPlayers = team.players.filter(player => player.id !== playerId);
+            return { ...team, players: updatedPlayers };
+          }
+          return team;
+        });
 
-    alert("Player deleted successfully!");
-  } catch (err) {
-    console.error('Error deleting player:', err);
-    alert('Failed to delete player: ' + err.message);
-  }
-};
+        // Also update selectedTeam if it's the current one
+        const updatedSelectedTeam = updatedTeams.find(team => team.id === selectedTeam.id);
 
+        return {
+          ...prev,
+          teams: updatedTeams,
+          selectedTeam: updatedSelectedTeam
+        };
+      });
 
-
+      alert("Player deleted successfully!");
+    } catch (err) {
+      console.error('Error deleting player:', err);
+      alert('Failed to delete player: ' + err.message);
+    }
+  };
 
   // Close edit team modal
   const closeEditTeamModal = () => {
@@ -1159,6 +1323,12 @@ const handleDeletePlayer = async (playerId) => {
                   >
                     <FaEye /> Bracket View
                   </button>
+                  <button
+                    className={`awards_standings_tab_button ${contentTab === "awards" ? "awards_standings_tab_active" : ""}`}
+                    onClick={() => setContentTab("awards")}
+                  >
+                    <FaTrophy /> Awards & Standings
+                  </button>
                 </div>
 
                 {loadingDetails ? (
@@ -1502,6 +1672,292 @@ const handleDeletePlayer = async (playerId) => {
                         )}
                       </div>
                     )}
+
+                    {contentTab === "awards" && (
+                      <div className="awards_standings_tab_content">
+                        {loadingAwards ? (
+                          <div className="awards_standings_loading">
+                            <div className="awards_standings_spinner"></div>
+                            <p>Loading awards data...</p>
+                          </div>
+                        ) : errorAwards ? (
+                          <div className="bracket-error"><p>{errorAwards}</p></div>
+                        ) : (
+                          <>
+                            <div className="awards_standings_tabs">
+                              <button
+                                className={`awards_standings_tab_button ${awardsTab === "standings" ? "awards_standings_tab_active" : ""}`}
+                                onClick={() => setAwardsTab("standings")}
+                              >
+                                <FaTrophy /> Team Standings
+                              </button>
+                              <button
+                                className={`awards_standings_tab_button ${awardsTab === "mvp" ? "awards_standings_tab_active" : ""}`}
+                                onClick={() => setAwardsTab("mvp")}
+                              >
+                                <FaCrown /> Tournament MVP
+                              </button>
+                              <button
+                                className={`awards_standings_tab_button ${awardsTab === "awards" ? "awards_standings_tab_active" : ""}`}
+                                onClick={() => setAwardsTab("awards")}
+                              >
+                                <FaMedal /> Awards
+                              </button>
+                            </div>
+
+                            {awardsTab === "standings" && (
+                              <div className="awards_standings_tab_content">
+                                <div className="awards_standings_toolbar">
+                                  <div className="awards_standings_search_container">
+                                    <FaSearch className="awards_standings_search_icon" />
+                                    <input
+                                      type="text"
+                                      className="awards_standings_search_input"
+                                      placeholder="Search teams..."
+                                      value={searchTermStandings}
+                                      onChange={(e) => setSearchTermStandings(e.target.value)}
+                                    />
+                                  </div>
+                                  <button className="awards_standings_export_btn" onClick={exportStandings}>
+                                    <FaDownload /> Export CSV
+                                  </button>
+                                </div>
+
+                                <div className="awards_standings_table_container">
+                                  <table className="awards_standings_table">
+                                    <thead>
+                                      <tr>
+                                        <th>Rank</th>
+                                        <th>Team</th>
+                                        <th>W</th>
+                                        <th>L</th>
+                                        {selectedBracket.sport_type === "basketball" ? (
+                                          <>
+                                            <th>PF</th>
+                                            <th>PA</th>
+                                            <th>Diff</th>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <th>SF</th>
+                                            <th>SA</th>
+                                            <th>Ratio</th>
+                                          </>
+                                        )}
+                                        <th>Win%</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {filteredStandings.map((team, index) => (
+                                        <tr key={index} className={team.position <= 3 ? `awards_standings_podium_${team.position}` : ""}>
+                                          <td className="awards_standings_rank">
+                                            {team.position <= 3 && (
+                                              <span className="awards_standings_medal">
+                                                {team.position === 1 ? "🥇" : team.position === 2 ? "🥈" : "🥉"}
+                                              </span>
+                                            )}
+                                            {team.position}
+                                          </td>
+                                          <td className="awards_standings_team_name">
+                                            <strong>{team.team}</strong>
+                                          </td>
+                                          <td>{team.wins}</td>
+                                          <td>{team.losses}</td>
+                                          {selectedBracket.sport_type === "basketball" ? (
+                                            <>
+                                              <td>{team.points_for}</td>
+                                              <td>{team.points_against}</td>
+                                              <td className={String(team.point_diff).startsWith('+') ? 'awards_standings_positive' : String(team.point_diff).startsWith('-') ? 'awards_standings_negative' : ''}>
+                                                {team.point_diff}
+                                              </td>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <td>{team.sets_for}</td>
+                                              <td>{team.sets_against}</td>
+                                              <td>{team.set_ratio}</td>
+                                            </>
+                                          )}
+                                          <td>{team.win_percentage}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+
+                            {awardsTab === "mvp" && (
+                              <div className="awards_standings_tab_content">
+                                {!mvpData ? (
+                                  <div className="bracket-no-brackets">
+                                    <p>No MVP data available. Make sure player statistics have been recorded for completed matches.</p>
+                                  </div>
+                                ) : (
+                                  <div className="awards_standings_mvp_section">
+                                    <div className="awards_standings_mvp_header">
+                                      <div className="awards_standings_mvp_crown">
+                                        <FaCrown />
+                                      </div>
+                                      <h2>Tournament Most Valuable Player</h2>
+                                    </div>
+                                    
+                                    <div className="awards_standings_mvp_card">
+                                      <div className="awards_standings_mvp_info">
+                                        <div className="awards_standings_mvp_name_section">
+                                          <h3>{mvpData.player_name || 'Unknown Player'}</h3>
+                                          <span className="awards_standings_mvp_team">{mvpData.team_name || 'Unknown Team'}</span>
+                                          <span className="awards_standings_mvp_jersey">#{mvpData.jersey_number || 'N/A'}</span>
+                                        </div>
+                                        
+                                        <div className="awards_standings_mvp_stats_grid">
+                                          <div className="awards_standings_stat_card">
+                                            <div className="awards_standings_stat_value">{mvpData.games_played || 0}</div>
+                                            <div className="awards_standings_stat_label">Games Played</div>
+                                          </div>
+
+                                          {selectedBracket.sport_type === "basketball" ? (
+                                            <>
+                                              <div className="awards_standings_stat_card awards_standings_highlight">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.ppg)}</div>
+                                                <div className="awards_standings_stat_label">PPG</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.apg)}</div>
+                                                <div className="awards_standings_stat_label">APG</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.rpg)}</div>
+                                                <div className="awards_standings_stat_label">RPG</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.spg)}</div>
+                                                <div className="awards_standings_stat_label">SPG</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.bpg)}</div>
+                                                <div className="awards_standings_stat_label">BPG</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card awards_standings_highlight">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.mvp_score, 2)}</div>
+                                                <div className="awards_standings_stat_label">MVP Score</div>
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <div className="awards_standings_stat_card awards_standings_highlight">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.kpg)}</div>
+                                                <div className="awards_standings_stat_label">K/G</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.apg)}</div>
+                                                <div className="awards_standings_stat_label">A/G</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.dpg)}</div>
+                                                <div className="awards_standings_stat_label">D/G</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.bpg)}</div>
+                                                <div className="awards_standings_stat_label">B/G</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.acepg)}</div>
+                                                <div className="awards_standings_stat_label">Ace/G</div>
+                                              </div>
+                                              <div className="awards_standings_stat_card awards_standings_highlight">
+                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.mvp_score, 2)}</div>
+                                                <div className="awards_standings_stat_label">MVP Score</div>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+
+                                        {selectedBracket.sport_type === "volleyball" && (
+                                          <div className="awards_standings_percentage_section">
+                                            <h4>Performance Percentages</h4>
+                                            <div className="awards_standings_percentage_grid">
+                                              <div className="awards_standings_percentage_card">
+                                                <div className="awards_standings_percentage_bar">
+                                                  <div 
+                                                    className="awards_standings_percentage_fill"
+                                                    style={{ width: `${Math.min(Math.max(mvpData.hitting_percentage || 0, 0), 100)}%` }}
+                                                  ></div>
+                                                </div>
+                                                <div className="awards_standings_percentage_label">
+                                                  <span>Hitting %</span>
+                                                  <strong>{safeNumber(mvpData.hitting_percentage)}%</strong>
+                                                </div>
+                                              </div>
+                                              <div className="awards_standings_percentage_card">
+                                                <div className="awards_standings_percentage_bar">
+                                                  <div 
+                                                    className="awards_standings_percentage_fill"
+                                                    style={{ width: `${Math.min(Math.max(mvpData.service_percentage || 0, 0), 100)}%` }}
+                                                  ></div>
+                                                </div>
+                                                <div className="awards_standings_percentage_label">
+                                                  <span>Service %</span>
+                                                  <strong>{safeNumber(mvpData.service_percentage)}%</strong>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {awardsTab === "awards" && (
+                              <div className="awards_standings_tab_content">
+                                {!awards || getAwardsForDisplay().length === 0 ? (
+                                  <div className="bracket-no-brackets">
+                                    <p>No awards data available. Make sure player statistics have been recorded for completed matches.</p>
+                                  </div>
+                                ) : (
+                                  <div className="awards_standings_awards_section">
+                                    <h2>Tournament Awards</h2>
+                                    <div className="awards_standings_table_container">
+                                      <table className="awards_standings_table">
+                                        <thead>
+                                          <tr>
+                                            <th style={{ width: '60px', textAlign: 'center' }}></th>
+                                            <th>Award Category</th>
+                                            <th>Winner</th>
+                                            <th>Team</th>
+                                            <th>Statistics</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {getAwardsForDisplay().map((award, index) => (
+                                            <tr key={index}>
+                                              <td style={{ textAlign: 'center' }}>
+                                                {index === 0 ? (
+                                                  <FaCrown style={{ color: '#fbbf24', fontSize: '24px' }} />
+                                                ) : (
+                                                  <FaStar style={{ color: '#3b82f6', fontSize: '20px' }} />
+                                                )}
+                                              </td>
+                                              <td style={{ fontWeight: '600' }}>{award.category}</td>
+                                              <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>{award.winner}</td>
+                                              <td>{award.team}</td>
+                                              <td style={{ color: '#3b82f6', fontWeight: '600' }}>{award.stat}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -1584,7 +2040,7 @@ const handleDeletePlayer = async (playerId) => {
         </div>
       )}
 
-      {/* Edit Team Modal - UPDATED FOR PLAYER MANAGEMENT WITH POSITION DROPDOWN */}
+      {/* Edit Team Modal */}
       {editTeamModal.show && editTeamModal.bracket && (
         <div className="admin-teams-modal-overlay" onClick={closeEditTeamModal}>
           <div className="admin-teams-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1000px', maxHeight: '90vh' }}>
@@ -1692,7 +2148,7 @@ const handleDeletePlayer = async (playerId) => {
                     </h3>
                   </div>
 
-                  {/* Sport Info - REMOVED THE TEXT YOU WANTED TO REMOVE */}
+                  {/* Sport Info */}
                   <div style={{ 
                     background: 'var(--primary-color)', 
                     color: 'white',
