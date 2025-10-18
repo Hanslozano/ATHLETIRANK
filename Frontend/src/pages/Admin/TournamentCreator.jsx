@@ -44,6 +44,17 @@ const TournamentCreator = ({ sidebarOpen }) => {
     Volleyball: ["Setter", "Outside Hitter", "Middle Blocker", "Opposite Hitter", "Libero", "Defensive Specialist"],
   };
 
+  // Validation functions
+  const isValidPlayerName = (name) => {
+    const trimmed = name.trim();
+    return /^[a-zA-Z\s-]+$/.test(trimmed) && trimmed.length > 0;
+  };
+
+  const isValidJerseyNumber = (jersey) => {
+    const trimmed = jersey.trim();
+    return /^\d+$/.test(trimmed) && trimmed.length > 0;
+  };
+
   // Fetch existing teams
   useEffect(() => {
     const fetchTeams = async () => {
@@ -182,35 +193,41 @@ const TournamentCreator = ({ sidebarOpen }) => {
     const { name, value } = e.target;
     setCurrentTeam(prev => ({ ...prev, [name]: value }));
 
-    if (name === "sport") {
+    // When sport is selected, create exactly 12 empty player slots
+    if (name === "sport" && value) {
       setCurrentTeam(prev => ({
         ...prev,
-        players: value ? [{ name: "", position: "", jerseyNumber: "" }] : []
+        players: Array.from({ length: 12 }, (_, index) => ({ 
+          name: "", 
+          position: "", 
+          jerseyNumber: "" 
+        }))
       }));
     }
     
     if (validationError) setValidationError("");
   };
 
-  const addPlayer = () => {
-    if (currentTeam.sport && currentTeam.players.length < 15) {
-      setCurrentTeam(prev => ({
-        ...prev,
-        players: [...prev.players, { name: "", position: "", jerseyNumber: "" }]
-      }));
-    }
-  };
-
-  const removePlayer = (index) => {
-    setCurrentTeam(prev => ({
-      ...prev,
-      players: prev.players.filter((_, i) => i !== index)
-    }));
-  };
-
   const handlePlayerChange = (index, field, value) => {
+    let finalValue = value;
+    
+    // For player names: remove any non-letter, non-space, non-hyphen characters
+    if (field === "name") {
+      finalValue = value.replace(/[^a-zA-Z\s-]/g, '');
+    }
+    
+    // For jersey numbers: remove any non-digit characters
+    if (field === "jerseyNumber") {
+      finalValue = value.replace(/[^0-9]/g, '');
+    }
+    
+    // Trim whitespace from name and jersey number
+    if (field === "name" || field === "jerseyNumber") {
+      finalValue = finalValue.trim();
+    }
+    
     const newPlayers = [...currentTeam.players];
-    newPlayers[index][field] = value;
+    newPlayers[index][field] = finalValue;
     setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
   };
 
@@ -218,18 +235,57 @@ const TournamentCreator = ({ sidebarOpen }) => {
     if (!currentTeam.teamName.trim()) return "Please enter a team name";
     if (!currentTeam.sport) return "Please select a sport";
     
+    // Check if all 12 players are filled
     const validPlayers = currentTeam.players.filter(p => 
-      p.name.trim() && p.position && p.jerseyNumber
+      p.name.trim() && p.position && p.jerseyNumber.trim()
     );
     
     if (validPlayers.length < 12) {
-      return `Team must have at least 12 players. Currently you have ${validPlayers.length} valid players.`;
+      return `All 12 players must be filled. Currently you have ${validPlayers.length} valid players.`;
     }
     
-    const jerseyNumbers = validPlayers.map(p => p.jerseyNumber);
+    // Check for invalid player names (must be letters only)
+    const invalidNames = currentTeam.players.filter(p => {
+      if (!p.name.trim()) return false;
+      return !isValidPlayerName(p.name);
+    });
+    if (invalidNames.length > 0) {
+      return "Player names must contain only letters and spaces. Please check all player names.";
+    }
+    
+    // Check for invalid jersey numbers (must be numbers only)
+    const invalidJerseys = currentTeam.players.filter(p => {
+      if (!p.jerseyNumber.trim()) return false;
+      return !isValidJerseyNumber(p.jerseyNumber);
+    });
+    if (invalidJerseys.length > 0) {
+      return "Jersey numbers must contain only numbers. Please check all jersey numbers.";
+    }
+    
+    // Check for duplicate jersey numbers
+    const jerseyNumbers = validPlayers.map(p => p.jerseyNumber.trim());
     const uniqueJerseyNumbers = new Set(jerseyNumbers);
     if (jerseyNumbers.length !== uniqueJerseyNumbers.size) {
-      return "Duplicate jersey numbers found.";
+      return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
+    }
+    
+    // Check for duplicate player names
+    const playerNames = validPlayers.map(p => p.name.trim().toLowerCase());
+    const uniquePlayerNames = new Set(playerNames);
+    if (playerNames.length !== uniquePlayerNames.size) {
+      return "Duplicate player names found. Each player must have a unique name.";
+    }
+    
+    // Check for blank spaces in names
+    const hasBlankNames = currentTeam.players.some(p => p.name.trim() === "");
+    if (hasBlankNames) {
+      return "All players must have names. Please fill in all player names.";
+    }
+    
+    // Check for blank jersey numbers
+    const hasBlankJerseyNumbers = currentTeam.players.some(p => p.jerseyNumber.trim() === "");
+    if (hasBlankJerseyNumbers) {
+      return "All players must have jersey numbers. Please fill in all jersey numbers.";
     }
     
     return null;
@@ -242,9 +298,12 @@ const TournamentCreator = ({ sidebarOpen }) => {
       return;
     }
 
-    const validPlayers = currentTeam.players.filter(p => 
-      p.name.trim() && p.position && p.jerseyNumber
-    );
+    // Trim all player data before submitting
+    const trimmedPlayers = currentTeam.players.map(player => ({
+      name: player.name.trim(),
+      position: player.position,
+      jerseyNumber: player.jerseyNumber.trim()
+    }));
 
     setLoading(true);
     try {
@@ -252,9 +311,9 @@ const TournamentCreator = ({ sidebarOpen }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: currentTeam.teamName,
+          name: currentTeam.teamName.trim(),
           sport: currentTeam.sport,
-          players: validPlayers
+          players: trimmedPlayers
         })
       });
       
@@ -515,8 +574,9 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
+  // Calculate valid player count (all 12 must be valid)
   const validPlayerCount = currentTeam.players.filter(p => 
-    p.name.trim() && p.position && p.jerseyNumber
+    p.name.trim() && p.position && p.jerseyNumber.trim()
   ).length;
 
   return (
@@ -766,30 +826,29 @@ const TournamentCreator = ({ sidebarOpen }) => {
                           <div className="admin-teams-players-header">
                             <h3>Players</h3>
                             <div className="admin-teams-player-count">
-                              {validPlayerCount} / 12-15 players
+                              {validPlayerCount} / 12 players
                               {validPlayerCount < 12 && (
-                                <span className="admin-teams-count-warning"> (Minimum 12 required)</span>
+                                <span className="admin-teams-count-warning"> (All 12 players required)</span>
+                              )}
+                              {validPlayerCount === 12 && (
+                                <span className="admin-teams-count-success"> ✓ All players filled</span>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              className="admin-teams-submit-btn"
-                              onClick={addPlayer}
-                              disabled={currentTeam.players.length >= 15}
-                            >
-                              Add Player
-                            </button>
                           </div>
 
                           {currentTeam.players.map((player, index) => (
                             <div key={index} className="admin-teams-player-card">
                               <div className="admin-teams-player-input-row">
+                                <div className="player-number-badge">
+                                  {index + 1}
+                                </div>
                                 <input
                                   type="text"
                                   placeholder="Player name"
                                   value={player.name}
                                   onChange={(e) => handlePlayerChange(index, "name", e.target.value)}
                                   className="admin-teams-player-name-input"
+                                  required
                                 />
                                 <input
                                   type="text"
@@ -798,27 +857,35 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                   onChange={(e) => handlePlayerChange(index, "jerseyNumber", e.target.value)}
                                   className="admin-teams-jersey-input"
                                   maxLength="10"
+                                  required
                                 />
                                 <select
                                   value={player.position}
                                   onChange={(e) => handlePlayerChange(index, "position", e.target.value)}
                                   className="admin-teams-position-select"
+                                  required
                                 >
                                   <option value="">Select position</option>
                                   {positions[currentTeam.sport].map(pos => (
                                     <option key={pos} value={pos}>{pos}</option>
                                   ))}
                                 </select>
-                                <button
-                                  type="button"
-                                  className="admin-teams-delete-btn"
-                                  onClick={() => removePlayer(index)}
-                                >
-                                  Remove
-                                </button>
                               </div>
                             </div>
                           ))}
+                          
+                          {/* Information message */}
+                          <div style={{
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                            borderRadius: '6px',
+                            padding: '12px',
+                            marginTop: '15px',
+                            fontSize: '13px',
+                            color: '#93c5fd'
+                          }}>
+                            <strong>Note:</strong> All 12 players must be filled. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
+                          </div>
                         </div>
                       )}
 
@@ -1214,6 +1281,34 @@ const TournamentCreator = ({ sidebarOpen }) => {
       </div>
 
       <style jsx>{`
+        .admin-teams-player-card {
+          position: relative;
+        }
+
+        .player-number-badge {
+          width: 30px;
+          height: 30px;
+          background: #2196f3;
+          color: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 600;
+          flex-shrink: 0;
+          margin-right: 12px;
+        }
+
+        .admin-teams-count-success {
+          color: #10b981;
+          font-weight: 600;
+        }
+
+        .admin-teams-count-warning {
+          color: #fbbf24;
+        }
+
         .assigned-teams-list {
           background: rgba(0, 0, 0, 0.3);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1934,6 +2029,17 @@ const TournamentCreator = ({ sidebarOpen }) => {
           .players-table td {
             padding: 8px 10px;
             font-size: 12px;
+          }
+
+          .player-number-badge {
+            position: static;
+            transform: none;
+            margin-right: 8px;
+            margin-bottom: 5px;
+          }
+
+          .admin-teams-player-input-row {
+            flex-wrap: wrap;
           }
         }
       `}</style>
