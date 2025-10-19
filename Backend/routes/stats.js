@@ -58,6 +58,30 @@ router.get('/:bracketId/teams', async (req, res) => {
   }
 });
 
+// GET players by bracket
+router.get("/brackets/:bracketId/players", async (req, res) => {
+  try {
+    const { bracketId } = req.params;
+    const query = `
+      SELECT DISTINCT p.*, t.name as team_name
+      FROM players p
+      JOIN teams t ON p.team_id = t.id
+      JOIN bracket_teams bt ON t.id = bt.team_id
+      WHERE bt.bracket_id = ?
+      ORDER BY t.name, p.name
+    `;
+    const [players] = await db.pool.query(query, [bracketId]);
+    console.log(`Players for bracket ${bracketId}:`, players.length);
+    res.json(players);
+  } catch (error) {
+    console.error('Error fetching bracket players:', error);
+    res.status(500).json({ 
+      message: 'Error fetching players',
+      error: error.message 
+    });
+  }
+});
+
 // GET matches by bracket
 router.get('/:bracketId/matches', async (req, res) => {
   try {
@@ -106,7 +130,7 @@ router.get("/teams/:teamId/players", async (req, res) => {
   }
 });
 
-// Replace your existing "Get existing stats for a match" route with this enhanced version:
+// Get existing stats for a match
 router.get("/matches/:matchId/stats", async (req, res) => {
   try {
     const query = `
@@ -130,8 +154,7 @@ router.get("/matches/:matchId/stats", async (req, res) => {
   }
 });
 
-// Enhanced Save stats for a match with bracket advancement and awards
-// Enhanced Save stats for a match - REMOVED bracket advancement logic
+// Enhanced Save stats for a match
 router.post("/matches/:matchId/stats", async (req, res) => {
   const { players, team1_id, team2_id, awards = [] } = req.body;
   const matchId = req.params.matchId;
@@ -274,6 +297,7 @@ router.post("/matches/:matchId/stats", async (req, res) => {
     conn.release();
   }
 });
+
 // Get match awards
 router.get("/matches/:matchId/awards", async (req, res) => {
   try {
@@ -338,6 +362,442 @@ router.get("/matches/:matchId/summary", async (req, res) => {
   } catch (err) {
     console.error("Error fetching match summary:", err);
     res.status(500).json({ error: "Failed to fetch match summary" });
+  }
+});
+
+// FIXED: Get event statistics including total players, averages, and total games - WITH BRACKET FILTERING
+router.get("/events/:eventId/statistics", async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { bracketId } = req.query; // Get optional bracketId from query params
+    
+    console.log(`Fetching statistics for event ${eventId}, bracket: ${bracketId || 'all'}`);
+    
+    // Build WHERE clause based on whether bracketId is provided
+    const bracketFilter = bracketId ? 'AND b.id = ?' : '';
+    const queryParams = bracketId ? [eventId, bracketId] : [eventId];
+    
+    // Get total players in the event/bracket
+    const [totalPlayersResult] = await db.pool.query(`
+      SELECT COUNT(DISTINCT p.id) as total_players
+      FROM players p
+      JOIN teams t ON p.team_id = t.id
+      JOIN bracket_teams bt ON t.id = bt.team_id
+      JOIN brackets b ON bt.bracket_id = b.id
+      WHERE b.event_id = ? ${bracketFilter}
+    `, queryParams);
+    
+    // Get total completed games in the event/bracket
+    const [totalGamesResult] = await db.pool.query(`
+      SELECT COUNT(*) as total_games
+      FROM matches m
+      JOIN brackets b ON m.bracket_id = b.id
+      WHERE b.event_id = ? 
+        AND m.status = 'completed'
+        ${bracketFilter}
+    `, queryParams);
+    
+    // Get average statistics for the event/bracket
+    const [avgStatsResult] = await db.pool.query(`
+      SELECT 
+        ROUND(AVG(ps.points), 1) as avg_ppg,
+        ROUND(AVG(ps.rebounds), 1) as avg_rpg,
+        ROUND(AVG(ps.assists), 1) as avg_apg,
+        ROUND(AVG(ps.blocks), 1) as avg_bpg,
+        ROUND(AVG(CASE WHEN ps.attack_attempts > 0 THEN (ps.kills - ps.attack_errors) / ps.attack_attempts * 100 ELSE 0 END), 1) as avg_hitting_percentage
+      FROM player_stats ps
+      JOIN matches m ON ps.match_id = m.id
+      JOIN brackets b ON m.bracket_id = b.id
+      WHERE b.event_id = ? 
+        AND m.status = 'completed'
+        ${bracketFilter}
+    `, queryParams);
+    
+    const statistics = {
+      total_players: totalPlayersResult[0]?.total_players || 0,
+      total_games: totalGamesResult[0]?.total_games || 0,
+      avg_ppg: avgStatsResult[0]?.avg_ppg || 0,
+      avg_rpg: avgStatsResult[0]?.avg_rpg || 0,
+      avg_apg: avgStatsResult[0]?.avg_apg || 0,
+      avg_bpg: avgStatsResult[0]?.avg_bpg || 0,
+      avg_hitting_percentage: avgStatsResult[0]?.avg_hitting_percentage || 0
+    };
+    
+    console.log(`Statistics result:`, statistics);
+    res.json(statistics);
+  } catch (err) {
+    console.error("Error fetching event statistics:", err);
+    res.status(500).json({ error: "Failed to fetch event statistics" });
+  }
+});
+
+// FIXED: Get comprehensive player statistics for an event - WITH BRACKET FILTERING
+router.get("/events/:eventId/players-statistics", async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { bracketId } = req.query; // Optional bracket filter
+    
+    console.log(`Fetching player statistics for event ${eventId}, bracket: ${bracketId || 'all'}`);
+    
+    // Build WHERE clause based on whether bracketId is provided
+    const bracketFilter = bracketId ? 'AND b.id = ?' : '';
+    const queryParams = bracketId ? [eventId, bracketId] : [eventId];
+    
+    // First get the sport type to determine which stats to calculate
+    let sportTypeQuery = `
+      SELECT DISTINCT b.sport_type 
+      FROM brackets b 
+      WHERE b.event_id = ?
+      ${bracketFilter}
+      LIMIT 1
+    `;
+    
+    const [sportTypeResult] = await db.pool.query(sportTypeQuery, queryParams);
+    
+    if (sportTypeResult.length === 0) {
+      console.log('No brackets found for this event/bracket combination');
+      return res.json([]);
+    }
+    
+    const sportType = sportTypeResult[0].sport_type;
+    console.log(`Sport type detected: ${sportType}`);
+    
+    let query;
+    if (sportType === 'basketball') {
+      query = `
+        SELECT 
+          p.id,
+          p.name,
+          p.jersey_number,
+          t.name as team_name,
+          b.id as bracket_id,
+          b.name as bracket_name,
+          '${sportType}' as sport_type,
+          COUNT(DISTINCT ps.match_id) as games_played,
+          SUM(ps.points) as total_points,
+          SUM(ps.assists) as total_assists,
+          SUM(ps.rebounds) as total_rebounds,
+          SUM(ps.steals) as total_steals,
+          SUM(ps.blocks) as total_blocks,
+          SUM(ps.three_points_made) as total_three_points,
+          SUM(ps.turnovers) as total_turnovers,
+          SUM(ps.fouls) as total_fouls,
+          -- Calculate per-game averages (PPG, APG, RPG, etc.)
+          ROUND(SUM(ps.points) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
+          ROUND(SUM(ps.rebounds) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
+          ROUND(SUM(ps.assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
+          ROUND(SUM(ps.steals) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as spg,
+          ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
+          ROUND(SUM(ps.turnovers) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as tpg,
+          -- Field Goal Percentage (simplified - using points as proxy)
+          ROUND(
+            CASE 
+              WHEN COUNT(DISTINCT ps.match_id) > 0 
+              THEN (SUM(ps.points) / COUNT(DISTINCT ps.match_id)) / 2.5
+              ELSE 0 
+            END, 1
+          ) as fg,
+          -- Overall Score (matching MVP calculation: PTS + REB + AST + STL + BLK - TO per game)
+          ROUND(
+            (SUM(ps.points) + SUM(ps.rebounds) + SUM(ps.assists) + 
+             SUM(ps.steals) + SUM(ps.blocks) - SUM(ps.turnovers)) / 
+            NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
+          ) as overall_score
+        FROM player_stats ps
+        JOIN players p ON ps.player_id = p.id
+        JOIN teams t ON p.team_id = t.id
+        JOIN matches m ON ps.match_id = m.id
+        JOIN brackets b ON m.bracket_id = b.id
+        WHERE m.status = 'completed' 
+          AND b.event_id = ?
+          ${bracketFilter}
+        GROUP BY p.id, p.name, p.jersey_number, t.name, b.id, b.name
+        HAVING games_played > 0
+        ORDER BY overall_score DESC, ppg DESC, rpg DESC, apg DESC
+      `;
+    } else {
+      // Volleyball
+      query = `
+        SELECT 
+          p.id,
+          p.name,
+          p.jersey_number,
+          t.name as team_name,
+          b.id as bracket_id,
+          b.name as bracket_name,
+          '${sportType}' as sport_type,
+          COUNT(DISTINCT ps.match_id) as games_played,
+          SUM(ps.kills) as total_kills,
+          SUM(ps.attack_attempts) as total_attack_attempts,
+          SUM(ps.attack_errors) as total_attack_errors,
+          SUM(ps.blocks) as total_blocks,
+          SUM(ps.volleyball_assists) as total_volleyball_assists,
+          SUM(ps.digs) as total_digs,
+          SUM(ps.serves) as total_serves,
+          SUM(ps.service_aces) as total_service_aces,
+          SUM(ps.serve_errors) as total_serve_errors,
+          SUM(ps.receptions) as total_receptions,
+          SUM(ps.reception_errors) as total_reception_errors,
+          -- Calculate per-game averages
+          ROUND(SUM(ps.kills) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
+          ROUND(SUM(ps.kills) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as kpg,
+          ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
+          ROUND(SUM(ps.volleyball_assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
+          ROUND(SUM(ps.digs) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as dpg,
+          ROUND(SUM(ps.digs) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
+          ROUND(SUM(ps.service_aces) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as acepg,
+          -- Hitting Percentage
+          ROUND(
+            CASE 
+              WHEN SUM(ps.attack_attempts) > 0 
+              THEN (SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100
+              ELSE 0 
+            END, 1
+          ) as fg,
+          ROUND(
+            CASE 
+              WHEN SUM(ps.attack_attempts) > 0 
+              THEN (SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100
+              ELSE 0 
+            END, 1
+          ) as hitting_percentage,
+          -- Service Percentage
+          ROUND(
+            CASE 
+              WHEN (SUM(ps.serves) + SUM(ps.serve_errors)) > 0 
+              THEN SUM(ps.serves) / (SUM(ps.serves) + SUM(ps.serve_errors)) * 100
+              ELSE 0 
+            END, 1
+          ) as service_percentage,
+          -- Reception Percentage
+          ROUND(
+            CASE 
+              WHEN (SUM(ps.receptions) + SUM(ps.reception_errors)) > 0 
+              THEN SUM(ps.receptions) / (SUM(ps.receptions) + SUM(ps.reception_errors)) * 100
+              ELSE 0 
+            END, 1
+          ) as reception_percentage,
+          -- Overall Score (matching MVP calculation: K + B + A + D + ACE - Errors per game)
+          ROUND(
+            (SUM(ps.kills) + SUM(ps.blocks) + SUM(ps.volleyball_assists) + 
+             SUM(ps.digs) + SUM(ps.service_aces) - 
+             (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+            NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
+          ) as overall_score
+        FROM player_stats ps
+        JOIN players p ON ps.player_id = p.id
+        JOIN teams t ON p.team_id = t.id
+        JOIN matches m ON ps.match_id = m.id
+        JOIN brackets b ON m.bracket_id = b.id
+        WHERE m.status = 'completed' 
+          AND b.event_id = ?
+          ${bracketFilter}
+        GROUP BY p.id, p.name, p.jersey_number, t.name, b.id, b.name
+        HAVING games_played > 0
+        ORDER BY overall_score DESC, kpg DESC, bpg DESC, apg DESC
+      `;
+    }
+    
+    const [players] = await db.pool.query(query, queryParams);
+    console.log(`Found ${players.length} players with statistics`);
+    res.json(players);
+  } catch (err) {
+    console.error("Error fetching player statistics:", err);
+    res.status(500).json({ error: "Failed to fetch player statistics" });
+  }
+});
+
+// FIXED: Get comprehensive team statistics for an event - WITH BRACKET FILTERING
+router.get("/events/:eventId/teams-statistics", async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { bracketId } = req.query; // Optional bracket filter
+    
+    console.log(`Fetching team statistics for event ${eventId}, bracket: ${bracketId || 'all'}`);
+    
+    // Build WHERE clause based on whether bracketId is provided
+    const bracketFilter = bracketId ? 'AND b.id = ?' : '';
+    const queryParams = bracketId ? [eventId, bracketId] : [eventId];
+    
+    // First get the sport type to determine which stats to calculate
+    let sportTypeQuery = `
+      SELECT DISTINCT b.sport_type 
+      FROM brackets b 
+      WHERE b.event_id = ?
+      ${bracketFilter}
+      LIMIT 1
+    `;
+    
+    const [sportTypeResult] = await db.pool.query(sportTypeQuery, queryParams);
+    
+    if (sportTypeResult.length === 0) {
+      console.log('No brackets found for this event/bracket combination');
+      return res.json([]);
+    }
+    
+    const sportType = sportTypeResult[0].sport_type;
+    console.log(`Sport type detected: ${sportType}`);
+    
+    let query;
+    if (sportType === 'basketball') {
+      query = `
+        SELECT 
+          t.id as team_id,
+          t.name as team_name,
+          b.id as bracket_id,
+          b.name as bracket_name,
+          '${sportType}' as sport_type,
+          COUNT(DISTINCT ps.match_id) as games_played,
+          -- Team totals
+          SUM(ps.points) as total_points,
+          SUM(ps.assists) as total_assists,
+          SUM(ps.rebounds) as total_rebounds,
+          SUM(ps.steals) as total_steals,
+          SUM(ps.blocks) as total_blocks,
+          SUM(ps.three_points_made) as total_three_points,
+          SUM(ps.turnovers) as total_turnovers,
+          SUM(ps.fouls) as total_fouls,
+          -- Calculate per-game averages (PPG, APG, RPG, etc.)
+          ROUND(SUM(ps.points) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
+          ROUND(SUM(ps.rebounds) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
+          ROUND(SUM(ps.assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
+          ROUND(SUM(ps.steals) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as spg,
+          ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
+          ROUND(SUM(ps.turnovers) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as tpg,
+          -- Field Goal Percentage (team average)
+          ROUND(
+            AVG(
+              CASE 
+                WHEN ps.points > 0 
+                THEN ps.points / 2.5  -- Simplified FG calculation
+                ELSE 0 
+              END
+            ), 1
+          ) as fg,
+          -- Overall Score (team performance metric)
+          ROUND(
+            (SUM(ps.points) + SUM(ps.rebounds) + SUM(ps.assists) + 
+             SUM(ps.steals) + SUM(ps.blocks) - SUM(ps.turnovers)) / 
+            NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
+          ) as overall_score,
+          -- Win/Loss record
+          (SELECT COUNT(*) FROM matches m 
+           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
+           AND m.winner_id = t.id 
+           AND m.status = 'completed') as wins,
+          (SELECT COUNT(*) FROM matches m 
+           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
+           AND m.winner_id != t.id 
+           AND m.status = 'completed') as losses
+        FROM teams t
+        JOIN bracket_teams bt ON t.id = bt.team_id
+        JOIN brackets b ON bt.bracket_id = b.id
+        LEFT JOIN players p ON p.team_id = t.id
+        LEFT JOIN player_stats ps ON ps.player_id = p.id
+        LEFT JOIN matches m ON ps.match_id = m.id AND m.status = 'completed'
+        WHERE b.event_id = ?
+          ${bracketFilter}
+        GROUP BY t.id, t.name, b.id, b.name
+        HAVING games_played > 0
+        ORDER BY overall_score DESC, ppg DESC, rpg DESC, apg DESC
+      `;
+    } else {
+      // Volleyball team statistics
+      query = `
+        SELECT 
+          t.id as team_id,
+          t.name as team_name,
+          b.id as bracket_id,
+          b.name as bracket_name,
+          '${sportType}' as sport_type,
+          COUNT(DISTINCT ps.match_id) as games_played,
+          -- Team totals
+          SUM(ps.kills) as total_kills,
+          SUM(ps.attack_attempts) as total_attack_attempts,
+          SUM(ps.attack_errors) as total_attack_errors,
+          SUM(ps.blocks) as total_blocks,
+          SUM(ps.volleyball_assists) as total_volleyball_assists,
+          SUM(ps.digs) as total_digs,
+          SUM(ps.serves) as total_serves,
+          SUM(ps.service_aces) as total_service_aces,
+          SUM(ps.serve_errors) as total_serve_errors,
+          SUM(ps.receptions) as total_receptions,
+          SUM(ps.reception_errors) as total_reception_errors,
+          -- Calculate per-game averages
+          ROUND(SUM(ps.kills) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
+          ROUND(SUM(ps.kills) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as kpg,
+          ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
+          ROUND(SUM(ps.volleyball_assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
+          ROUND(SUM(ps.digs) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as dpg,
+          ROUND(SUM(ps.digs) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
+          ROUND(SUM(ps.service_aces) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as acepg,
+          -- Hitting Percentage (team average)
+          ROUND(
+            CASE 
+              WHEN SUM(ps.attack_attempts) > 0 
+              THEN (SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100
+              ELSE 0 
+            END, 1
+          ) as fg,
+          ROUND(
+            CASE 
+              WHEN SUM(ps.attack_attempts) > 0 
+              THEN (SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100
+              ELSE 0 
+            END, 1
+          ) as hitting_percentage,
+          -- Service Percentage (team average)
+          ROUND(
+            CASE 
+              WHEN (SUM(ps.serves) + SUM(ps.serve_errors)) > 0 
+              THEN SUM(ps.serves) / (SUM(ps.serves) + SUM(ps.serve_errors)) * 100
+              ELSE 0 
+            END, 1
+          ) as service_percentage,
+          -- Reception Percentage (team average)
+          ROUND(
+            CASE 
+              WHEN (SUM(ps.receptions) + SUM(ps.reception_errors)) > 0 
+              THEN SUM(ps.receptions) / (SUM(ps.receptions) + SUM(ps.reception_errors)) * 100
+              ELSE 0 
+            END, 1
+          ) as reception_percentage,
+          -- Overall Score (team performance metric)
+          ROUND(
+            (SUM(ps.kills) + SUM(ps.blocks) + SUM(ps.volleyball_assists) + 
+             SUM(ps.digs) + SUM(ps.service_aces) - 
+             (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+            NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
+          ) as overall_score,
+          -- Win/Loss record
+          (SELECT COUNT(*) FROM matches m 
+           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
+           AND m.winner_id = t.id 
+           AND m.status = 'completed') as wins,
+          (SELECT COUNT(*) FROM matches m 
+           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
+           AND m.winner_id != t.id 
+           AND m.status = 'completed') as losses
+        FROM teams t
+        JOIN bracket_teams bt ON t.id = bt.team_id
+        JOIN brackets b ON bt.bracket_id = b.id
+        LEFT JOIN players p ON p.team_id = t.id
+        LEFT JOIN player_stats ps ON ps.player_id = p.id
+        LEFT JOIN matches m ON ps.match_id = m.id AND m.status = 'completed'
+        WHERE b.event_id = ?
+          ${bracketFilter}
+        GROUP BY t.id, t.name, b.id, b.name
+        HAVING games_played > 0
+        ORDER BY overall_score DESC, kpg DESC, bpg DESC, apg DESC
+      `;
+    }
+    
+    const [teams] = await db.pool.query(query, queryParams);
+    console.log(`Found ${teams.length} teams with statistics`);
+    res.json(teams);
+  } catch (err) {
+    console.error("Error fetching team statistics:", err);
+    res.status(500).json({ error: "Failed to fetch team statistics" });
   }
 });
 
