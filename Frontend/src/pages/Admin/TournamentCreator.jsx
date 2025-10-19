@@ -356,11 +356,58 @@ const TournamentCreator = ({ sidebarOpen }) => {
     }
   };
 
-  const handleProceedToBracket = () => {
+   const handleProceedToBracket = () => {
     if (createdTeams.length < 2) {
       setValidationError("You need at least 2 teams to create brackets");
       return;
     }
+
+    // Validate sport consistency for each bracket
+    if (eventData.numberOfBrackets === 1) {
+      // For single bracket, all teams must be the same sport
+      const sports = [...new Set(createdTeams.map(t => t.sport.toLowerCase()))];
+      if (sports.length > 1) {
+        setValidationError(`All teams must be the same sport for a single bracket tournament. Currently you have: ${sports.map(s => capitalize(s)).join(', ')}. Please remove teams of different sports.`);
+        return;
+      }
+    } else {
+      // For multiple brackets, validate each bracket assignment
+      const bracketOptions = getBracketOptions();
+      
+      for (let bracket of bracketOptions) {
+        // Get teams assigned to this bracket
+        const teamsInBracket = Object.entries(teamBracketAssignments)
+          .filter(([teamId, bracketId]) => bracketId === bracket.id)
+          .map(([teamId]) => teamId);
+        
+        if (teamsInBracket.length > 0) {
+          // Check if all teams in this bracket have the same sport
+          const sportsInBracket = teamsInBracket.map(teamId => {
+            const team = createdTeams.find(t => String(t.id) === String(teamId));
+            return team ? team.sport.toLowerCase() : null;
+          }).filter(sport => sport !== null);
+          
+          const uniqueSports = [...new Set(sportsInBracket)];
+          
+          if (uniqueSports.length > 1) {
+            setValidationError(`${bracket.name} has mixed sports (${uniqueSports.map(s => capitalize(s)).join(', ')}). All teams in a bracket must be the same sport. Please reassign teams or remove teams of different sports.`);
+            return;
+          }
+        }
+      }
+      
+      // Check if all teams are assigned to a bracket
+      const assignedTeams = Object.keys(teamBracketAssignments);
+      const unassignedTeams = createdTeams.filter(team => 
+        !assignedTeams.includes(String(team.id))
+      );
+      
+      if (unassignedTeams.length > 0) {
+        setValidationError(`Please assign all teams to a bracket before proceeding. ${unassignedTeams.length} team(s) are not assigned: ${unassignedTeams.map(t => t.name).join(', ')}`);
+        return;
+      }
+    }
+    
     // Reset brackets state to force re-initialization with new teams
     setBrackets([]);
     setCurrentStep(3);
