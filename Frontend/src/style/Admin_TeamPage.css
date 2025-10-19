@@ -392,28 +392,24 @@
   margin-left: 8px;
 }
 
-/* Bracket Badge */
+
+/* Simple Bracket Badge - Match text color with other sections */
 .admin-teams-bracket-badge {
   display: inline-block;
   padding: 6px 12px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.4);
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #c4b5fd;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 250px;
-  transition: var(--admin-teams-transition);
+  max-width: 280px;
+  transition: all 0.2s ease;
 }
 
-.admin-teams-bracket-badge:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%);
-  border-color: rgba(139, 92, 246, 0.6);
-  transform: translateY(-1px);
-}
 
 /* Validation Messages */
 .admin-teams-validation-message {
@@ -777,7 +773,7 @@
 
 .admin-teams-modal-player-actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   margin-left: auto;
 }
 
@@ -850,6 +846,12 @@
   }
 
   .admin-teams-modal-player-actions button {
-    flex: 1;
+     padding: 14px 24px;
+    font-size: 16px;
+    min-width: 50px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }

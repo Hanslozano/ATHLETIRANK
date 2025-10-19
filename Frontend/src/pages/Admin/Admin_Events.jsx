@@ -948,9 +948,9 @@ const AdminEvents = ({ sidebarOpen }) => {
               )}
             </div>
 
-            {/* Events Selection Tab */}
+            {/* Events Selection Tab - WITH PURPLE BACKGROUND */}
             {activeTab === "events" && (
-              <div className="bracket-view-section">
+              <div className="bracket-view-section purple-background">
                 {/* Search Container */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
                   <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
