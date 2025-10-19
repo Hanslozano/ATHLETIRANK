@@ -8,6 +8,30 @@ const TournamentCreator = ({ sidebarOpen }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const validationMessageRef = React.useRef(null);
+  const dashboardContentRef = React.useRef(null);
+  
+  // Scroll to validation message when error appears
+  useEffect(() => {
+    if (validationError) {
+      // Small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        if (validationMessageRef.current) {
+          validationMessageRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          });
+        } else if (dashboardContentRef.current) {
+          // Fallback: scroll to top of content
+          dashboardContentRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 100);
+    }
+  }, [validationError]);
   
   // Step 1: Event Data
   const [eventData, setEventData] = useState({
@@ -356,7 +380,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
     }
   };
 
-   const handleProceedToBracket = () => {
+  const handleProceedToBracket = () => {
     if (createdTeams.length < 2) {
       setValidationError("You need at least 2 teams to create brackets");
       return;
@@ -651,7 +675,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
   return (
     <div className="admin-dashboard">
-      <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
+      <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`} ref={dashboardContentRef}>
         <div className="dashboard-header">
           <h1>Create Tournament</h1>
           <p>Complete tournament setup in 3 easy steps</p>
@@ -685,7 +709,10 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
             {/* Validation Message */}
             {validationError && (
-              <div className={`admin-teams-validation-message ${validationError.includes("successfully") ? "admin-teams-success" : "admin-teams-error"}`}>
+              <div 
+                ref={validationMessageRef}
+                className={`admin-teams-validation-message ${validationError.includes("successfully") ? "admin-teams-success" : "admin-teams-error"} validation-message-animated`}
+              >
                 {validationError}
                 <button 
                   className="admin-teams-close-message"
@@ -1176,7 +1203,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             name="sport"
                             value={bracket.sport}
                             onChange={(e) => handleBracketInputChange(bracket.id, 'sport', e.target.value)}
-                            disabled={bracket.selectedTeamIds.length > 0} // Disable if teams already assigned
+                            disabled={bracket.selectedTeamIds.length > 0}
                           >
                             <option value="">Select a sport</option>
                             {Object.keys(positions).map((sport) => (
@@ -1375,6 +1402,69 @@ const TournamentCreator = ({ sidebarOpen }) => {
       </div>
 
       <style jsx>{`
+        .validation-message-animated {
+          animation: slideInDown 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes slideInDown {
+          from {
+            opacity: 0;
+            transform: translateY(-30px) scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .admin-teams-validation-message {
+          position: relative;
+          padding: 16px 45px 16px 20px;
+          border-radius: 8px;
+          margin-bottom: 25px;
+          font-size: 14px;
+          line-height: 1.6;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          transition: all 0.3s ease;
+        }
+
+        .admin-teams-error {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%);
+          border: 2px solid rgba(239, 68, 68, 0.4);
+          color: #fca5a5;
+        }
+
+        .admin-teams-success {
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.15) 100%);
+          border: 2px solid rgba(34, 197, 94, 0.4);
+          color: #86efac;
+        }
+
+        .admin-teams-close-message {
+          position: absolute;
+          top: 50%;
+          right: 15px;
+          transform: translateY(-50%);
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: inherit;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          font-size: 20px;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+
+        .admin-teams-close-message:hover {
+          background: rgba(255, 255, 255, 0.3);
+          transform: translateY(-50%) scale(1.1);
+        }
+
         .admin-teams-player-card {
           position: relative;
         }
@@ -1687,7 +1777,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           border-bottom: none;
         }
 
-        /* Rest of the existing styles remain the same */
         .tournament-progress {
           display: flex;
           align-items: center;
@@ -1792,6 +1881,13 @@ const TournamentCreator = ({ sidebarOpen }) => {
           width: 100%;
         }
 
+        .team-info-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+        }
+
         .team-summary-card .remove-team-btn {
           background: #dc2626;
           color: white;
@@ -1806,10 +1902,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           align-items: center;
           justify-content: center;
           transition: background 0.2s ease;
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          z-index: 10;
         }
 
         .team-summary-card .remove-team-btn:hover {
@@ -1913,7 +2005,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           background: #1a2332;
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 6px;
-          color: #e2e8b8;
+          color: #e2e8f0;
           font-size: 14px;
           cursor: pointer;
           min-width: 180px;
@@ -1965,7 +2057,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           color: #e2e8f0;
         }
 
-        .sport-badge {
+        .bracket-sport-badge {
           display: inline-block;
           padding: 4px 12px;
           border-radius: 12px;
@@ -1973,13 +2065,13 @@ const TournamentCreator = ({ sidebarOpen }) => {
           font-weight: 500;
         }
 
-        .sport-basketball {
+        .bracket-sport-basketball {
           background: rgba(255, 152, 0, 0.2);
           color: #ff9800;
           border: 1px solid rgba(255, 152, 0, 0.3);
         }
 
-        .sport-volleyball {
+        .bracket-sport-volleyball {
           background: rgba(33, 150, 243, 0.2);
           color: #2196f3;
           border: 1px solid rgba(33, 150, 243, 0.3);
@@ -2013,60 +2105,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           color: #94a3b8;
           padding: 40px 20px;
           font-size: 14px;
-        }
-
-        .team-selection-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 15px;
-          margin: 15px 0;
-        }
-
-        .team-selection-card {
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          padding: 15px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          background: #1a2332;
-          color: #e2e8f0;
-        }
-
-        .team-selection-card:hover {
-          border-color: #2196f3;
-          background: rgba(33, 150, 243, 0.1);
-        }
-
-        .team-selection-card.selected {
-          border-color: #2196f3;
-          background: rgba(33, 150, 243, 0.2);
-        }
-
-        .team-selection-card input[type="checkbox"] {
-          width: 20px;
-          height: 20px;
-          cursor: pointer;
-        }
-
-        .team-selection-info {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-          font-size: 14px;
-          color: #e2e8f0;
-        }
-
-        .team-selection-info strong {
-          color: #fff;
-        }
-
-        .selected-teams-count {
-          margin-top: 10px;
-          font-weight: 500;
-          color: #2196f3;
         }
 
         .success-container {
@@ -2117,10 +2155,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
             margin: 0;
           }
 
-          .team-selection-grid {
-            grid-template-columns: 1fr;
-          }
-
           .teams-summary-grid {
             grid-template-columns: 1fr;
           }
@@ -2160,13 +2194,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           .players-table td {
             padding: 8px 10px;
             font-size: 12px;
-          }
-
-          .player-number-badge {
-            position: static;
-            transform: none;
-            margin-right: 8px;
-            margin-bottom: 5px;
           }
 
           .admin-teams-player-input-row {
