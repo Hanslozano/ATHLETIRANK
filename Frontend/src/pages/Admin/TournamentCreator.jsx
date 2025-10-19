@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaCheckCircle, FaChevronRight, FaChevronLeft, FaSearch, FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaCheckCircle, FaChevronRight, FaChevronLeft, FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import "../../style/Admin_Events.css";
 import "../../style/Admin_TeamPage.css";
 import "../../style/Admin_BracketPage.css";
@@ -812,7 +812,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                     Create new teams or select from existing teams (minimum 2 teams required)
                     {eventData.numberOfBrackets > 1 && (
                       <span style={{color: '#fbbf24', display: 'block', marginTop: '5px'}}>
-                        You can assign teams to specific brackets in the next step
+                        Since you have multiple brackets, please assign each team to a bracket after adding them.
                       </span>
                     )}
                   </p>
@@ -863,13 +863,13 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                   className="bracket-assignment-select"
                                   style={{
                                     width: '100%',
-                                    padding: '6px 10px',
+                                    padding: '8px 12px',
                                     marginTop: '8px',
                                     borderRadius: '4px',
                                     border: '1px solid rgba(255,255,255,0.2)',
                                     background: '#1a2332',
                                     color: '#e2e8f0',
-                                    fontSize: '12px'
+                                    fontSize: '14px'
                                   }}
                                 >
                                   <option value="">Assign to bracket...</option>
@@ -899,6 +899,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                           value={currentTeam.teamName}
                           onChange={handleTeamInputChange}
                           placeholder="Enter team name"
+                          style={{ fontSize: '16px' }}
                         />
                       </div>
 
@@ -909,6 +910,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                           name="sport"
                           value={currentTeam.sport}
                           onChange={handleTeamInputChange}
+                          style={{ fontSize: '16px' }}
                         >
                           <option value="">Select a sport</option>
                           {Object.keys(positions).map((sport) => (
@@ -945,6 +947,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                   value={player.name}
                                   onChange={(e) => handlePlayerChange(index, "name", e.target.value)}
                                   className="admin-teams-player-name-input"
+                                  style={{ fontSize: '16px' }}
                                   required
                                 />
                                 <input
@@ -953,6 +956,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                   value={player.jerseyNumber}
                                   onChange={(e) => handlePlayerChange(index, "jerseyNumber", e.target.value)}
                                   className="admin-teams-jersey-input"
+                                  style={{ fontSize: '16px' }}
                                   maxLength="10"
                                   required
                                 />
@@ -960,6 +964,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                   value={player.position}
                                   onChange={(e) => handlePlayerChange(index, "position", e.target.value)}
                                   className="admin-teams-position-select"
+                                  style={{ fontSize: '16px' }}
                                   required
                                 >
                                   <option value="">Select position</option>
@@ -988,6 +993,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                 type="button"
                                 className="add-player-btn"
                                 onClick={handleAddPlayer}
+                                style={{ fontSize: '16px' }}
                               >
                                 <FaPlus style={{ marginRight: '8px' }} />
                                 Add More Players ({15 - currentTeam.players.length} slots available)
@@ -1002,7 +1008,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             borderRadius: '6px',
                             padding: '12px',
                             marginTop: '15px',
-                            fontSize: '13px',
+                            fontSize: '14px',
                             color: '#93c5fd'
                           }}>
                             <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
@@ -1035,19 +1041,20 @@ const TournamentCreator = ({ sidebarOpen }) => {
                       {/* Compact Search & Filter Bar */}
                       <div className="team-search-filter-bar">
                         <div className="search-input-wrapper">
-                          <FaSearch className="search-icon" />
                           <input
                             type="text"
                             placeholder="Search teams..."
                             className="team-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ fontSize: '16px' }}
                           />
                         </div>
                         <select 
                           className="team-sport-filter"
                           value={sportFilter}
                           onChange={(e) => setSportFilter(e.target.value)}
+                          style={{ fontSize: '16px' }}
                         >
                           <option value="all">All Sports ({teams.filter(t => !createdTeams.find(ct => ct.id === t.id)).length})</option>
                           <option value="basketball">Basketball ({teams.filter(t => t.sport.toLowerCase() === "basketball" && !createdTeams.find(ct => ct.id === t.id)).length})</option>
@@ -1058,11 +1065,11 @@ const TournamentCreator = ({ sidebarOpen }) => {
                       {/* Tabular Team List */}
                       <div className="teams-table-container">
                         {teams.length === 0 ? (
-                          <p className="empty-state">
+                          <p className="empty-state" style={{ fontSize: '16px' }}>
                             No teams available in database. Create a new team first.
                           </p>
                         ) : getFilteredTeams().length === 0 ? (
-                          <p className="empty-state">
+                          <p className="empty-state" style={{ fontSize: '16px' }}>
                             {sportFilter === "all" 
                               ? "All available teams have been selected." 
                               : `No ${capitalize(sportFilter)} teams available.`}
@@ -1071,25 +1078,25 @@ const TournamentCreator = ({ sidebarOpen }) => {
                           <table className="teams-table">
                             <thead>
                               <tr>
-                                <th>Team Name</th>
-                                <th>Sport</th>
-                                <th>Players</th>
-                                {eventData.numberOfBrackets > 1 && <th>Assign to Bracket</th>}
-                                <th>Action</th>
+                                <th style={{ fontSize: '16px' }}>Team Name</th>
+                                <th style={{ fontSize: '16px' }}>Sport</th>
+                                <th style={{ fontSize: '16px' }}>Players</th>
+                                {eventData.numberOfBrackets > 1 && <th style={{ fontSize: '16px' }}>Assign to Bracket</th>}
+                                <th style={{ fontSize: '16px' }}>Action</th>
                               </tr>
                             </thead>
                             <tbody>
                               {getFilteredTeams().map(team => (
                                 <tr key={team.id}>
-                                  <td className="team-name-cell">
+                                  <td className="team-name-cell" style={{ fontSize: '16px' }}>
                                     <strong>{team.name}</strong>
                                   </td>
-                                  <td>
+                                  <td style={{ fontSize: '16px' }}>
                                     <span className={`bracket-sport-badge ${team.sport.toLowerCase() === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
                                       {capitalize(team.sport)}
                                     </span>
                                   </td>
-                                  <td>{team.players?.length || 0} players</td>
+                                  <td style={{ fontSize: '16px' }}>{team.players?.length || 0} players</td>
                                   {/* Bracket Assignment Column */}
                                   {eventData.numberOfBrackets > 1 && (
                                     <td>
@@ -1103,12 +1110,12 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                         }}
                                         className="bracket-assignment-select"
                                         style={{
-                                          padding: '6px 10px',
+                                          padding: '8px 12px',
                                           borderRadius: '4px',
                                           border: '1px solid rgba(255,255,255,0.2)',
                                           background: '#1a2332',
                                           color: '#e2e8f0',
-                                          fontSize: '12px',
+                                          fontSize: '16px',
                                           width: '100%'
                                         }}
                                       >
@@ -1127,6 +1134,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                       onClick={() => handleSelectExistingTeam(team.id)}
                                       disabled={eventData.numberOfBrackets > 1}
                                       title={eventData.numberOfBrackets > 1 ? "Please select a bracket first" : "Add Team"}
+                                      style={{ fontSize: '16px' }}
                                     >
                                       {eventData.numberOfBrackets > 1 ? "Select Bracket" : "Add Team"}
                                     </button>
@@ -1171,13 +1179,13 @@ const TournamentCreator = ({ sidebarOpen }) => {
                         {bracket.selectedTeamIds.length > 0 && (
                           <div style={{ 
                             color: '#10b981', 
-                            fontSize: '14px', 
+                            fontSize: '16px', 
                             marginTop: '5px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '5px'
                           }}>
-                            <FaCheckCircle size={12} />
+                            <FaCheckCircle size={16} />
                             {bracket.selectedTeamIds.length} team(s) pre-assigned from previous step
                           </div>
                         )}
@@ -1193,6 +1201,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             value={bracket.bracketName}
                             onChange={(e) => handleBracketInputChange(bracket.id, 'bracketName', e.target.value)}
                             placeholder={`Leave empty to auto-generate (e.g., ${createdEvent?.name} - Basketball Bracket ${index + 1})`}
+                            style={{ fontSize: '16px' }}
                           />
                         </div>
 
@@ -1204,6 +1213,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             value={bracket.sport}
                             onChange={(e) => handleBracketInputChange(bracket.id, 'sport', e.target.value)}
                             disabled={bracket.selectedTeamIds.length > 0}
+                            style={{ fontSize: '16px' }}
                           >
                             <option value="">Select a sport</option>
                             {Object.keys(positions).map((sport) => (
@@ -1211,7 +1221,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             ))}
                           </select>
                           {bracket.selectedTeamIds.length > 0 && (
-                            <small style={{ color: '#10b981', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                            <small style={{ color: '#10b981', fontSize: '14px', marginTop: '5px', display: 'block' }}>
                               Sport auto-detected from assigned teams
                             </small>
                           )}
@@ -1224,6 +1234,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             name="bracketType"
                             value={bracket.bracketType}
                             onChange={(e) => handleBracketInputChange(bracket.id, 'bracketType', e.target.value)}
+                            style={{ fontSize: '16px' }}
                           >
                             <option value="single">Single Elimination</option>
                             <option value="double">Double Elimination</option>
@@ -1233,7 +1244,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                         <div className="bracket-form-group">
                           <label>Assigned Teams</label>
                           {bracket.selectedTeamIds.length === 0 ? (
-                            <p style={{ color: '#fbbf24', fontSize: '14px', marginTop: '10px' }}>
+                            <p style={{ color: '#fbbf24', fontSize: '16px', marginTop: '10px' }}>
                               No teams assigned to this bracket. Please go back to Step 2 and assign teams.
                             </p>
                           ) : (
@@ -1242,7 +1253,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                 {bracket.selectedTeamIds.length > 0 && createdTeams
                                   .filter(team => bracket.selectedTeamIds.includes(String(team.id)) || bracket.selectedTeamIds.includes(Number(team.id)))
                                   .length === 0 ? (
-                                  <p style={{ color: '#fbbf24', fontSize: '14px', padding: '10px', textAlign: 'center' }}>
+                                  <p style={{ color: '#fbbf24', fontSize: '16px', padding: '10px', textAlign: 'center' }}>
                                     Loading team details...
                                   </p>
                                 ) : (
@@ -1253,7 +1264,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                         <div className="team-number">{idx + 1}</div>
                                         <div className="assigned-team-details">
                                           <div className="team-name-row">
-                                            <strong>{team.name}</strong>
+                                            <strong style={{ fontSize: '16px' }}>{team.name}</strong>
                                             <span className={`bracket-sport-badge ${team.sport.toLowerCase() === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
                                               {capitalize(team.sport)}
                                             </span>
@@ -1264,7 +1275,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                               {expandedTeams[team.id] ? <FaChevronUp /> : <FaChevronDown />}
                                             </button>
                                           </div>
-                                          <div className="team-meta">
+                                          <div className="team-meta" style={{ fontSize: '14px' }}>
                                             {team.players?.length || 0} players registered
                                           </div>
                                         </div>
@@ -1273,8 +1284,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                         {expandedTeams[team.id] && (
                                           <div className="team-players-dropdown">
                                             <div className="players-dropdown-header">
-                                              <h4>Players in {team.name}</h4>
-                                              <span className="players-count">
+                                              <h4 style={{ fontSize: '16px' }}>Players in {team.name}</h4>
+                                              <span className="players-count" style={{ fontSize: '14px' }}>
                                                 {team.players?.length || 0} players
                                               </span>
                                             </div>
@@ -1282,24 +1293,24 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                               <table className="players-table">
                                                 <thead>
                                                   <tr>
-                                                    <th>Jersey #</th>
-                                                    <th>Player Name</th>
-                                                    <th>Position</th>
+                                                    <th style={{ fontSize: '16px' }}>Jersey #</th>
+                                                    <th style={{ fontSize: '16px' }}>Player Name</th>
+                                                    <th style={{ fontSize: '16px' }}>Position</th>
                                                   </tr>
                                                 </thead>
                                                 <tbody>
                                                   {team.players && team.players.length > 0 ? (
                                                     team.players.map((player, playerIndex) => (
                                                       <tr key={playerIndex}>
-                                                        <td className="jersey-cell">
+                                                        <td className="jersey-cell" style={{ fontSize: '16px' }}>
                                                           <span className="jersey-number">
                                                             {player.jerseyNumber}
                                                           </span>
                                                         </td>
-                                                        <td className="player-name-cell">
+                                                        <td className="player-name-cell" style={{ fontSize: '16px' }}>
                                                           {player.name}
                                                         </td>
-                                                        <td className="position-cell">
+                                                        <td className="position-cell" style={{ fontSize: '16px' }}>
                                                           <span className="position-badge">
                                                             {player.position}
                                                           </span>
@@ -1308,7 +1319,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                                     ))
                                                   ) : (
                                                     <tr>
-                                                      <td colSpan="3" className="no-players-message">
+                                                      <td colSpan="3" className="no-players-message" style={{ fontSize: '16px' }}>
                                                         No players registered for this team
                                                       </td>
                                                     </tr>
@@ -1365,21 +1376,21 @@ const TournamentCreator = ({ sidebarOpen }) => {
                   
                   <div className="tournament-summary">
                     <h3>Tournament Summary</h3>
-                    <div className="summary-item">
+                    <div className="summary-item" style={{ fontSize: '16px' }}>
                       <strong>Event:</strong> {createdEvent?.name}
                     </div>
-                    <div className="summary-item">
+                    <div className="summary-item" style={{ fontSize: '16px' }}>
                       <strong>Duration:</strong> {new Date(createdEvent?.start_date).toLocaleDateString()} - {new Date(createdEvent?.end_date).toLocaleDateString()}
                     </div>
-                    <div className="summary-item">
+                    <div className="summary-item" style={{ fontSize: '16px' }}>
                       <strong>Total Teams:</strong> {createdTeams.length}
                     </div>
-                    <div className="summary-item">
+                    <div className="summary-item" style={{ fontSize: '16px' }}>
                       <strong>Brackets Created:</strong> {createdBrackets.length}
                     </div>
                     
                     {createdBrackets.map((bracket, index) => (
-                      <div key={bracket.id} className="bracket-summary-item">
+                      <div key={bracket.id} className="bracket-summary-item" style={{ fontSize: '16px' }}>
                         <strong>Bracket {index + 1}:</strong> {bracket.name} ({bracket.selectedTeams || bracket.selectedTeamIds?.length || 0} teams)
                       </div>
                     ))}
@@ -1422,7 +1433,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           padding: 16px 45px 16px 20px;
           border-radius: 8px;
           margin-bottom: 25px;
-          font-size: 14px;
+          font-size: 16px;
           line-height: 1.6;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           transition: all 0.3s ease;
@@ -1478,7 +1489,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 12px;
+          font-size: 14px;
           font-weight: 600;
           flex-shrink: 0;
           margin-right: 12px;
@@ -1519,11 +1530,10 @@ const TournamentCreator = ({ sidebarOpen }) => {
           background: #10b981;
           color: white;
           border: none;
-          padding: 10px 16px;
+          padding: 12px 20px;
           border-radius: 6px;
           cursor: pointer;
           font-weight: 500;
-          font-size: 14px;
           transition: all 0.2s ease;
           display: inline-flex;
           align-items: center;
@@ -1537,10 +1547,12 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .admin-teams-count-success {
           color: #10b981;
           font-weight: 600;
+          font-size: 16px;
         }
 
         .admin-teams-count-warning {
           color: #fbbf24;
+          font-size: 16px;
         }
 
         .assigned-teams-list {
@@ -1580,7 +1592,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           align-items: center;
           justify-content: center;
           font-weight: 600;
-          font-size: 14px;
+          font-size: 16px;
           flex-shrink: 0;
         }
 
@@ -1600,21 +1612,19 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
         .team-name-row strong {
           color: #e2e8f0;
-          font-size: 15px;
           flex: 1;
         }
 
         .team-meta {
           color: #94a3b8;
-          font-size: 13px;
         }
 
         .team-expand-btn {
           background: rgba(255, 255, 255, 0.1);
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: #e2e8f0;
-          width: 28px;
-          height: 28px;
+          width: 32px;
+          height: 32px;
           border-radius: 4px;
           display: flex;
           align-items: center;
@@ -1661,12 +1671,10 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .players-dropdown-header h4 {
           margin: 0;
           color: #e2e8f0;
-          font-size: 16px;
         }
 
         .players-count {
           color: #94a3b8;
-          font-size: 14px;
           background: rgba(255, 255, 255, 0.1);
           padding: 4px 8px;
           border-radius: 12px;
@@ -1679,7 +1687,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .players-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 14px;
         }
 
         .players-table th {
@@ -1716,7 +1723,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           align-items: center;
           justify-content: center;
           font-weight: 600;
-          font-size: 12px;
+          font-size: 14px;
         }
 
         .player-name-cell {
@@ -1734,7 +1741,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           color: #cbd5e1;
           padding: 4px 8px;
           border-radius: 4px;
-          font-size: 12px;
+          font-size: 14px;
           border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -1762,7 +1769,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .bracket-section-header h3 {
           margin: 0;
           color: #e2e8f0;
-          font-size: 18px;
+          font-size: 20px;
         }
 
         .bracket-summary-item {
@@ -1826,7 +1833,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .step-label {
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 500;
           text-align: center;
         }
@@ -1841,7 +1848,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .step-description {
           color: #666;
           margin-bottom: 20px;
-          font-size: 14px;
+          font-size: 16px;
         }
 
         .created-teams-summary {
@@ -1854,7 +1861,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
         .created-teams-summary h3 {
           margin: 0 0 15px 0;
-          font-size: 16px;
+          font-size: 18px;
           color: #e2e8f0;
         }
 
@@ -1869,7 +1876,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           border: 1px solid rgba(255, 255, 255, 0.1);
           padding: 12px;
           border-radius: 6px;
-          font-size: 14px;
           color: #e2e8f0;
           position: relative;
         }
@@ -1940,13 +1946,14 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
         .mode-toggle-btn {
           flex: 1;
-          padding: 12px 20px;
+          padding: 16px 24px;
           background: transparent;
           color: #94a3b8;
           border: none;
           border-radius: 6px;
           cursor: pointer;
           font-weight: 500;
+          font-size: 16px;
           transition: all 0.3s ease;
         }
 
@@ -1973,25 +1980,13 @@ const TournamentCreator = ({ sidebarOpen }) => {
           min-width: 0;
         }
 
-        .search-icon {
-          position: absolute;
-          left: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #94a3b8;
-          font-size: 14px;
-          pointer-events: none;
-          z-index: 2;
-        }
-
         .team-search-input {
           width: 100%;
-          padding: 10px 12px 10px 36px;
+          padding: 12px 15px;
           background: #1a2332;
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 6px;
           color: #e2e8f0;
-          font-size: 14px;
           box-sizing: border-box;
         }
 
@@ -2001,12 +1996,11 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .team-sport-filter {
-          padding: 10px 15px;
+          padding: 12px 15px;
           background: #1a2332;
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 6px;
           color: #e2e8f0;
-          font-size: 14px;
           cursor: pointer;
           min-width: 180px;
         }
@@ -2042,7 +2036,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           text-align: left;
           font-weight: 600;
           color: #e2e8f0;
-          font-size: 14px;
           border-bottom: 2px solid rgba(255, 255, 255, 0.1);
           background: #0a0f1c;
         }
@@ -2050,7 +2043,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .teams-table td {
           padding: 15px;
           color: #cbd5e1;
-          font-size: 14px;
         }
 
         .team-name-cell {
@@ -2059,9 +2051,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
         .bracket-sport-badge {
           display: inline-block;
-          padding: 4px 12px;
+          padding: 6px 12px;
           border-radius: 12px;
-          font-size: 12px;
           font-weight: 500;
         }
 
@@ -2078,14 +2069,13 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .add-team-btn {
-          padding: 8px 16px;
+          padding: 10px 16px;
           background: #2196f3;
           color: white;
           border: none;
           border-radius: 6px;
           cursor: pointer;
           font-weight: 500;
-          font-size: 13px;
           transition: all 0.2s ease;
         }
 
@@ -2104,7 +2094,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
           text-align: center;
           color: #94a3b8;
           padding: 40px 20px;
-          font-size: 14px;
         }
 
         .success-container {
@@ -2129,6 +2118,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           margin: 0 0 20px 0;
           text-align: center;
           color: #e2e8f0;
+          font-size: 20px;
         }
 
         .summary-item {
@@ -2168,7 +2158,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           }
 
           .teams-table {
-            font-size: 12px;
+            font-size: 14px;
           }
 
           .teams-table th,
@@ -2193,7 +2183,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
           .players-table th,
           .players-table td {
             padding: 8px 10px;
-            font-size: 12px;
+            font-size: 14px;
           }
 
           .admin-teams-player-input-row {
