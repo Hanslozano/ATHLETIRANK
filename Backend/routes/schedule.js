@@ -132,4 +132,34 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// PUT /api/matches/:id/schedule - Update match schedule
+router.put('/matches/:id/schedule', async (req, res) => {
+  const { id } = req.params;
+  const { scheduled_at, venue, referee } = req.body;
+  
+  try {
+    const result = await pool.query(
+      'UPDATE matches SET scheduled_at = $1, venue = $2, referee = $3 WHERE id = $4 RETURNING *',
+      [scheduled_at, venue, referee, id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/matches/:id/schedule - Delete match schedule
+router.delete('/matches/:id/schedule', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const result = await pool.query(
+      'UPDATE matches SET scheduled_at = NULL, venue = NULL, referee = NULL WHERE id = $1 RETURNING *',
+      [id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 module.exports = router;

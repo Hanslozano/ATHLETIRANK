@@ -460,7 +460,7 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                 {/* Awards View Selector */}
                   {/* Awards View Selector */}
                 <div style={{ 
-                  padding: '25px 40px', 
+                  padding: '15px 40px', 
                   borderBottom: '1px solid var(--border-color)',
                   background: 'var(--background-card)'
                 }}>

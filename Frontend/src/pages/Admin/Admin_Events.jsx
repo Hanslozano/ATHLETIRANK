@@ -4,6 +4,7 @@ import { FaTrophy, FaCrown, FaChartBar, FaEye, FaEdit, FaTrash, FaPlus, FaSave, 
 import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import "../../style/Admin_Events.css";
+import TournamentScheduleList from "../../components/TournamentScheduleList";
 
 const AdminEvents = ({ sidebarOpen }) => {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ const AdminEvents = ({ sidebarOpen }) => {
   const [bracketMatches, setBracketMatches] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, type: '', id: null, name: '' });
+
+  const [bracketViewType, setBracketViewType] = useState("bracket"); // "bracket" or "list"
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -1592,86 +1595,169 @@ const AdminEvents = ({ sidebarOpen }) => {
                     )}
 
                     {contentTab === "bracket" && (
-                      <div className="awards_standings_tab_content">
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '24px' }}>
-                          <button
-                            onClick={() => handleEditTeam(selectedBracket)}
-                            style={{ 
-                              fontSize: '13px', 
-                              padding: '10px 16px', 
-                              background: 'var(--success-color)', 
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 'var(--border-radius)',
-                              cursor: 'pointer',
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              gap: '8px', 
-                              width: 'auto',
-                              whiteSpace: 'nowrap',
-                              transition: 'var(--transition)'
-                            }}
-                            title="Manage Team Players"
-                          >
-                            <FaUsers /> Edit Teams
-                          </button>
-                          <button
-                            onClick={() => handleEditBracket(selectedBracket)}
-                            style={{ 
-                              fontSize: '13px', 
-                              padding: '10px 16px', 
-                              background: 'var(--primary-color)', 
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 'var(--border-radius)',
-                              cursor: 'pointer',
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              gap: '8px', 
-                              width: 'auto',
-                              whiteSpace: 'nowrap',
-                              transition: 'var(--transition)'
-                            }}
-                            title="Edit Bracket"
-                          >
-                            <FaEdit /> Edit Bracket
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBracket(selectedBracket)}
-                            style={{ 
-                              fontSize: '13px', 
-                              padding: '10px 16px', 
-                              background: 'var(--error-color)', 
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 'var(--border-radius)',
-                              cursor: 'pointer',
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              gap: '8px', 
-                              width: 'auto',
-                              whiteSpace: 'nowrap',
-                              transition: 'var(--transition)'
-                            }}
-                            title="Delete Bracket"
-                          >
-                            <FaTrash /> Delete Bracket
-                          </button>
-                        </div>
-                        
-                        {selectedBracket.elimination_type === 'single' ? (
-                          <CustomBracket 
-                            matches={bracketMatches} 
-                            eliminationType={selectedBracket.elimination_type} 
-                          />
-                        ) : (
-                          <DoubleEliminationBracket 
-                            matches={bracketMatches} 
-                            eliminationType={selectedBracket.elimination_type} 
-                          />
-                        )}
-                      </div>
-                    )}
+  <div className="awards_standings_tab_content">
+    {/* View Type Selector */}
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center',
+      marginBottom: '24px',
+      flexWrap: 'wrap',
+      gap: '16px'
+    }}>
+      {/* View Toggle Buttons */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '12px',
+        background: 'rgba(51, 65, 85, 0.5)',
+        padding: '6px',
+        borderRadius: '8px',
+        border: '1px solid #334155'
+      }}>
+        <button
+          onClick={() => setBracketViewType("bracket")}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            background: bracketViewType === "bracket" ? '#3b82f6' : 'transparent',
+            color: bracketViewType === "bracket" ? '#ffffff' : '#cbd5e1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <FaEye /> Bracket View
+        </button>
+        <button
+          onClick={() => setBracketViewType("list")}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            background: bracketViewType === "list" ? '#3b82f6' : 'transparent',
+            color: bracketViewType === "list" ? '#ffffff' : '#cbd5e1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <FaChartBar /> List View
+        </button>
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button
+          onClick={() => handleEditTeam(selectedBracket)}
+          style={{ 
+            fontSize: '13px', 
+            padding: '10px 16px', 
+            background: 'var(--success-color)', 
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--border-radius)',
+            cursor: 'pointer',
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            width: 'auto',
+            whiteSpace: 'nowrap',
+            transition: 'var(--transition)'
+          }}
+          title="Manage Team Players"
+        >
+          <FaUsers /> Edit Teams
+        </button>
+        <button
+          onClick={() => handleEditBracket(selectedBracket)}
+          style={{ 
+            fontSize: '13px', 
+            padding: '10px 16px', 
+            background: 'var(--primary-color)', 
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--border-radius)',
+            cursor: 'pointer',
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            width: 'auto',
+            whiteSpace: 'nowrap',
+            transition: 'var(--transition)'
+          }}
+          title="Edit Bracket"
+        >
+          <FaEdit /> Edit Bracket
+        </button>
+        <button
+          onClick={() => handleDeleteBracket(selectedBracket)}
+          style={{ 
+            fontSize: '13px', 
+            padding: '10px 16px', 
+            background: 'var(--error-color)', 
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--border-radius)',
+            cursor: 'pointer',
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            width: 'auto',
+            whiteSpace: 'nowrap',
+            transition: 'var(--transition)'
+          }}
+          title="Delete Bracket"
+        >
+          <FaTrash /> Delete Bracket
+        </button>
+      </div>
+    </div>
+
+    {/* Conditional Rendering Based on View Type */}
+    {bracketViewType === "bracket" ? (
+      selectedBracket.elimination_type === 'single' ? (
+        <CustomBracket 
+          matches={bracketMatches} 
+          eliminationType={selectedBracket.elimination_type} 
+        />
+      ) : (
+        <DoubleEliminationBracket 
+          matches={bracketMatches} 
+          eliminationType={selectedBracket.elimination_type} 
+        />
+      )
+    ) : (
+     <TournamentScheduleList
+  matches={bracketMatches}
+  eventId={selectedEvent?.id}
+  bracketId={selectedBracket?.id}
+  onRefresh={async () => {
+    // Refresh matches after schedule update
+    try {
+      const res = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);
+      if (res.ok) {
+        const data = await res.json();
+        const visibleMatches = data.filter(match => match.status !== 'hidden');
+        setMatches(visibleMatches);
+        setBracketMatches(visibleMatches);
+      }
+    } catch (err) {
+      console.error('Error refreshing matches:', err);
+    }
+  }}
+/>
+    )}
+  </div>
+)}
 
                     {contentTab === "awards" && (
                       <div className="awards_standings_tab_content">
