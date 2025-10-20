@@ -667,23 +667,32 @@ const TeamsPage = ({ sidebarOpen }) => {
                                   </span>
                                 </td>
                                 <td style={{ fontSize: '15px', fontWeight: '600' }}>{team.players.length}</td>
-                                <td>
-                                  {team.brackets && team.brackets.length > 0 ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                      {team.brackets.map((bracket, idx) => (
-                                        <span 
-                                          key={idx}
-                                          className="admin-teams-bracket-badge"
-                                          title={`${bracket.event_name} - ${bracket.bracket_name}`}
-                                        >
-                                          {bracket.event_name}: {bracket.bracket_name}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Not in any bracket</span>
-                                  )}
-                                </td>
+                               <td>
+  {team.brackets && team.brackets.length > 0 ? (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {team.brackets.map((bracket, idx) => {
+        // Extract just the bracket name part (after last dash)
+        const fullBracketName = bracket.bracket_name;
+        const bracketNameOnly = fullBracketName.includes(' - ')
+          ? fullBracketName.split(' - ').pop()
+          : fullBracketName;
+        
+        return (
+          <span 
+            key={idx}
+            className="admin-teams-bracket-badge"
+            title={`${bracket.event_name} - ${fullBracketName}`}
+          >
+            {bracket.event_name} - {bracketNameOnly}
+          </span>
+        );
+      })}
+    </div>
+  ) : (
+    <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Not in any bracket</span>
+  )}
+</td>
+
                                 <td>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                                     <button
@@ -999,22 +1008,30 @@ const TeamsPage = ({ sidebarOpen }) => {
               <span className={`bracket-sport-badge ${viewModal.team.sport === 'Volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
                 {viewModal.team.sport}
               </span>
-              <span style={{ color: 'var(--text-secondary)' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
                 <strong>{viewModal.team.players.length}</strong> Players
               </span>
-              {viewModal.team.brackets && viewModal.team.brackets.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {viewModal.team.brackets.map((bracket, idx) => (
-                    <span 
-                      key={idx}
-                      className="admin-teams-bracket-badge"
-                      title={`${bracket.event_name} - ${bracket.bracket_name}`}
-                    >
-                      {bracket.event_name}: {bracket.bracket_name}
-                    </span>
-                  ))}
-                </div>
-              )}
+        {viewModal.team.brackets && viewModal.team.brackets.length > 0 && (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', margin: 0, padding: 0 }}>
+    {viewModal.team.brackets.map((bracket, idx) => {
+      const fullBracketName = bracket.bracket_name;
+      const bracketNameOnly = fullBracketName.includes(' - ')
+        ? fullBracketName.split(' - ').pop()
+        : fullBracketName;
+      
+      return (
+        <span 
+          key={idx}
+          className="admin-teams-bracket-badge"
+          title={`${bracket.event_name} - ${fullBracketName}`}
+          style={{ margin: 0, padding: '6px 12px' }}
+        >
+          {bracket.event_name} - {bracketNameOnly}
+        </span>
+      );
+    })}
+  </div>
+)}
             </div>
 
             <div className="admin-teams-modal-body">

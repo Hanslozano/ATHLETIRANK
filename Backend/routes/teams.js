@@ -289,17 +289,17 @@ router.delete("/:id", async (req, res) => {
 
 
 // ✅ GET brackets for a specific team
+// ✅ FIXED - Returns full format like Events
 router.get("/:teamId/brackets", async (req, res) => {
   try {
     const { teamId } = req.params;
     
     const [brackets] = await db.pool.query(`
       SELECT 
-        b.id as bracket_id,
+        b.id,
         b.name as bracket_name,
         b.sport_type,
         b.elimination_type,
-        e.id as event_id,
         e.name as event_name
       FROM bracket_teams bt
       JOIN brackets b ON bt.bracket_id = b.id

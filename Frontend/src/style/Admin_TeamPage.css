@@ -396,20 +396,20 @@
 /* Simple Bracket Badge - Match text color with other sections */
 .admin-teams-bracket-badge {
   display: inline-block;
-  padding: 6px 12px;
+  padding: 4px 0;
   background: transparent;
   border: none;
   border-radius: 0;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--admin-teams-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 280px;
   transition: all 0.2s ease;
+  margin: 0;
 }
-
 
 /* Validation Messages */
 .admin-teams-validation-message {
