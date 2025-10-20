@@ -455,25 +455,48 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                   </div>
                 </div>
 
-                <div className="awards_standings_tabs">
-                  <button
-                    className={`awards_standings_tab_button ${contentTab === "standings" ? "awards_standings_tab_active" : ""}`}
-                    onClick={() => setContentTab("standings")}
-                  >
-                    <FaTrophy /> Team Standings
-                  </button>
-                  <button
-                    className={`awards_standings_tab_button ${contentTab === "mvp" ? "awards_standings_tab_active" : ""}`}
-                    onClick={() => setContentTab("mvp")}
-                  >
-                    <FaCrown /> Tournament MVP
-                  </button>
-                  <button
-                    className={`awards_standings_tab_button ${contentTab === "awards" ? "awards_standings_tab_active" : ""}`}
-                    onClick={() => setContentTab("awards")}
-                  >
-                    <FaMedal /> Awards
-                  </button>
+                       {/* Awards View Selector */}
+                 {/* Awards View Selector */}
+                {/* Awards View Selector */}
+                  {/* Awards View Selector */}
+                <div style={{ 
+                  padding: '25px 40px', 
+                  borderBottom: '1px solid var(--border-color)',
+                  background: 'var(--background-card)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', maxWidth: '380px' }}>
+                    <label style={{ 
+                      color: 'var(--text-primary)', 
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      View:
+                    </label>
+                    <select
+                      value={awardsTab}
+                      onChange={(e) => setAwardsTab(e.target.value)}
+                      style={{
+                        flex: '1',
+                        padding: '8px 12px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        outline: 'none',
+                        transition: 'var(--transition)'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
+                      onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                    >
+                      <option value="standings">🏆 Team Standings</option>
+                      <option value="mvp">👑 Tournament MVP</option>
+                      <option value="awards">🏅 Awards</option>
+                    </select>
+                  </div>
                 </div>
 
                 {loading ? (
