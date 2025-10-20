@@ -14,7 +14,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
   // Scroll to validation message when error appears
   useEffect(() => {
     if (validationError) {
-      // Small delay to ensure DOM is fully rendered
       setTimeout(() => {
         if (validationMessageRef.current) {
           validationMessageRef.current.scrollIntoView({ 
@@ -23,7 +22,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
             inline: 'nearest'
           });
         } else if (dashboardContentRef.current) {
-          // Fallback: scroll to top of content
           dashboardContentRef.current.scrollIntoView({ 
             behavior: 'smooth', 
             block: 'start' 
@@ -32,6 +30,35 @@ const TournamentCreator = ({ sidebarOpen }) => {
       }, 100);
     }
   }, [validationError]);
+
+  // Add this useEffect to fetch teams already in brackets from database
+  useEffect(() => {
+    const fetchTeamsInBrackets = async () => {
+      try {
+        const bracketsRes = await fetch("http://localhost:5000/api/brackets");
+        const brackets = await bracketsRes.json();
+
+        const assignedTeamIds = new Set();
+        
+        for (let bracket of brackets) {
+          const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}`);
+          const teamsInBracket = await teamsRes.json();
+          
+          teamsInBracket.forEach(team => {
+            assignedTeamIds.add(team.id);
+          });
+        }
+
+        setTeamsInBracketsFromDB(Array.from(assignedTeamIds));
+      } catch (err) {
+        console.error("Error fetching teams in brackets:", err);
+      }
+    };
+
+    fetchTeamsInBrackets();
+  }, [currentStep]);
+  
+  const [teamsInBracketsFromDB, setTeamsInBracketsFromDB] = useState([]);
   
   // Step 1: Event Data
   const [eventData, setEventData] = useState({
@@ -62,10 +89,84 @@ const TournamentCreator = ({ sidebarOpen }) => {
   // NEW: State for expanded team details in Step 3
   const [expandedTeams, setExpandedTeams] = useState({});
 
-  // Position options
+  // Position options with limits
   const positions = {
     Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
     Volleyball: ["Setter", "Outside Hitter", "Middle Blocker", "Opposite Hitter", "Libero", "Defensive Specialist"],
+  };
+
+  // NEW: Position limits based on team size
+const getPositionLimits = (teamSize, sport) => {
+  if (sport === "Basketball") {
+    // For basketball: Maximum 3 per position regardless of team size (12-15 players)
+    const limits = {};
+    positions.Basketball.forEach(position => {
+      limits[position] = 3;
+    });
+    return limits;
+  } else if (sport === "Volleyball") {
+    // For volleyball: Maximum 3 per position regardless of team size (12-15 players)
+    const limits = {};
+    positions.Volleyball.forEach(position => {
+      limits[position] = 3;
+    });
+    return limits;
+  }
+  return {};
+};
+
+  // NEW: Get available positions for a player based on current team composition
+  const getAvailablePositions = (currentIndex) => {
+    if (!currentTeam.sport) return [];
+
+    const positionLimits = getPositionLimits(currentTeam.players.length, currentTeam.sport);
+    const positionCounts = {};
+    
+    // Count current assignments (excluding the current player being edited)
+    currentTeam.players.forEach((player, index) => {
+      if (index !== currentIndex && player.position) {
+        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+      }
+    });
+
+    // Filter positions that haven't reached their limit
+    return positions[currentTeam.sport].filter(position => {
+      const currentCount = positionCounts[position] || 0;
+      const maxAllowed = positionLimits[position] || 0;
+      return currentCount < maxAllowed;
+    });
+  };
+
+  // NEW: Check if a position is available
+  const isPositionAvailable = (position, currentIndex) => {
+    if (!currentTeam.sport || !position) return true;
+    
+    const availablePositions = getAvailablePositions(currentIndex);
+    return availablePositions.includes(position);
+  };
+
+  // NEW: Get position count display
+  const getPositionCounts = () => {
+    if (!currentTeam.sport) return {};
+    
+    const positionLimits = getPositionLimits(currentTeam.players.length, currentTeam.sport);
+    const positionCounts = {};
+    
+    currentTeam.players.forEach(player => {
+      if (player.position) {
+        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+      }
+    });
+
+    const result = {};
+    positions[currentTeam.sport].forEach(position => {
+      result[position] = {
+        current: positionCounts[position] || 0,
+        max: positionLimits[position] || 0
+      };
+    });
+    
+    return result;
   };
 
   // Validation functions
@@ -124,7 +225,6 @@ const TournamentCreator = ({ sidebarOpen }) => {
         // AUTO-DETECT SPORT: If teams are assigned, get the sport from the first team
         let detectedSport = "";
         if (assignedTeamIds.length > 0) {
-          // Try to find team by both string and number ID
           const firstTeam = createdTeams.find(t => 
             String(t.id) === String(assignedTeamIds[0]) || 
             Number(t.id) === Number(assignedTeamIds[0])
@@ -251,8 +351,22 @@ const TournamentCreator = ({ sidebarOpen }) => {
     }
     
     const newPlayers = [...currentTeam.players];
+    
+    // NEW: If changing position, validate it's available
+    if (field === "position") {
+      if (!isPositionAvailable(finalValue, index)) {
+        setValidationError(`Cannot assign more than ${getPositionLimits(currentTeam.players.length, currentTeam.sport)[finalValue]} players to ${finalValue}`);
+        return;
+      }
+    }
+    
     newPlayers[index][field] = finalValue;
     setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
+    
+    // Clear validation error if it was about position limits
+    if (field === "position" && validationError && validationError.includes("Cannot assign more than")) {
+      setValidationError("");
+    }
   };
 
   // Add new player (up to 15 maximum)
@@ -275,68 +389,68 @@ const TournamentCreator = ({ sidebarOpen }) => {
   };
 
   const validateTeam = () => {
-    if (!currentTeam.teamName.trim()) return "Please enter a team name";
-    if (!currentTeam.sport) return "Please select a sport";
-    
-    // Check if we have between 12-15 players
-    const validPlayers = currentTeam.players.filter(p => 
-      p.name.trim() && p.position && p.jerseyNumber.trim()
-    );
-    
-    if (validPlayers.length < 12) {
-      return `Minimum 12 players required. Currently you have ${validPlayers.length} valid players.`;
-    }
+  if (!currentTeam.teamName.trim()) return "Please enter a team name";
+  if (!currentTeam.sport) return "Please select a sport";
+  
+  // Check if we have between 12-15 players with complete information
+  const validPlayers = currentTeam.players.filter(p => 
+    p.name.trim() && p.position && p.jerseyNumber.trim()
+  );
+  
+  if (validPlayers.length < 12) {
+    return `Minimum 12 players required. Currently you have ${validPlayers.length} valid players.`;
+  }
 
-    if (validPlayers.length > 15) {
-      return `Maximum 15 players allowed. Currently you have ${validPlayers.length} valid players.`;
+  if (validPlayers.length > 15) {
+    return `Maximum 15 players allowed. Currently you have ${validPlayers.length} valid players.`;
+  }
+  
+  // Check for invalid player names (must be letters only)
+  const invalidNames = validPlayers.filter(p => {
+    return !isValidPlayerName(p.name);
+  });
+  if (invalidNames.length > 0) {
+    return "Player names must contain only letters and spaces. Please check all player names.";
+  }
+  
+  // Check for invalid jersey numbers (must be numbers only)
+  const invalidJerseys = validPlayers.filter(p => {
+    return !isValidJerseyNumber(p.jerseyNumber);
+  });
+  if (invalidJerseys.length > 0) {
+    return "Jersey numbers must contain only numbers. Please check all jersey numbers.";
+  }
+  
+  // Check for duplicate jersey numbers (only among valid players)
+  const jerseyNumbers = validPlayers.map(p => p.jerseyNumber.trim());
+  const uniqueJerseyNumbers = new Set(jerseyNumbers);
+  if (jerseyNumbers.length !== uniqueJerseyNumbers.size) {
+    return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
+  }
+  
+  // Check for duplicate player names (only among valid players)
+  const playerNames = validPlayers.map(p => p.name.trim().toLowerCase());
+  const uniquePlayerNames = new Set(playerNames);
+  if (playerNames.length !== uniquePlayerNames.size) {
+    return "Duplicate player names found. Each player must have a unique name.";
+  }
+  
+  // NEW: Check position limits (maximum 3 per position)
+  const positionCounts = {};
+  validPlayers.forEach(player => {
+    positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+  });
+  
+  const positionLimits = getPositionLimits(currentTeam.players.length, currentTeam.sport);
+  for (const [position, count] of Object.entries(positionCounts)) {
+    const maxAllowed = positionLimits[position];
+    if (maxAllowed && count > maxAllowed) {
+      return `Too many players assigned to ${position}. Maximum allowed is ${maxAllowed} per position.`;
     }
-    
-    // Check for invalid player names (must be letters only)
-    const invalidNames = currentTeam.players.filter(p => {
-      if (!p.name.trim()) return false;
-      return !isValidPlayerName(p.name);
-    });
-    if (invalidNames.length > 0) {
-      return "Player names must contain only letters and spaces. Please check all player names.";
-    }
-    
-    // Check for invalid jersey numbers (must be numbers only)
-    const invalidJerseys = currentTeam.players.filter(p => {
-      if (!p.jerseyNumber.trim()) return false;
-      return !isValidJerseyNumber(p.jerseyNumber);
-    });
-    if (invalidJerseys.length > 0) {
-      return "Jersey numbers must contain only numbers. Please check all jersey numbers.";
-    }
-    
-    // Check for duplicate jersey numbers
-    const jerseyNumbers = validPlayers.map(p => p.jerseyNumber.trim());
-    const uniqueJerseyNumbers = new Set(jerseyNumbers);
-    if (jerseyNumbers.length !== uniqueJerseyNumbers.size) {
-      return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
-    }
-    
-    // Check for duplicate player names
-    const playerNames = validPlayers.map(p => p.name.trim().toLowerCase());
-    const uniquePlayerNames = new Set(playerNames);
-    if (playerNames.length !== uniquePlayerNames.size) {
-      return "Duplicate player names found. Each player must have a unique name.";
-    }
-    
-    // Check for blank spaces in names
-    const hasBlankNames = currentTeam.players.some(p => p.name.trim() === "");
-    if (hasBlankNames) {
-      return "All players must have names. Please fill in all player names.";
-    }
-    
-    // Check for blank jersey numbers
-    const hasBlankJerseyNumbers = currentTeam.players.some(p => p.jerseyNumber.trim() === "");
-    if (hasBlankJerseyNumbers) {
-      return "All players must have jersey numbers. Please fill in all jersey numbers.";
-    }
-    
-    return null;
-  };
+  }
+  
+  return null;
+};
 
   const handleAddTeam = async () => {
     const error = validateTeam();
@@ -479,10 +593,31 @@ const TournamentCreator = ({ sidebarOpen }) => {
   };
 
   const getFilteredTeams = () => {
-    let filtered = teams.filter(team => !createdTeams.find(ct => ct.id === team.id));
+    const createdTeamIds = createdTeams.map(ct => ct.id);
+    
+    let filtered = teams.filter(team => {
+      // Check if team is already selected in current session
+      if (createdTeamIds.includes(team.id)) {
+        return false;
+      }
+      
+      // Check if team is already in a bracket (from database)
+      if (teamsInBracketsFromDB.includes(team.id)) {
+        return false;
+      }
+      
+      // Check if team is assigned to a bracket in current session
+      if (teamBracketAssignments[team.id]) {
+        return false;
+      }
+      
+      return true;
+    });
     
     if (sportFilter !== "all") {
-      filtered = filtered.filter(team => team.sport.toLowerCase() === sportFilter.toLowerCase());
+      filtered = filtered.filter(team => 
+        team.sport.toLowerCase() === sportFilter.toLowerCase()
+      );
     }
     
     if (searchTerm.trim()) {
@@ -673,6 +808,9 @@ const TournamentCreator = ({ sidebarOpen }) => {
     p.name.trim() && p.position && p.jerseyNumber.trim()
   ).length;
 
+  // NEW: Get position counts for display
+  const positionCounts = getPositionCounts();
+
   return (
     <div className="admin-dashboard">
       <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`} ref={dashboardContentRef}>
@@ -851,9 +989,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                   ×
                                 </button>
                               </div>
-                              <span className={`admin-teams-sport-badge admin-teams-sport-${team.sport.toLowerCase()}`}>
-                                {capitalize(team.sport)}
-                              </span>
+                              <span style={{ color: '#ffffffff', fontSize: '16px' }}>{capitalize(team.sport)}</span>
                               <span>{team.players?.length || 0} players</span>
                               {/* Bracket Assignment Dropdown */}
                               {eventData.numberOfBrackets > 1 && (
@@ -935,6 +1071,21 @@ const TournamentCreator = ({ sidebarOpen }) => {
                             </div>
                           </div>
 
+                          {/* NEW: Position Limits Display */}
+                          <div className="position-limits-display">
+                          <h4>Position Limits (Maximum 3 per position)</h4>
+                          <div className="position-limits-grid">
+                              {Object.entries(positionCounts).map(([position, counts]) => (
+                                <div key={position} className="position-limit-item">
+                                  <span className="position-name">{position}</span>
+                                  <span className={`position-count ${counts.current >= counts.max ? 'limit-reached' : ''}`}>
+                                    {counts.current}/{counts.max}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
                           {currentTeam.players.map((player, index) => (
                             <div key={index} className="admin-teams-player-card">
                               <div className="admin-teams-player-input-row">
@@ -953,7 +1104,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                 <input
                                   type="text"
                                   placeholder="Jersey #"
-                                  value={player.jerseyNumber}
+                                  value={player.jersey_number || player.jerseyNumber}
                                   onChange={(e) => handlePlayerChange(index, "jerseyNumber", e.target.value)}
                                   className="admin-teams-jersey-input"
                                   style={{ fontSize: '16px' }}
@@ -963,12 +1114,14 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                 <select
                                   value={player.position}
                                   onChange={(e) => handlePlayerChange(index, "position", e.target.value)}
-                                  className="admin-teams-position-select"
+                                  className={`admin-teams-position-select ${
+                                    !isPositionAvailable(player.position, index) ? 'position-unavailable' : ''
+                                  }`}
                                   style={{ fontSize: '16px' }}
                                   required
                                 >
                                   <option value="">Select position</option>
-                                  {positions[currentTeam.sport].map(pos => (
+                                  {getAvailablePositions(index).map(pos => (
                                     <option key={pos} value={pos}>{pos}</option>
                                   ))}
                                 </select>
@@ -983,6 +1136,12 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                   </button>
                                 )}
                               </div>
+                              {/* NEW: Position availability warning */}
+                              {player.position && !isPositionAvailable(player.position, index) && (
+                                <div className="position-warning">
+                                  Maximum {getPositionLimits(currentTeam.players.length, currentTeam.sport)[player.position]} {player.position} players allowed
+                                </div>
+                              )}
                             </div>
                           ))}
                           
@@ -1003,16 +1162,18 @@ const TournamentCreator = ({ sidebarOpen }) => {
                           
                           {/* Information message */}
                           <div style={{
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            border: '1px solid rgba(59, 130, 246, 0.3)',
-                            borderRadius: '6px',
-                            padding: '12px',
-                            marginTop: '15px',
-                            fontSize: '14px',
-                            color: '#93c5fd'
-                          }}>
-                            <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
-                          </div>
+  background: 'rgba(59, 130, 246, 0.1)',
+  border: '1px solid rgba(59, 130, 246, 0.3)',
+  borderRadius: '6px',
+  padding: '12px',
+  marginTop: '15px',
+  fontSize: '14px',
+  color: '#93c5fd'
+}}>
+  <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
+  <br />
+  <strong>Position Limits:</strong> Maximum 3 players per position. Not all positions need to be filled.
+</div>
                         </div>
                       )}
 
@@ -1082,7 +1243,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                 <th style={{ fontSize: '16px' }}>Sport</th>
                                 <th style={{ fontSize: '16px' }}>Players</th>
                                 {eventData.numberOfBrackets > 1 && <th style={{ fontSize: '16px' }}>Assign to Bracket</th>}
-                                <th style={{ fontSize: '16px' }}>Action</th>
+                                {eventData.numberOfBrackets === 1 && <th style={{ fontSize: '16px' }}>Action</th>}
                               </tr>
                             </thead>
                             <tbody>
@@ -1092,7 +1253,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                     <strong>{team.name}</strong>
                                   </td>
                                   <td style={{ fontSize: '16px' }}>
-                                    <span className={`bracket-sport-badge ${team.sport.toLowerCase() === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                                    <span className={`bracket-sport-badge bracket-sport-${team.sport.toLowerCase() === 'volleyball' ? 'volleyball' : 'basketball'}`}>
                                       {capitalize(team.sport)}
                                     </span>
                                   </td>
@@ -1128,17 +1289,18 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                       </select>
                                     </td>
                                   )}
-                                  <td>
-                                    <button
-                                      className="add-team-btn"
-                                      onClick={() => handleSelectExistingTeam(team.id)}
-                                      disabled={eventData.numberOfBrackets > 1}
-                                      title={eventData.numberOfBrackets > 1 ? "Please select a bracket first" : "Add Team"}
-                                      style={{ fontSize: '16px' }}
-                                    >
-                                      {eventData.numberOfBrackets > 1 ? "Select Bracket" : "Add Team"}
-                                    </button>
-                                  </td>
+                                  {eventData.numberOfBrackets === 1 && (
+                                    <td>
+                                      <button
+                                        className="add-team-btn"
+                                        onClick={() => handleSelectExistingTeam(team.id)}
+                                        title="Add Team"
+                                        style={{ fontSize: '16px' }}
+                                      >
+                                        Add Team
+                                      </button>
+                                    </td>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>
@@ -1265,7 +1427,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                         <div className="assigned-team-details">
                                           <div className="team-name-row">
                                             <strong style={{ fontSize: '16px' }}>{team.name}</strong>
-                                            <span className={`bracket-sport-badge ${team.sport.toLowerCase() === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
+                                            <span className={`bracket-sport-badge bracket-sport-${team.sport.toLowerCase() === 'volleyball' ? 'volleyball' : 'basketball'}`}>
                                               {capitalize(team.sport)}
                                             </span>
                                             <button 
@@ -1304,7 +1466,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                                                       <tr key={playerIndex}>
                                                         <td className="jersey-cell" style={{ fontSize: '16px' }}>
                                                           <span className="jersey-number">
-                                                            {player.jerseyNumber}
+                                                            {player.jersey_number || player.jerseyNumber}
                                                           </span>
                                                         </td>
                                                         <td className="player-name-cell" style={{ fontSize: '16px' }}>
@@ -1391,7 +1553,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
                     
                     {createdBrackets.map((bracket, index) => (
                       <div key={bracket.id} className="bracket-summary-item" style={{ fontSize: '16px' }}>
-                        <strong>Bracket {index + 1}:</strong> {bracket.name} ({bracket.selectedTeams || bracket.selectedTeamIds?.length || 0} teams)
+                        <strong>Bracket ${index + 1}:</strong> {bracket.name} ({bracket.selectedTeams || bracket.selectedTeamIds?.length || 0} teams)
                       </div>
                     ))}
                   </div>
@@ -1553,6 +1715,71 @@ const TournamentCreator = ({ sidebarOpen }) => {
         .admin-teams-count-warning {
           color: #fbbf24;
           font-size: 16px;
+        }
+
+        /* NEW: Position Limits Styles */
+        .position-limits-display {
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          padding: 15px;
+          margin-bottom: 20px;
+        }
+
+        .position-limits-display h4 {
+          margin: 0 0 10px 0;
+          color: #e2e8f0;
+          font-size: 16px;
+        }
+
+        .position-limits-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 8px;
+        }
+
+        .position-limit-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .position-name {
+          color: #e2e8f0;
+          font-size: 14px;
+        }
+
+        .position-count {
+          color: #10b981;
+          font-weight: 600;
+          font-size: 14px;
+          padding: 2px 6px;
+          border-radius: 12px;
+          background: rgba(16, 185, 129, 0.2);
+        }
+
+        .position-count.limit-reached {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.2);
+        }
+
+        .position-unavailable {
+          border-color: #ef4444 !important;
+          background: rgba(239, 68, 68, 0.1) !important;
+        }
+
+        .position-warning {
+          color: #ef4444;
+          font-size: 12px;
+          margin-top: 5px;
+          padding: 4px 8px;
+          background: rgba(239, 68, 68, 0.1);
+          border-radius: 4px;
+          border-left: 3px solid #ef4444;
         }
 
         .assigned-teams-list {
@@ -2050,22 +2277,25 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
 
         .bracket-sport-badge {
-          display: inline-block;
           padding: 6px 12px;
-          border-radius: 12px;
-          font-weight: 500;
+          border-radius: 16px;
+          font-size: 0.8em;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          white-space: nowrap;
+          display: inline-block;
         }
 
         .bracket-sport-basketball {
-          background: rgba(255, 152, 0, 0.2);
-          color: #ff9800;
-          border: 1px solid rgba(255, 152, 0, 0.3);
+          background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+          color: white;
         }
 
         .bracket-sport-volleyball {
-          background: rgba(33, 150, 243, 0.2);
-          color: #2196f3;
-          border: 1px solid rgba(33, 150, 243, 0.3);
+          background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+          color: white;
         }
 
         .add-team-btn {
@@ -2188,6 +2418,10 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
           .admin-teams-player-input-row {
             flex-wrap: wrap;
+          }
+
+          .position-limits-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
