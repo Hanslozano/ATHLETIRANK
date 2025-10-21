@@ -246,27 +246,27 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
   const rounds = getUniqueRounds();
 
   return (
-    <div style={{ background: 'var(--background-card)', minHeight: '100vh', padding: '0' }}>
+    <div style={{ background: '#0f172a', minHeight: '100vh', padding: '0' }}>
       {/* Search and Filters */}
       <div style={{ 
-        background: 'var(--background-secondary)',
+        background: '#1a2332',
         padding: '24px',
         borderRadius: '12px',
         marginBottom: '30px',
-        border: '1px solid var(--border-color)'
+        border: '1px solid #2d3748'
       }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
             <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', width: '16px', height: '16px' }} />
-            <input type="text" placeholder="Search matches..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '12px 16px 12px 40px', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', backgroundColor: 'var(--background-card)', color: '#e2e8f0', outline: 'none' }} />
+            <input type="text" placeholder="Search matches..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '12px 16px 12px 40px', border: '1px solid #2d3748', borderRadius: '8px', fontSize: '14px', backgroundColor: '#0f172a', color: '#e2e8f0', outline: 'none' }} />
           </div>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '12px 16px', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', backgroundColor: 'var(--background-card)', color: '#e2e8f0', minWidth: '150px', outline: 'none' }}>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '12px 16px', border: '1px solid #2d3748', borderRadius: '8px', fontSize: '14px', backgroundColor: '#0f172a', color: '#e2e8f0', minWidth: '150px', outline: 'none' }}>
             <option value="all">All Status</option>
             <option value="scheduled">Scheduled</option>
             <option value="ongoing">Ongoing</option>
             <option value="completed">Completed</option>
           </select>
-          <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} style={{ padding: '12px 16px', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', backgroundColor: 'var(--background-card)', color: '#e2e8f0', minWidth: '150px', outline: 'none' }}>
+          <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} style={{ padding: '12px 16px', border: '1px solid #2d3748', borderRadius: '8px', fontSize: '14px', backgroundColor: '#0f172a', color: '#e2e8f0', minWidth: '150px', outline: 'none' }}>
             <option value="all">All Rounds</option>
             {rounds.map(round => (<option key={round.value} value={round.value}>{round.label}</option>))}
           </select>
@@ -278,24 +278,24 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
       </div>
 
       {/* Matches Table */}
-      <div style={{ borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden', background: 'var(--background-secondary)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--background-card)' }}>
+      <div style={{ borderRadius: '12px', border: '1px solid #2d3748', overflow: 'hidden', background: '#1a2332' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#1a2332' }}>
           <thead>
-            <tr style={{ background: 'var(--background-primary)', borderBottom: '1px solid var(--border-color)' }}>
+            <tr style={{ background: '#0a0f1c', borderBottom: '1px solid #2d3748' }}>
               <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Match Details</th>
               <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px', width: '45%' }}>Schedule</th>
             </tr>
           </thead>
           <tbody>
             {filteredMatches.length === 0 ? (
-              <tr><td colSpan="2" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '16px', background: 'var(--background-card)' }}>No matches found</td></tr>
+              <tr><td colSpan="2" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '16px', background: '#1a2332' }}>No matches found</td></tr>
             ) : (
               filteredMatches.map((match, index) => {
                 const schedule = getScheduleForMatch(match.id);
                 const scheduleDisplay = formatScheduleDisplay(schedule);
 
                 return (
-                  <tr key={match.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s ease', background: 'var(--background-card)' }}>
+                  <tr key={match.id} style={{ borderBottom: '1px solid #2d3748', transition: 'background 0.2s ease', background: '#1a2332' }}>
                     <td style={{ padding: '20px 15px', verticalAlign: 'top' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -308,7 +308,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
                         {match.winner_name && (<div style={{ color: '#48bb78', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><span>🏆</span> Winner: {match.winner_name}</div>)}
                       </div>
                     </td>
-                    <td style={{ padding: '20px 15px', verticalAlign: 'top', borderLeft: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '20px 15px', verticalAlign: 'top', borderLeft: '1px solid #2d3748' }}>
                       {scheduleDisplay ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
@@ -338,35 +338,35 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
       {/* Schedule Modal */}
       {showScheduleModal && (
         <div onClick={() => !loading && setShowScheduleModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--background-card)', borderRadius: '12px', width: '100%', maxWidth: '600px', border: '1px solid var(--border-color)', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#0f172a', borderRadius: '12px', width: '100%', maxWidth: '600px', border: '1px solid #2d3748', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px', borderBottom: '1px solid #2d3748' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <Calendar style={{ width: '24px', height: '24px', color: '#3b82f6' }} />
-                <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '24px', fontWeight: '600' }}>{getScheduleForMatch(selectedMatch?.id) ? 'Edit Schedule' : 'Add Schedule'}</h2>
+                <h2 style={{ margin: 0, color: '#e2e8f0', fontSize: '24px', fontWeight: '600' }}>{getScheduleForMatch(selectedMatch?.id) ? 'Edit Schedule' : 'Add Schedule'}</h2>
               </div>
-              <button onClick={() => !loading && setShowScheduleModal(false)} disabled={loading} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: loading ? 'not-allowed' : 'pointer', padding: '8px', borderRadius: '4px', transition: 'all 0.2s ease', opacity: loading ? 0.5 : 1 }}><X style={{ width: '20px', height: '20px' }} /></button>
+              <button onClick={() => !loading && setShowScheduleModal(false)} disabled={loading} style={{ background: 'none', border: 'none', color: '#64748b', cursor: loading ? 'not-allowed' : 'pointer', padding: '8px', borderRadius: '4px', transition: 'all 0.2s ease', opacity: loading ? 0.5 : 1 }}><X style={{ width: '20px', height: '20px' }} /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <div style={{ color: 'var(--text-primary)', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>Match #{filteredMatches.findIndex(m => m.id === selectedMatch?.id) + 1} - {formatRoundDisplay(selectedMatch)}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{selectedMatch?.team1_name || 'TBD'} vs {selectedMatch?.team2_name || 'TBD'}</div>
+                <div style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>Match #{filteredMatches.findIndex(m => m.id === selectedMatch?.id) + 1} - {formatRoundDisplay(selectedMatch)}</div>
+                <div style={{ color: '#94a3b8', fontSize: '14px' }}>{selectedMatch?.team1_name || 'TBD'} vs {selectedMatch?.team2_name || 'TBD'}</div>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Date *</label>
-                  <input type="date" value={scheduleForm.date} onChange={(e) => setScheduleForm({...scheduleForm, date: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                  <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Date *</label>
+                  <input type="date" value={scheduleForm.date} onChange={(e) => setScheduleForm({...scheduleForm, date: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Start Time *</label>
-                    <input type="time" value={scheduleForm.startTime} onChange={(e) => setScheduleForm({...scheduleForm, startTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Start Time *</label>
+                    <input type="time" value={scheduleForm.startTime} onChange={(e) => setScheduleForm({...scheduleForm, startTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
                   </div>
                   
                   <div>
-                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>End Time (Optional)</label>
-                    <input type="time" value={scheduleForm.endTime} onChange={(e) => setScheduleForm({...scheduleForm, endTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>End Time (Optional)</label>
+                    <input type="time" value={scheduleForm.endTime} onChange={(e) => setScheduleForm({...scheduleForm, endTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
                   </div>
                 </div>
               </div>
@@ -374,7 +374,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
               {/* Preview */}
               {scheduleForm.date && scheduleForm.startTime && (
                 <div style={{ background: 'rgba(72, 187, 120, 0.1)', padding: '16px', borderRadius: '8px', marginTop: '20px', border: '1px solid rgba(72, 187, 120, 0.2)' }}>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '4px' }}>Schedule Preview:</div>
+                  <div style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '4px' }}>Schedule Preview:</div>
                   <div style={{ color: '#48bb78', fontSize: '16px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Clock style={{ width: '18px', height: '18px' }} />
                     {formatScheduleDisplay({ 
@@ -386,9 +386,9 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-                <button onClick={() => setShowScheduleModal(false)} disabled={loading} style={{ padding: '12px 24px', background: 'var(--background-secondary)', color: 'var(--text-primary)', border: '2px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}>Cancel</button>
-                <button onClick={handleSaveSchedule} disabled={loading} style={{ padding: '12px 24px', background: loading ? 'var(--text-muted)' : 'var(--success-color)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}>{loading ? 'Saving...' : 'Save Schedule'}</button>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #2d3748' }}>
+                <button onClick={() => setShowScheduleModal(false)} disabled={loading} style={{ padding: '12px 24px', background: '#1a2332', color: '#e2e8f0', border: '2px solid #2d3748', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}>Cancel</button>
+                <button onClick={handleSaveSchedule} disabled={loading} style={{ padding: '12px 24px', background: loading ? '#64748b' : '#48bb78', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}>{loading ? 'Saving...' : 'Save Schedule'}</button>
               </div>
             </div>
           </div>
@@ -400,7 +400,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
         .status-scheduled { background: #f97316; color: white; } 
         .status-ongoing { background: #3b82f6; color: white; } 
         .status-completed { background: #22c55e; color: white; } 
-        table tbody tr:hover { background: var(--background-secondary) !important; }
+        table tbody tr:hover { background: #0a0f1c !important; }
       `}</style>
     </div>
   );
