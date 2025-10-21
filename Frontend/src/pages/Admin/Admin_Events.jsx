@@ -210,48 +210,61 @@ const AdminEvents = ({ sidebarOpen }) => {
 
   // Check for return context from AdminStats
   useEffect(() => {
-    const checkReturnContext = async () => {
-      const returnContext = sessionStorage.getItem('adminEventsReturnContext');
-      
-      if (returnContext) {
-        try {
-          const { selectedEvent: eventContext, selectedBracket: bracketContext } = JSON.parse(returnContext);
-          
-          if (eventContext && bracketContext) {
-            setSelectedEvent(eventContext);
-            setSelectedBracket(bracketContext);
-            setActiveTab("results");
-            setContentTab("matches");
-            setLoadingDetails(true);
-            
-            try {
-              const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
-              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-              
-              const data = await res.json();
-              const visibleMatches = data.filter(match => match.status !== 'hidden');
-              setMatches(visibleMatches);
-              setBracketMatches(visibleMatches);
-
-              if (visibleMatches.length === 0) {
-                setError("No matches found for this bracket.");
-              }
-            } catch (err) {
-              setError("Failed to load matches: " + err.message);
-            } finally {
-              setLoadingDetails(false);
-            }
-          }
-        } catch (err) {
-          console.error("Error loading return context:", err);
-        } finally {
-          sessionStorage.removeItem('adminEventsReturnContext');
-        }
-      }
-    };
+  const checkReturnContext = async () => {
+    const returnContext = sessionStorage.getItem('adminEventsReturnContext');
     
-    checkReturnContext();
-  }, []);
+    if (returnContext) {
+      try {
+        const { 
+          selectedEvent: eventContext, 
+          selectedBracket: bracketContext,
+          contentTab: tabContext,
+          bracketViewType: viewTypeContext
+        } = JSON.parse(returnContext);
+        
+        if (eventContext && bracketContext) {
+          setSelectedEvent(eventContext);
+          setSelectedBracket(bracketContext);
+          setActiveTab("results");
+          
+          // Set content tab (default to "matches" if not specified)
+          setContentTab(tabContext || "matches");
+          
+          // Set bracket view type (default to "bracket" if not specified)
+          if (viewTypeContext) {
+            setBracketViewType(viewTypeContext);
+          }
+          
+          setLoadingDetails(true);
+          
+          try {
+            const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            
+            const data = await res.json();
+            const visibleMatches = data.filter(match => match.status !== 'hidden');
+            setMatches(visibleMatches);
+            setBracketMatches(visibleMatches);
+
+            if (visibleMatches.length === 0) {
+              setError("No matches found for this bracket.");
+            }
+          } catch (err) {
+            setError("Failed to load matches: " + err.message);
+          } finally {
+            setLoadingDetails(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading return context:", err);
+      } finally {
+        sessionStorage.removeItem('adminEventsReturnContext');
+      }
+    }
+  };
+  
+  checkReturnContext();
+}, []);
 
   // Filter events based on search term and status filter
   const filteredEvents = events.filter(event => {

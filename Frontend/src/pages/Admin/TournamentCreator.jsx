@@ -265,52 +265,21 @@ const getPositionLimits = (teamSize, sport) => {
     if (validationError) setValidationError("");
   };
 
-  const handleCreateEvent = async () => {
-    if (!eventData.name.trim() || !eventData.startDate || !eventData.endDate) {
-      setValidationError("Please fill in all event fields.");
-      return;
-    }
+  const handleContinueToTeams = () => {
+  if (!eventData.name.trim() || !eventData.startDate || !eventData.endDate) {
+    setValidationError("Please fill in all event fields.");
+    return;
+  }
 
-    if (eventData.numberOfBrackets < 1 || eventData.numberOfBrackets > 5) {
-      setValidationError("Number of brackets must be between 1 and 5.");
-      return;
-    }
+  if (eventData.numberOfBrackets < 1 || eventData.numberOfBrackets > 5) {
+    setValidationError("Number of brackets must be between 1 and 5.");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const res = await fetch("http://localhost:5000/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: eventData.name,
-          start_date: eventData.startDate,
-          end_date: eventData.endDate
-        })
-      });
-      
-      if (res.ok) {
-        const response = await res.json();
-        const newEvent = {
-          id: response.id || response.eventId,
-          name: eventData.name,
-          start_date: eventData.startDate,
-          end_date: eventData.endDate
-        };
-        
-        setCreatedEvent(newEvent);
-        setCurrentStep(2);
-        setValidationError("");
-      } else {
-        const error = await res.json();
-        setValidationError(error.message || "Failed to create event");
-      }
-    } catch (err) {
-      console.error("Error creating event:", err);
-      setValidationError("Error creating event");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Just move to next step, don't create event yet
+  setCurrentStep(2);
+  setValidationError("");
+};
 
   // Step 2: Team Creation
   const handleTeamInputChange = (e) => {
@@ -688,105 +657,135 @@ const getPositionLimits = (teamSize, sport) => {
       (!otherBracketsTeams.includes(team.id) || currentBracket.selectedTeamIds.includes(team.id))
     );
   };
+const handleCreateAllBrackets = async () => {
+  console.log("=== CREATING EVENT AND BRACKETS ===");
+  
+  // Validate event data
+  if (!eventData.name.trim() || !eventData.startDate || !eventData.endDate) {
+    setValidationError("Event information is missing. Please go back to Step 1.");
+    return;
+  }
 
-  const handleCreateAllBrackets = async () => {
-    console.log("=== CREATING MULTIPLE BRACKETS ===");
+  // Validate all brackets
+  for (let i = 0; i < brackets.length; i++) {
+    const bracket = brackets[i];
+    console.log(`Validating Bracket ${i + 1}:`, bracket);
     
-    if (!createdEvent || !createdEvent.id) {
-      setValidationError("Event information is missing. Please go back to Step 1.");
+    if (!bracket.sport || bracket.sport.trim() === '') {
+      setValidationError(`Bracket ${i + 1}: Please select a sport.`);
       return;
     }
+    if (bracket.selectedTeamIds.length < 2) {
+      setValidationError(`Bracket ${i + 1}: Please select at least 2 teams.`);
+      return;
+    }
+    if (!bracket.bracketType) {
+      setValidationError(`Bracket ${i + 1}: Please select a bracket type.`);
+      return;
+    }
+  }
 
-    // Validate all brackets
+  setLoading(true);
+  const createdBracketsList = [];
+
+  try {
+    // STEP 1: Create the event FIRST
+    console.log("Creating event:", eventData);
+    const eventRes = await fetch("http://localhost:5000/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: eventData.name,
+        start_date: eventData.startDate,
+        end_date: eventData.endDate
+      })
+    });
+    
+    if (!eventRes.ok) {
+      const error = await eventRes.json();
+      throw new Error(error.message || "Failed to create event");
+    }
+
+    const eventResponse = await eventRes.json();
+    const newEvent = {
+      id: eventResponse.id || eventResponse.eventId,
+      name: eventData.name,
+      start_date: eventData.startDate,
+      end_date: eventData.endDate
+    };
+    
+    console.log("Event created:", newEvent);
+    setCreatedEvent(newEvent);
+
+    // STEP 2: Create all brackets for the event
     for (let i = 0; i < brackets.length; i++) {
       const bracket = brackets[i];
-      console.log(`Validating Bracket ${i + 1}:`, bracket);
+      const sportType = bracket.sport.toLowerCase();
+      const bracketName = bracket.bracketName || 
+        `${newEvent.name} - ${capitalize(bracket.sport)} Bracket`;
       
-      if (!bracket.sport || bracket.sport.trim() === '') {
-        setValidationError(`Bracket ${i + 1}: Please select a sport.`);
-        return;
-      }
-      if (bracket.selectedTeamIds.length < 2) {
-        setValidationError(`Bracket ${i + 1}: Please select at least 2 teams.`);
-        return;
-      }
-      if (!bracket.bracketType) {
-        setValidationError(`Bracket ${i + 1}: Please select a bracket type.`);
-        return;
-      }
-    }
+      const requestBody = {
+        event_id: newEvent.id,
+        name: bracketName,
+        sport_type: sportType,
+        elimination_type: bracket.bracketType
+      };
 
-    setLoading(true);
-    const createdBracketsList = [];
+      console.log(`Creating bracket ${i + 1}:`, requestBody);
+      
+      const bracketRes = await fetch("http://localhost:5000/api/brackets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
 
-    try {
-      for (let i = 0; i < brackets.length; i++) {
-        const bracket = brackets[i];
-        const sportType = bracket.sport.toLowerCase();
-        const bracketName = bracket.bracketName || 
-          `${createdEvent.name} - ${capitalize(bracket.sport)} Bracket`;
-        
-        const requestBody = {
-          event_id: createdEvent.id,
-          name: bracketName,
-          sport_type: sportType,
-          elimination_type: bracket.bracketType
-        };
+      if (!bracketRes.ok) {
+        const errorData = await bracketRes.json();
+        throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to create bracket"}`);
+      }
 
-        console.log(`Creating bracket ${i + 1}:`, requestBody);
-        
-        const bracketRes = await fetch("http://localhost:5000/api/brackets", {
+      const newBracket = await bracketRes.json();
+      console.log(`Bracket ${i + 1} created:`, newBracket);
+
+      // Add teams to bracket
+      for (let team_id of bracket.selectedTeamIds) {
+        await fetch("http://localhost:5000/api/bracketTeams", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (!bracketRes.ok) {
-          const errorData = await bracketRes.json();
-          throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to create bracket"}`);
-        }
-
-        const newBracket = await bracketRes.json();
-        console.log(`Bracket ${i + 1} created:`, newBracket);
-
-        // Add teams to bracket
-        for (let team_id of bracket.selectedTeamIds) {
-          await fetch("http://localhost:5000/api/bracketTeams", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bracket_id: newBracket.id,
-              team_id
-            })
-          });
-        }
-
-        // Generate matches
-        const generateRes = await fetch(`http://localhost:5000/api/brackets/${newBracket.id}/generate`, {
-          method: "POST"
-        });
-
-        if (!generateRes.ok) {
-          const errorData = await generateRes.json();
-          throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to generate matches"}`);
-        }
-
-        createdBracketsList.push({
-          ...newBracket,
-          selectedTeams: bracket.selectedTeamIds.length
+          body: JSON.stringify({
+            bracket_id: newBracket.id,
+            team_id
+          })
         });
       }
 
-      setCreatedBrackets(createdBracketsList);
-      setCurrentStep(4);
-      setValidationError("");
-    } catch (err) {
-      console.error("Error creating brackets:", err);
-      setValidationError(err.message);
-    } finally {
-      setLoading(false);
+      // Generate matches
+      const generateRes = await fetch(`http://localhost:5000/api/brackets/${newBracket.id}/generate`, {
+        method: "POST"
+      });
+
+      if (!generateRes.ok) {
+        const errorData = await generateRes.json();
+        throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to generate matches"}`);
+      }
+
+      createdBracketsList.push({
+  ...newBracket,
+  selectedTeams: bracket.selectedTeamIds.length,
+  team_count: bracket.selectedTeamIds.length  // Add this property for AdminEvents
+});
     }
-  };
+
+    setCreatedBrackets(createdBracketsList);
+    setCurrentStep(4);
+    setValidationError("");
+  } catch (err) {
+    console.error("Error creating tournament:", err);
+    setValidationError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleStartNew = () => {
     setCurrentStep(1);
@@ -926,16 +925,15 @@ const getPositionLimits = (teamSize, sport) => {
                       </small>
                     </div>
 
-                    <div className="bracket-form-actions">
-                      <button 
-                        onClick={handleCreateEvent}
-                        className="bracket-submit-btn"
-                        disabled={loading}
-                      >
-                        {loading ? "Creating..." : "Create Event & Continue"}
-                        <FaChevronRight style={{ marginLeft: '8px' }} />
-                      </button>
-                    </div>
+                   <div className="bracket-form-actions">
+  <button 
+    onClick={handleContinueToTeams}
+    className="bracket-submit-btn"
+  >
+    Continue to Teams
+    <FaChevronRight style={{ marginLeft: '8px' }} />
+  </button>
+</div>
                   </div>
                 </div>
               </div>
@@ -1511,16 +1509,16 @@ const getPositionLimits = (teamSize, sport) => {
                       Back to Teams
                     </button>
                     <button 
-                      onClick={handleCreateAllBrackets}
-                      className="bracket-submit-btn"
-                      disabled={loading}
-                    >
-                      {loading 
-                        ? "Creating..." 
-                        : eventData.numberOfBrackets === 1 
-                          ? "Create Bracket" 
-                          : "Create Brackets"}
-                    </button>
+  onClick={handleCreateAllBrackets}
+  className="bracket-submit-btn"
+  disabled={loading}
+>
+  {loading 
+    ? "Creating Tournament..." 
+    : eventData.numberOfBrackets === 1 
+      ? "Create Tournament" 
+      : "Create Tournament"}
+</button>
                   </div>
                 </div>
               </div>
@@ -1558,15 +1556,44 @@ const getPositionLimits = (teamSize, sport) => {
                     ))}
                   </div>
 
-                  <div className="bracket-form-actions" style={{ marginTop: '30px' }}>
-                    <button 
-                      onClick={handleStartNew}
-                      className="bracket-submit-btn"
-                      style={{ width: '100%' }}
-                    >
-                      Create Another Tournament
-                    </button>
-                  </div>
+                  <div className="bracket-form-actions" style={{ marginTop: '30px', gap: '15px' }}>
+                      <button 
+  onClick={() => {
+    // Store context in sessionStorage for AdminEvents to load
+    if (createdEvent && createdBrackets.length > 0) {
+      sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
+        selectedEvent: createdEvent,
+        selectedBracket: createdBrackets[0], // Navigate to first bracket
+        contentTab: 'bracket', // Go to Bracket View tab
+        bracketViewType: 'list' // Set to list view
+      }));
+    }
+    window.location.href = '/AdminDashboard/events';
+  }}
+  className="bracket-submit-btn"
+  style={{ 
+    width: '100%', 
+    background: '#3b82f6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px'
+  }}
+>
+  Go to Event Schedules
+  <FaChevronRight />
+</button>
+                     <button 
+  onClick={handleStartNew}
+  className="bracket-submit-btn"
+  style={{ 
+    width: '100%',
+    background: '#10b981'  // Green color for success action
+  }}
+>
+  Create Another Tournament
+</button>
+                    </div>
                 </div>
               </div>
             )}

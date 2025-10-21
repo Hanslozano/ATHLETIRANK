@@ -216,12 +216,12 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
             {filteredMatches.length === 0 ? (
               <tr><td colSpan="2" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '16px', background: 'var(--background-card)' }}>No matches found</td></tr>
             ) : (
-              filteredMatches.map((match) => (
-                <tr key={match.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s ease', background: 'var(--background-card)' }}>
-                  <td style={{ padding: '20px 15px', verticalAlign: 'top' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ background: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>Match #{match.id}</span>
+              filteredMatches.map((match, index) => (
+  <tr key={match.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s ease', background: 'var(--background-card)' }}>
+    <td style={{ padding: '20px 15px', verticalAlign: 'top' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ background: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>Match #{index + 1}</span>
                         <span style={{ background: 'rgba(99, 102, 241, 0.3)', color: '#a5b4fc', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>{formatRoundDisplay(match)}</span>
                         <span className={`match-status ${getStatusColor(match.status)}`} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>{match.status}</span>
                       </div>
@@ -267,7 +267,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <div style={{ color: 'var(--text-primary)', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>Match #{selectedMatch?.id} - {formatRoundDisplay(selectedMatch)}</div>
+                <div style={{ color: 'var(--text-primary)', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>Match #{filteredMatches.findIndex(m => m.id === selectedMatch?.id) + 1} - {formatRoundDisplay(selectedMatch)}</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{selectedMatch?.team1_name || 'TBD'} vs {selectedMatch?.team2_name || 'TBD'}</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
