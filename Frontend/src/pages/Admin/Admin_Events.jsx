@@ -5,6 +5,7 @@ import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import "../../style/Admin_Events.css";
 import TournamentScheduleList from "../../components/TournamentScheduleList";
+import AdminStats from "./AdminStats";
 
 const AdminEvents = ({ sidebarOpen }) => {
   const navigate = useNavigate();
@@ -369,8 +370,9 @@ const AdminEvents = ({ sidebarOpen }) => {
     }
   };
 
-  // Navigate to stats view
+  // Navigate to stats view - REMOVED since stats is now integrated
   const handleViewStats = (match) => {
+    // Set the selected match and switch to statistics tab
     sessionStorage.setItem('selectedMatchData', JSON.stringify({
       matchId: match.id,
       eventId: selectedEvent?.id,
@@ -378,12 +380,8 @@ const AdminEvents = ({ sidebarOpen }) => {
       match: match
     }));
     
-    sessionStorage.setItem('adminEventsContext', JSON.stringify({
-      selectedEvent: selectedEvent,
-      selectedBracket: selectedBracket
-    }));
-    
-    navigate('/AdminDashboard/stats');
+    // Switch to statistics tab
+    setContentTab("statistics");
   };
 
   // Load awards data when awards tab is selected
@@ -940,7 +938,7 @@ const AdminEvents = ({ sidebarOpen }) => {
     <div className="admin-dashboard">
       <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="dashboard-header">
-          <h1>Events & Matches</h1>
+          <h1>Event Management</h1>
           <p>View and manage sports events, brackets, and matches</p>
         </div>
 
@@ -1344,6 +1342,12 @@ const AdminEvents = ({ sidebarOpen }) => {
                     onClick={() => setContentTab("awards")}
                   >
                     <FaTrophy /> Awards & Standings
+                  </button>
+                  <button
+                    className={`awards_standings_tab_button ${contentTab === "statistics" ? "awards_standings_tab_active" : ""}`}
+                    onClick={() => setContentTab("statistics")}
+                  >
+                    <FaChartBar /> Statistics
                   </button>
                 </div>
 
@@ -2078,6 +2082,18 @@ const AdminEvents = ({ sidebarOpen }) => {
                             )}
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {/* Statistics Tab - Integrated AdminStats */}
+                    {contentTab === "statistics" && (
+                      <div className="awards_standings_tab_content">
+                        <AdminStats 
+                          sidebarOpen={sidebarOpen}
+                          preselectedEvent={selectedEvent}
+                          preselectedBracket={selectedBracket}
+                          embedded={true}
+                        />
                       </div>
                     )}
                   </>

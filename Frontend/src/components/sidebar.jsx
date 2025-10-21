@@ -37,7 +37,7 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
         { icon: <TbTournament />, label: "Tournament Creator", id: "tournament-creator", path: "/AdminDashboard/tournament-creator" }, // ✅ Fixed
         { icon: <AiFillSchedule />, label: "Events", id: "events", path: "/AdminDashboard/events" },
         { icon: <RiTeamFill />, label: "Teams", id: "teams", path: "/AdminDashboard/teams" },
-        { icon: <IoStatsChart />, label: "Stats", id: "stats", path: "/AdminDashboard/stats" },
+       
         { icon: <HiUsers />, label: "Users", id: "users", path: "/AdminDashboard/users" },
         
     ];

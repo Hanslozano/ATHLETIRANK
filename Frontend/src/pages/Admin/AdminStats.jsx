@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { FaSearch, FaFilter, FaDownload, FaTrophy, FaArrowLeft, FaUsers, FaChartBar } from "react-icons/fa";
 import "../../style/Admin_Stats.css";
 
-const AdminStats = ({ sidebarOpen }) => {
+const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedded = false }) => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [selectedBracket, setSelectedBracket] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(preselectedEvent || null);
+  const [selectedBracket, setSelectedBracket] = useState(preselectedBracket || null);
   const [brackets, setBrackets] = useState([]);
   const [matches, setMatches] = useState([]);
   const [playerStats, setPlayerStats] = useState([]);
@@ -110,9 +110,20 @@ const AdminStats = ({ sidebarOpen }) => {
     checkSessionData();
   }, []);
 
-  // Fetch events
+  // Use preselected event and bracket if provided
+  useEffect(() => {
+    if (preselectedEvent && preselectedBracket) {
+      setSelectedEvent(preselectedEvent);
+      setSelectedBracket(preselectedBracket);
+      handleBracketSelect(preselectedBracket);
+    }
+  }, [preselectedEvent, preselectedBracket]);
+
+  // Fetch events only if no preselected event
   useEffect(() => {
     const fetchEvents = async () => {
+      if (preselectedEvent) return; // Skip if we have a preselected event
+      
       setLoading(true);
       try {
         const res = await fetch("http://localhost:5000/api/stats/events");
@@ -150,7 +161,7 @@ const AdminStats = ({ sidebarOpen }) => {
       }
     };
     fetchEvents();
-  }, []);
+  }, [preselectedEvent, selectedEvent]);
 
   // Load event statistics with proper bracket filtering
   const loadEventStatistics = async (eventId, bracketId = null) => {
@@ -308,33 +319,6 @@ const AdminStats = ({ sidebarOpen }) => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Handle bracket dropdown change
-  const handleBracketDropdownChange = async (e) => {
-    const bracketId = parseInt(e.target.value);
-    if (bracketId === 0) {
-      setSelectedBracket(null);
-      setAllPlayersData([]);
-      setAllTeamsData([]);
-      setEventStatistics({
-        total_players: 0,
-        total_games: 0,
-        sport_type: 'basketball',
-        avg_ppg: 0,
-        avg_rpg: 0,
-        avg_apg: 0,
-        avg_bpg: 0,
-        avg_kpg: 0,
-        avg_dpg: 0,
-        avg_hitting_percentage: 0
-      });
-    } else {
-      const bracket = brackets.find(b => b.id === bracketId);
-      if (bracket) {
-        await handleBracketSelect(bracket);
-      }
     }
   };
 
@@ -1390,218 +1374,99 @@ const AdminStats = ({ sidebarOpen }) => {
     document.body.removeChild(link);
   };
 
-  // Render sport-specific stats cards
+  // Render sport-specific stats cards with View Mode dropdown integrated
   const renderStatsCards = () => {
     const sportType = getCurrentSportType();
     
-    if (sportType === 'basketball') {
-      return (
-        <div className="stats-cards-grid">
-          <div className="stats-card stats-card-primary">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Bracket</span>
-              <FaChartBar className="stats-card-icon" />
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? selectedBracket.name : 'Select a bracket'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? selectedBracket.sport_type : 'No bracket selected'}
-            </div>
+    return (
+      <div className="stats-cards-grid">
+        {/* View Mode Card - First in the grid */}
+        <div className="stats-card stats-view-mode-card">
+          <div className="stats-card-header">
+            <span className="stats-card-label">View Mode</span>
+            <FaChartBar className="stats-card-icon" />
           </div>
-          
-          <div className="stats-card stats-card-success">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Total Players</span>
-              <FaUsers className="stats-card-icon" />
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? eventStatistics.total_players : '-'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? 'Competing' : 'Select bracket'}
-            </div>
-          </div>
-          
-          <div className="stats-card stats-card-warning">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Avg PPG</span>
-              <FaChartBar className="stats-card-icon" />
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? eventStatistics.avg_ppg : '-'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? 'League Average' : 'Select bracket'}
-            </div>
-          </div>
-          
-          <div className="stats-card stats-card-info">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Total Games</span>
-              <div className="stats-card-icon">🎯</div>
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? eventStatistics.total_games : '-'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? 'Matches Played' : 'Select bracket'}
-            </div>
+          <select 
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value)}
+            className="stats-view-mode-select"
+          >
+            <option value="allPlayers">All Players Statistics</option>
+            <option value="teams">Team Statistics</option>
+            <option value="match">Match-by-Match View</option>
+          </select>
+          <div className="stats-card-subtext">
+            Change data view
           </div>
         </div>
-      );
-    } else {
-      // Volleyball stats cards
-      return (
-        <div className="stats-cards-grid">
-          <div className="stats-card stats-card-primary">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Bracket</span>
-              <FaChartBar className="stats-card-icon" />
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? selectedBracket.name : 'Select a bracket'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? selectedBracket.sport_type : 'No bracket selected'}
-            </div>
+        
+        {/* Statistics Cards */}
+        <div className="stats-card stats-card-primary">
+          <div className="stats-card-header">
+            <span className="stats-card-label">Total Players</span>
+            <FaUsers className="stats-card-icon" />
           </div>
-          
-          <div className="stats-card stats-card-success">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Total Players</span>
-              <FaUsers className="stats-card-icon" />
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? eventStatistics.total_players : '-'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? 'Competing' : 'Select bracket'}
-            </div>
+          <div className="stats-card-value">
+            {eventStatistics.total_players || 0}
           </div>
-          
-          <div className="stats-card stats-card-warning">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Avg KPG</span>
-              <FaChartBar className="stats-card-icon" />
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? eventStatistics.avg_kpg : '-'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? 'Kills Per Game' : 'Select bracket'}
-            </div>
-          </div>
-          
-          <div className="stats-card stats-card-info">
-            <div className="stats-card-header">
-              <span className="stats-card-label">Hit %</span>
-              <div className="stats-card-icon">🎯</div>
-            </div>
-            <div className="stats-card-value">
-              {selectedBracket ? `${eventStatistics.avg_hitting_percentage}%` : '-'}
-            </div>
-            <div className="stats-card-subtext">
-              {selectedBracket ? 'Hitting Percentage' : 'Select bracket'}
-            </div>
+          <div className="stats-card-subtext">
+            Competing
           </div>
         </div>
-      );
-    }
+        
+        <div className="stats-card stats-card-success">
+          <div className="stats-card-header">
+            <span className="stats-card-label">
+              {sportType === 'basketball' ? 'Avg PPG' : 'Avg KPG'}
+            </span>
+            <FaChartBar className="stats-card-icon" />
+          </div>
+          <div className="stats-card-value">
+            {sportType === 'basketball' ? eventStatistics.avg_ppg : eventStatistics.avg_kpg}
+          </div>
+          <div className="stats-card-subtext">
+            {sportType === 'basketball' ? 'Points Per Game' : 'Kills Per Game'}
+          </div>
+        </div>
+        
+        <div className="stats-card stats-card-info">
+          <div className="stats-card-header">
+            <span className="stats-card-label">Total Games</span>
+            <div className="stats-card-icon">🎯</div>
+          </div>
+          <div className="stats-card-value">
+            {eventStatistics.total_games || 0}
+          </div>
+          <div className="stats-card-subtext">
+            Matches Played
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="admin-dashboard">
+    <div className="stats-admin-dashboard">
       <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="dashboard-header">
-          <div>
-            <h1>Admin Statistics</h1>
-            <p>View player statistics and match results</p>
+        {!embedded && (
+          <div className="dashboard-header">
+            <div>
+              <h1>Admin Statistics</h1>
+              <p>View player statistics and match results</p>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="dashboard-main">
           <div className="bracket-content">
-            {/* Event and Bracket Selection - Under Header */}
-            <div className="stats-selection-container">
-              <div className="stats-selection-grid">
-                <div className="stats-selection-group">
-                  <label className="stats-selection-label">Select Event</label>
-                  <select 
-                    value={selectedEvent?.id || ''}
-                    onChange={(e) => {
-                      const event = events.find(ev => ev.id === parseInt(e.target.value));
-                      if (event) handleEventSelect(event);
-                    }}
-                    className="stats-selection-dropdown"
-                  >
-                    {events.map(event => (
-                      <option key={event.id} value={event.id}>{event.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="stats-selection-group">
-                  <label className="stats-selection-label">Select Bracket</label>
-                  <select 
-                    value={selectedBracket?.id || 0}
-                    onChange={handleBracketDropdownChange}
-                    className="stats-selection-dropdown"
-                  >
-                    <option value="0">Select a bracket</option>
-                    {brackets.map(bracket => (
-                      <option key={bracket.id} value={bracket.id}>
-                        {bracket.name} ({bracket.sport_type})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="stats-selection-group">
-                  <label className="stats-selection-label">View Mode</label>
-                  <select 
-                    value={viewMode}
-                    onChange={(e) => setViewMode(e.target.value)}
-                    className="stats-selection-dropdown"
-                  >
-                    <option value="allPlayers">All Players Statistics</option>
-                    <option value="teams">Team Statistics</option>
-                    <option value="match">Match-by-Match View</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Event Status Display */}
-              {selectedEvent && (
-                <div className="stats-event-status">
-                  <div className="stats-event-badge">
-                    <span className="stats-badge-label">Event: </span>
-                    <span className="stats-badge-value">{selectedEvent.name}</span>
-                  </div>
-                  <div className="stats-status-badge">
-                    <span className="stats-badge-label">Status: </span>
-                    <span className="stats-badge-value">{selectedEvent.status}</span>
-                  </div>
-                  {cameFromAdminEvents && (
-                    <button 
-                      onClick={handleBackToAdminEvents}
-                      className="stats-back-btn"
-                    >
-                      <FaArrowLeft /> Back to Events
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Stats Cards for All Players and Teams View */}
-            {(viewMode === "allPlayers" || viewMode === "teams") && selectedEvent && (
+            {/* Quick Stats Cards for All Players and Teams View with integrated View Mode */}
+            {(viewMode === "allPlayers" || viewMode === "teams") && selectedEvent && selectedBracket && (
               renderStatsCards()
             )}
 
             {/* Tabs Navigation */}
             <div className="stats-tabs-navigation">
-              {viewMode === "allPlayers" && selectedEvent && (
+              {viewMode === "allPlayers" && selectedEvent && selectedBracket && (
                 <button
                   className={`stats-tab-btn ${activeTab === "players" ? "stats-tab-active" : ""}`}
                   onClick={() => setActiveTab("players")}
@@ -1609,7 +1474,7 @@ const AdminStats = ({ sidebarOpen }) => {
                   All Players Statistics
                 </button>
               )}
-              {viewMode === "teams" && selectedEvent && (
+              {viewMode === "teams" && selectedEvent && selectedBracket && (
                 <button
                   className={`stats-tab-btn ${activeTab === "teams" ? "stats-tab-active" : ""}`}
                   onClick={() => setActiveTab("teams")}
@@ -1617,7 +1482,7 @@ const AdminStats = ({ sidebarOpen }) => {
                   Team Statistics
                 </button>
               )}
-              {viewMode === "match" && selectedEvent && (
+              {viewMode === "match" && selectedEvent && selectedBracket && (
                 <button
                   className={`stats-tab-btn ${activeTab === "brackets" ? "stats-tab-active" : ""}`}
                   onClick={() => setActiveTab("brackets")}
@@ -1702,88 +1567,75 @@ const AdminStats = ({ sidebarOpen }) => {
               )}
 
               {/* Brackets & Matches Tab */}
-              {activeTab === "brackets" && viewMode === "match" && selectedEvent && (
+              {activeTab === "brackets" && viewMode === "match" && selectedEvent && selectedBracket && (
                 <div className="stats-brackets-section">
                   <div className="stats-section-header">
                     <h2 className="stats-section-title">
                       {selectedEvent.name} - Results
                       {selectedBracket && ` - ${selectedBracket.name}`}
                     </h2>
-                    <div className="stats-event-details">
-                      <span><strong>Start:</strong> {new Date(selectedEvent.start_date).toLocaleDateString()}</span>
-                      <span><strong>End:</strong> {new Date(selectedEvent.end_date).toLocaleDateString()}</span>
-                      <span><strong>Status:</strong> {selectedEvent.status}</span>
-                    </div>
                   </div>
 
                   {loading ? (
                     <p className="stats-loading-text">Loading brackets and matches...</p>
-                  ) : brackets.length === 0 ? (
+                  ) : matches.length === 0 ? (
                     <div className="stats-empty-state">
-                      <p>No brackets available for this event.</p>
+                      <p>No matches available for this bracket.</p>
                     </div>
                   ) : (
                     <div className="stats-brackets-list">
-                      {(selectedBracket ? [selectedBracket] : brackets).map((bracket) => {
-                        const bracketMatches = matchesByBracket[bracket.id] || [];
-                        const currentMatches = bracketMatches.slice(indexOfFirstItem, indexOfLastItem);
-                        const totalPages = Math.ceil(bracketMatches.length / itemsPerPage);
-
-                        return (
-                          <div key={bracket.id} className="stats-bracket-section">
-                            <div className="stats-bracket-header">
-                              <h3>
-                                {bracket.name} - {bracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'} ({bracket.sport_type})
-                              </h3>
-                              {bracketWinners[bracket.id] && (
-                                <div className="stats-bracket-winner">
-                                  <FaTrophy /> Winner: {bracketWinners[bracket.id]}
-                                </div>
-                              )}
+                      <div className="stats-bracket-section">
+                        <div className="stats-bracket-header">
+                          <h3>
+                            {selectedBracket.name} - {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'} ({selectedBracket.sport_type})
+                          </h3>
+                          {bracketWinners[selectedBracket.id] && (
+                            <div className="stats-bracket-winner">
+                              <FaTrophy /> Winner: {bracketWinners[selectedBracket.id]}
                             </div>
-                            
-                            {bracketMatches.length > 0 ? (
-                              <div className="stats-matches-grid">
-                                {currentMatches.map((match) => (
-                                  <div 
-                                    key={match.id} 
-                                    className="stats-match-card"
-                                    onClick={() => handleMatchSelect(match)}
-                                  >
-                                    <div className="stats-match-teams">
-                                      <div className={`stats-match-team ${match.winner_id === match.team1_id ? "stats-match-winner" : ""}`}>
-                                        {match.team1_name}
-                                      </div>
-                                      <div className="stats-match-vs">vs</div>
-                                      <div className={`stats-match-team ${match.winner_id === match.team2_id ? "stats-match-winner" : ""}`}>
-                                        {match.team2_name}
-                                      </div>
-                                    </div>
-                                    <div className="stats-match-score">
-                                      {match.score_team1} - {match.score_team2}
-                                    </div>
-                                    <div className="stats-match-info">
-                                      <span>{formatRoundDisplay(match)}</span>
-                                      {match.winner_name && (
-                                        <span className="stats-match-winner-tag">
-                                          Winner: {match.winner_name}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="stats-match-actions">
-                                      <button className="stats-view-btn">
-                                        View Stats
-                                      </button>
-                                    </div>
+                          )}
+                        </div>
+                        
+                        {matches.length > 0 ? (
+                          <div className="stats-matches-grid">
+                            {matches.map((match) => (
+                              <div 
+                                key={match.id} 
+                                className="stats-match-card"
+                                onClick={() => handleMatchSelect(match)}
+                              >
+                                <div className="stats-match-teams">
+                                  <div className={`stats-match-team ${match.winner_id === match.team1_id ? "stats-match-winner" : ""}`}>
+                                    {match.team1_name}
                                   </div>
-                                ))}
+                                  <div className="stats-match-vs">vs</div>
+                                  <div className={`stats-match-team ${match.winner_id === match.team2_id ? "stats-match-winner" : ""}`}>
+                                    {match.team2_name}
+                                  </div>
+                                </div>
+                                <div className="stats-match-score">
+                                  {match.score_team1} - {match.score_team2}
+                                </div>
+                                <div className="stats-match-info">
+                                  <span>{formatRoundDisplay(match)}</span>
+                                  {match.winner_name && (
+                                    <span className="stats-match-winner-tag">
+                                      Winner: {match.winner_name}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="stats-match-actions">
+                                  <button className="stats-view-btn">
+                                    View Stats
+                                  </button>
+                                </div>
                               </div>
-                            ) : (
-                              <p className="stats-no-matches">No matches available for this bracket.</p>
-                            )}
+                            ))}
                           </div>
-                        );
-                      })}
+                        ) : (
+                          <p className="stats-no-matches">No matches available for this bracket.</p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

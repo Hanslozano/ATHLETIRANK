@@ -1,4 +1,4 @@
-/* Admin_Events.css - Full Updated Version with Distinct Tab Background */
+/* Admin_Events.css - Full Updated Version with Statistics Tab Integration */
 /* CSS Variables */
 :root {
   --primary-color: #3b82f6;
@@ -910,68 +910,35 @@
   }
 }
 
-view-toggle-container {
-  display: flex;
-  gap: 12px;
-  background: rgba(51, 65, 85, 0.5);
-  padding: 6px;
-  borderRadius: 8px;
-  border: 1px solid #334155;
+/* Statistics Tab Integration Styles */
+.awards_standings_tab_content .admin-dashboard {
+  margin: 0;
+  padding: 0;
 }
 
-.view-toggle-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
+.awards_standings_tab_content .dashboard-content {
+  margin-left: 0 !important;
 }
 
-.view-toggle-btn.active {
-  background: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+.awards_standings_tab_content .dashboard-header {
+  display: none;
 }
 
-.view-toggle-btn:not(.active) {
+.awards_standings_tab_content .bracket-content {
   background: transparent;
-  color: #cbd5e1;
+  border: none;
+  box-shadow: none;
 }
 
-.view-toggle-btn:not(.active):hover {
-  background: rgba(59, 130, 246, 0.1);
-  color: #ffffff;
+/* Ensure embedded AdminStats fits properly */
+.awards_standings_tab_content .stats-selection-container {
+  margin: 0 0 24px 0;
 }
 
-.view-actions-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 16px;
+.awards_standings_tab_content .stats-tabs-navigation {
+  margin-bottom: 0;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .view-actions-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .view-toggle-container {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .view-toggle-btn {
-    flex: 1;
-    justify-content: center;
-  }
+.awards_standings_tab_content .stats-tab-content {
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
 }

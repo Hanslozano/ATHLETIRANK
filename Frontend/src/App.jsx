@@ -10,7 +10,7 @@ import BracketsPage from "./pages/Admin/Admin_Brackets";
 import SchedulesPage from "./pages/Admin/Admin_Schedules";
 import SideBar from "./components/sidebar";
 import TeamsPage from "./pages/Admin/Admin_Teams";
-import AdminStats from "./pages/Admin/Admin_Stats";
+import AdminStats from "./pages/Admin/AdminStats";
 import AdminUsers from "./pages/Admin/Admin_Users";
 import AdminAwardsStandings from "./pages/Admin/Admin_Awards & Standings";
 import TournamentCreator from "./pages/Admin/TournamentCreator"; // ✅ Add this import
