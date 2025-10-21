@@ -1136,7 +1136,7 @@ const AdminEvents = ({ sidebarOpen }) => {
                                     <button
                                       onClick={() => handleEditEvent(event)}
                                       className="bracket-view-btn"
-                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--primary-color)', flex: '1 1 auto', minWidth: '55px' }}
+                                      style={{ fontSize: '13px', padding: '8px 14px', background: 'var(--success-color)', flex: '1 1 auto', minWidth: '55px' }}
                                       title="Edit Event"
                                     >
                                       <FaEdit />
@@ -2090,69 +2090,211 @@ const AdminEvents = ({ sidebarOpen }) => {
 
       {/* Edit Event Modal */}
       {editModal.show && editModal.event && (
-        <div className="admin-teams-modal-overlay" onClick={closeEditModal}>
-          <div className="admin-teams-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-            <div className="admin-teams-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                <h2 style={{ margin: 0 }}>Edit Event</h2>
+        <div 
+          onClick={closeEditModal}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            background: 'rgba(0, 0, 0, 0.7)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 9999, 
+            padding: '20px' 
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ 
+              background: 'var(--background-card)', 
+              borderRadius: '12px', 
+              width: '100%', 
+              maxWidth: '600px', 
+              border: '1px solid var(--border-color)', 
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' 
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              padding: '24px', 
+              borderBottom: '1px solid var(--border-color)' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <FaEdit style={{ width: '24px', height: '24px', color: 'var(--success-color)' }} />
+                <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '24px', fontWeight: '600' }}>
+                  Edit Event
+                </h2>
               </div>
-              <button onClick={closeEditModal} className="admin-teams-modal-close">
-                <FaTimes />
+              <button 
+                onClick={closeEditModal}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--text-muted)', 
+                  cursor: 'pointer', 
+                  padding: '8px', 
+                  borderRadius: '4px', 
+                  transition: 'all 0.2s ease' 
+                }}
+              >
+                <FaTimes style={{ width: '20px', height: '20px' }} />
               </button>
             </div>
             
-            <div className="admin-teams-modal-body">
-              <div className="admin-teams-form-group" style={{ marginBottom: '20px' }}>
-                <label htmlFor="eventName">Event Name *</label>
+            <div style={{ padding: '24px' }}>
+              <div style={{ 
+                background: 'rgba(72, 187, 120, 0.1)', 
+                padding: '16px', 
+                borderRadius: '8px', 
+                marginBottom: '24px', 
+                border: '1px solid rgba(72, 187, 120, 0.2)' 
+              }}>
+                <div style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: '600' }}>
+                  Event: {editModal.event.name}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label 
+                  htmlFor="eventName" 
+                  style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    color: 'var(--text-primary)', 
+                    fontWeight: '600', 
+                    fontSize: '14px' 
+                  }}
+                >
+                  Event Name *
+                </label>
                 <input
                   type="text"
                   id="eventName"
                   value={editingEventName}
                   onChange={(e) => setEditingEventName(e.target.value)}
                   placeholder="Enter event name"
-                  className="admin-teams-modal-name-input"
-                  style={{ width: '100%', marginTop: '8px' }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '2px solid var(--border-color)', 
+                    borderRadius: '8px', 
+                    background: 'var(--background-secondary)', 
+                    color: 'var(--text-primary)', 
+                    fontSize: '14px', 
+                    outline: 'none' 
+                  }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-                <div className="admin-teams-form-group">
-                  <label htmlFor="startDate">Start Date *</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <div>
+                  <label 
+                    htmlFor="startDate"
+                    style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      color: 'var(--text-primary)', 
+                      fontWeight: '600', 
+                      fontSize: '14px' 
+                    }}
+                  >
+                    Start Date *
+                  </label>
                   <input
                     type="date"
                     id="startDate"
                     value={editingStartDate}
                     onChange={(e) => setEditingStartDate(e.target.value)}
-                    className="admin-teams-form-group input"
-                    style={{ width: '100%', marginTop: '8px', padding: '12px' }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      border: '2px solid var(--border-color)', 
+                      borderRadius: '8px', 
+                      background: 'var(--background-secondary)', 
+                      color: 'var(--text-primary)', 
+                      fontSize: '14px', 
+                      outline: 'none' 
+                    }}
                   />
                 </div>
 
-                <div className="admin-teams-form-group">
-                  <label htmlFor="endDate">End Date *</label>
+                <div>
+                  <label 
+                    htmlFor="endDate"
+                    style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      color: 'var(--text-primary)', 
+                      fontWeight: '600', 
+                      fontSize: '14px' 
+                    }}
+                  >
+                    End Date *
+                  </label>
                   <input
                     type="date"
                     id="endDate"
                     value={editingEndDate}
                     onChange={(e) => setEditingEndDate(e.target.value)}
-                    className="admin-teams-form-group input"
-                    style={{ width: '100%', marginTop: '8px', padding: '12px' }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      border: '2px solid var(--border-color)', 
+                      borderRadius: '8px', 
+                      background: 'var(--background-secondary)', 
+                      color: 'var(--text-primary)', 
+                      fontSize: '14px', 
+                      outline: 'none' 
+                    }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '30px' }}>
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'flex-end', 
+                marginTop: '30px', 
+                paddingTop: '20px', 
+                borderTop: '1px solid var(--border-color)' 
+              }}>
                 <button
                   onClick={closeEditModal}
-                  className="admin-teams-cancel-btn"
-                  style={{ padding: '12px 24px' }}
+                  style={{ 
+                    padding: '12px 24px', 
+                    background: 'var(--background-secondary)', 
+                    color: 'var(--text-primary)', 
+                    border: '2px solid var(--border-color)', 
+                    borderRadius: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s ease' 
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={saveEventEdit}
-                  className="admin-teams-submit-btn"
-                  style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--primary-color)' }}
+                  style={{ 
+                    padding: '12px 24px', 
+                    background: 'var(--success-color)', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
                 >
                   <FaSave /> Save Changes
                 </button>
@@ -2505,54 +2647,134 @@ const AdminEvents = ({ sidebarOpen }) => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm.show && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div style={{
-            background: 'var(--background-card)',
-            border: '2px solid var(--error-color)',
-            borderRadius: 'var(--border-radius-lg)',
-            padding: '32px',
-            maxWidth: '500px',
-            width: '90%',
-            boxShadow: 'var(--shadow-large)'
-          }}>
-            <h3 style={{ color: 'var(--error-color)', marginBottom: '16px', fontSize: '24px' }}>
-              Confirm Delete
-            </h3>
-            <p style={{ color: 'var(--text-primary)', marginBottom: '24px', fontSize: '16px' }}>
-              Are you sure you want to delete this {deleteConfirm.type}?
-            </p>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '14px', fontWeight: '600' }}>
-              "{deleteConfirm.name}"
-            </p>
-            <p style={{ color: 'var(--warning-color)', marginBottom: '24px', fontSize: '14px' }}>
-              ⚠️ This action cannot be undone!
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
+        <div 
+          onClick={() => setDeleteConfirm({ show: false, type: '', id: null, name: '' })}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            background: 'rgba(0, 0, 0, 0.7)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 9999, 
+            padding: '20px' 
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ 
+              background: 'var(--background-card)', 
+              borderRadius: '12px', 
+              width: '100%', 
+              maxWidth: '500px', 
+              border: '1px solid var(--border-color)', 
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' 
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              padding: '24px', 
+              borderBottom: '1px solid var(--border-color)' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <FaTrash style={{ width: '24px', height: '24px', color: 'var(--error-color)' }} />
+                <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '24px', fontWeight: '600' }}>
+                  Confirm Delete
+                </h2>
+              </div>
+              <button 
                 onClick={() => setDeleteConfirm({ show: false, type: '', id: null, name: '' })}
-                className="bracket-view-btn"
-                style={{ background: 'var(--text-muted)', padding: '10px 20px' }}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--text-muted)', 
+                  cursor: 'pointer', 
+                  padding: '8px', 
+                  borderRadius: '4px', 
+                  transition: 'all 0.2s ease' 
+                }}
               >
-                Cancel
+                <FaTimes style={{ width: '20px', height: '20px' }} />
               </button>
-              <button
-                onClick={confirmDelete}
-                className="bracket-view-btn"
-                style={{ background: 'var(--error-color)', padding: '10px 20px' }}
-              >
-                <FaTrash /> Delete {deleteConfirm.type}
-              </button>
+            </div>
+            
+            <div style={{ padding: '24px' }}>
+              <div style={{ 
+                background: 'rgba(239, 68, 68, 0.1)', 
+                padding: '16px', 
+                borderRadius: '8px', 
+                marginBottom: '24px', 
+                border: '1px solid rgba(239, 68, 68, 0.2)' 
+              }}>
+                <div style={{ color: 'var(--text-primary)', fontSize: '16px', marginBottom: '8px' }}>
+                  Are you sure you want to delete this {deleteConfirm.type}?
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '600' }}>
+                  "{deleteConfirm.name}"
+                </div>
+              </div>
+
+              <div style={{ 
+                background: 'rgba(251, 191, 36, 0.1)', 
+                padding: '12px 16px', 
+                borderRadius: '8px', 
+                border: '1px solid rgba(251, 191, 36, 0.2)',
+                marginBottom: '24px'
+              }}>
+                <div style={{ color: '#fbbf24', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>⚠️</span>
+                  <span>This action cannot be undone!</span>
+                </div>
+              </div>
+
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'flex-end', 
+                paddingTop: '20px', 
+                borderTop: '1px solid var(--border-color)' 
+              }}>
+                <button
+                  onClick={() => setDeleteConfirm({ show: false, type: '', id: null, name: '' })}
+                  style={{ 
+                    padding: '12px 24px', 
+                    background: 'var(--background-secondary)', 
+                    color: 'var(--text-primary)', 
+                    border: '2px solid var(--border-color)', 
+                    borderRadius: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s ease' 
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  style={{ 
+                    padding: '12px 24px', 
+                    background: 'var(--error-color)', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <FaTrash /> Delete {deleteConfirm.type}
+                </button>
+              </div>
             </div>
           </div>
         </div>

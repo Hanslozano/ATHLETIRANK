@@ -13,8 +13,7 @@ router.get('/', async (req, res) => {
         s.matchId,
         DATE_FORMAT(s.date, '%Y-%m-%d') as date,
         TIME_FORMAT(s.time, '%H:%i') as time,
-        s.venue,
-        s.description,
+        TIME_FORMAT(s.endTime, '%H:%i') as endTime,
         s.created_at,
         s.updated_at,
         m.round_number,
@@ -47,10 +46,11 @@ router.get('/', async (req, res) => {
 // POST create new schedule
 router.post('/', async (req, res) => {
   try {
-    const { eventId, bracketId, matchId, date, time, venue, description } = req.body;
+    const { eventId, bracketId, matchId, date, time, endTime } = req.body;
     
     console.log('Creating schedule with data:', req.body);
     
+    // Check if schedule already exists for this match
     const [existing] = await db.pool.query(
       'SELECT id FROM schedules WHERE matchId = ?',
       [matchId]
@@ -61,8 +61,8 @@ router.post('/', async (req, res) => {
     }
     
     const query = `
-      INSERT INTO schedules (eventId, bracketId, matchId, date, time, venue, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO schedules (eventId, bracketId, matchId, date, time, endTime)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     
     const [result] = await db.pool.query(query, [
@@ -71,19 +71,23 @@ router.post('/', async (req, res) => {
       matchId,
       date,
       time,
-      venue,
-      description || null
+      endTime || null
     ]);
     
+    // Update match scheduled_at field
     const scheduledAt = `${date} ${time}:00`;
     await db.pool.query(
       'UPDATE matches SET scheduled_at = ? WHERE id = ?',
       [scheduledAt, matchId]
     );
     
+    // Fetch the newly created schedule with all related data
     const [newSchedule] = await db.pool.query(`
       SELECT 
         s.*,
+        DATE_FORMAT(s.date, '%Y-%m-%d') as date,
+        TIME_FORMAT(s.time, '%H:%i') as time,
+        TIME_FORMAT(s.endTime, '%H:%i') as endTime,
         m.round_number,
         m.bracket_type,
         m.team1_id,
@@ -110,56 +114,92 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT update schedule
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, time, endTime } = req.body;
+    
+    console.log('Updating schedule:', id, req.body);
+    
+    // Update schedule
+    const query = `
+      UPDATE schedules 
+      SET date = ?, time = ?, endTime = ?
+      WHERE id = ?
+    `;
+    
+    await db.pool.query(query, [date, time, endTime || null, id]);
+    
+    // Get matchId to update match scheduled_at
+    const [schedule] = await db.pool.query('SELECT matchId FROM schedules WHERE id = ?', [id]);
+    
+    if (schedule.length > 0) {
+      const scheduledAt = `${date} ${time}:00`;
+      await db.pool.query(
+        'UPDATE matches SET scheduled_at = ? WHERE id = ?',
+        [scheduledAt, schedule[0].matchId]
+      );
+    }
+    
+    // Fetch updated schedule with all related data
+    const [updatedSchedule] = await db.pool.query(`
+      SELECT 
+        s.*,
+        DATE_FORMAT(s.date, '%Y-%m-%d') as date,
+        TIME_FORMAT(s.time, '%H:%i') as time,
+        TIME_FORMAT(s.endTime, '%H:%i') as endTime,
+        m.round_number,
+        m.bracket_type,
+        m.team1_id,
+        m.team2_id,
+        b.name as bracket_name,
+        b.sport_type,
+        e.name as event_name,
+        t1.name as team1_name,
+        t2.name as team2_name
+      FROM schedules s
+      LEFT JOIN matches m ON s.matchId = m.id
+      LEFT JOIN brackets b ON s.bracketId = b.id
+      LEFT JOIN events e ON s.eventId = e.id
+      LEFT JOIN teams t1 ON m.team1_id = t1.id
+      LEFT JOIN teams t2 ON m.team2_id = t2.id
+      WHERE s.id = ?
+    `, [id]);
+    
+    console.log('Schedule updated successfully:', updatedSchedule[0]);
+    res.json(updatedSchedule[0]);
+  } catch (err) {
+    console.error('Error updating schedule:', err);
+    res.status(500).json({ message: 'Error updating schedule: ' + err.message });
+  }
+});
+
 // DELETE schedule
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
+    // Get matchId before deleting
     const [schedule] = await db.pool.query('SELECT matchId FROM schedules WHERE id = ?', [id]);
     
     if (schedule.length > 0) {
+      // Clear match scheduled_at
       await db.pool.query(
         'UPDATE matches SET scheduled_at = NULL WHERE id = ?',
         [schedule[0].matchId]
       );
     }
     
+    // Delete schedule
     await db.pool.query('DELETE FROM schedules WHERE id = ?', [id]);
+    
+    console.log('Schedule deleted successfully');
     res.json({ message: 'Schedule deleted successfully' });
   } catch (err) {
     console.error('Error deleting schedule:', err);
-    res.status(500).json({ message: 'Error deleting schedule' });
+    res.status(500).json({ message: 'Error deleting schedule: ' + err.message });
   }
 });
 
-// PUT /api/matches/:id/schedule - Update match schedule
-router.put('/matches/:id/schedule', async (req, res) => {
-  const { id } = req.params;
-  const { scheduled_at, venue, referee } = req.body;
-  
-  try {
-    const result = await pool.query(
-      'UPDATE matches SET scheduled_at = $1, venue = $2, referee = $3 WHERE id = $4 RETURNING *',
-      [scheduled_at, venue, referee, id]
-    );
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DELETE /api/matches/:id/schedule - Delete match schedule
-router.delete('/matches/:id/schedule', async (req, res) => {
-  const { id } = req.params;
-  
-  try {
-    const result = await pool.query(
-      'UPDATE matches SET scheduled_at = NULL, venue = NULL, referee = NULL WHERE id = $1 RETURNING *',
-      [id]
-    );
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 module.exports = router;

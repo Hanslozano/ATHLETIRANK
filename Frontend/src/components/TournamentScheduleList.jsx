@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, Clock, MapPin, User, Plus, X, Edit, Trash2 } from 'lucide-react';
+import { Search, Calendar, Clock, Plus, X, Edit, Trash2 } from 'lucide-react';
 
 const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,20 +9,18 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [scheduleForm, setScheduleForm] = useState({
     date: '',
-    time: '',
-    venue: '',
-    referee: ''
+    startTime: '',
+    endTime: ''
   });
   const [loading, setLoading] = useState(false);
+  const [schedules, setSchedules] = useState([]);
 
-  // Set CSS variables and body background
+  // Set CSS variables
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--primary-color', '#3b82f6');
-    root.style.setProperty('--primary-hover', '#2563eb');
     root.style.setProperty('--error-color', '#ef4444');
     root.style.setProperty('--success-color', '#48bb78');
-    root.style.setProperty('--success-hover', '#38a169');
     root.style.setProperty('--background-primary', '#0a0f1c');
     root.style.setProperty('--background-secondary', '#1a2332');
     root.style.setProperty('--background-card', '#0f172a');
@@ -31,6 +29,24 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
     root.style.setProperty('--text-muted', '#64748b');
     root.style.setProperty('--border-color', '#2d3748');
   }, []);
+
+  // Fetch schedules
+  useEffect(() => {
+    fetchSchedules();
+  }, [matches, bracketId]);
+
+  const fetchSchedules = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/schedules');
+      if (res.ok) {
+        const data = await res.json();
+        const filteredSchedules = data.filter(s => s.bracketId === bracketId);
+        setSchedules(filteredSchedules);
+      }
+    } catch (err) {
+      console.error('Error fetching schedules:', err);
+    }
+  };
 
   // Format round display
   const formatRoundDisplay = (match) => {
@@ -52,6 +68,39 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
     }
     
     return `Round ${roundNum}`;
+  };
+
+  const formatScheduleDisplay = (schedule) => {
+    if (!schedule || !schedule.date) return null;
+    
+    const date = new Date(schedule.date + 'T00:00:00');
+    const dateStr = date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+    
+    const startTime = schedule.time;
+    const endTime = schedule.endTime;
+    
+    if (!startTime) return dateStr;
+    
+    const formatTime = (time) => {
+      const [hours, minutes] = time.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minutes} ${ampm}`;
+    };
+    
+    const startDisplay = formatTime(startTime);
+    const endDisplay = endTime ? ` to ${formatTime(endTime)}` : '';
+    
+    return `${dateStr} - ${startDisplay}${endDisplay}`;
+  };
+
+  const getScheduleForMatch = (matchId) => {
+    return schedules.find(s => s.matchId === matchId);
   };
 
   // Get unique rounds
@@ -91,38 +140,45 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
 
   const handleAddSchedule = (match) => {
     setSelectedMatch(match);
-    if (match.scheduled_at || match.venue || match.referee) {
-      const schedDate = match.scheduled_at ? new Date(match.scheduled_at) : new Date();
+    const existingSchedule = getScheduleForMatch(match.id);
+    
+    if (existingSchedule) {
       setScheduleForm({
-        date: match.scheduled_at ? schedDate.toISOString().split('T')[0] : '',
-        time: match.scheduled_at ? schedDate.toTimeString().slice(0, 5) : '',
-        venue: match.venue || '',
-        referee: match.referee || ''
+        date: existingSchedule.date,
+        startTime: existingSchedule.time || '',
+        endTime: existingSchedule.endTime || ''
       });
     } else {
-      setScheduleForm({ date: '', time: '', venue: '', referee: '' });
+      setScheduleForm({
+        date: '',
+        startTime: '',
+        endTime: ''
+      });
     }
     setShowScheduleModal(true);
   };
 
   const handleDeleteSchedule = async (match) => {
+    const schedule = getScheduleForMatch(match.id);
+    if (!schedule) return;
+
     if (!window.confirm('Are you sure you want to delete this schedule?')) {
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/matches/${match.id}/schedule`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
+      const response = await fetch(`http://localhost:5000/api/schedules/${schedule.id}`, {
+        method: 'DELETE'
       });
 
       if (!response.ok) {
         throw new Error('Failed to delete schedule');
       }
 
+      await fetchSchedules();
+      if (onRefresh) await onRefresh();
       alert('Schedule deleted successfully!');
-      if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Error deleting schedule:', error);
       alert('Failed to delete schedule: ' + error.message);
@@ -132,35 +188,53 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
   };
 
   const handleSaveSchedule = async () => {
-    if (!scheduleForm.date || !scheduleForm.time || !scheduleForm.venue) {
-      alert('Please fill in all required fields (Date, Time, Venue)');
+    if (!scheduleForm.date || !scheduleForm.startTime) {
+      alert('Please fill in date and start time');
       return;
     }
 
     setLoading(true);
     try {
-      const scheduledAt = `${scheduleForm.date}T${scheduleForm.time}:00`;
+      const existingSchedule = getScheduleForMatch(selectedMatch.id);
+      
+      if (existingSchedule) {
+        const res = await fetch(`http://localhost:5000/api/schedules/${existingSchedule.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: scheduleForm.date,
+            time: scheduleForm.startTime,
+            endTime: scheduleForm.endTime
+          })
+        });
 
-      const response = await fetch(`http://localhost:5000/api/matches/${selectedMatch.id}/schedule`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          scheduled_at: scheduledAt,
-          venue: scheduleForm.venue,
-          referee: scheduleForm.referee || null
-        })
-      });
+        if (!res.ok) throw new Error('Failed to update schedule');
+      } else {
+        const res = await fetch('http://localhost:5000/api/schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: eventId,
+            bracketId: bracketId,
+            matchId: selectedMatch.id,
+            date: scheduleForm.date,
+            time: scheduleForm.startTime,
+            endTime: scheduleForm.endTime
+          })
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to save schedule');
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || 'Failed to create schedule');
+        }
       }
 
-      alert('Schedule saved successfully!');
+      await fetchSchedules();
+      if (onRefresh) await onRefresh();
       setShowScheduleModal(false);
       setSelectedMatch(null);
-      setScheduleForm({ date: '', time: '', venue: '', referee: '' });
-      
-      if (onRefresh) onRefresh();
+      setScheduleForm({ date: '', startTime: '', endTime: '' });
+      alert('Schedule saved successfully!');
     } catch (error) {
       console.error('Error saving schedule:', error);
       alert('Failed to save schedule: ' + error.message);
@@ -216,42 +290,46 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
             {filteredMatches.length === 0 ? (
               <tr><td colSpan="2" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '16px', background: 'var(--background-card)' }}>No matches found</td></tr>
             ) : (
-              filteredMatches.map((match, index) => (
-  <tr key={match.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s ease', background: 'var(--background-card)' }}>
-    <td style={{ padding: '20px 15px', verticalAlign: 'top' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ background: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>Match #{index + 1}</span>
-                        <span style={{ background: 'rgba(99, 102, 241, 0.3)', color: '#a5b4fc', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>{formatRoundDisplay(match)}</span>
-                        <span className={`match-status ${getStatusColor(match.status)}`} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>{match.status}</span>
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#e2e8f0' }}>{match.team1_name || 'TBD'} vs {match.team2_name || 'TBD'}</div>
-                      {match.status === 'completed' && (<div style={{ fontSize: '18px', fontWeight: '700', color: '#e2e8f0' }}>Score: {match.score_team1} - {match.score_team2}</div>)}
-                      {match.winner_name && (<div style={{ color: '#48bb78', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><span>🏆</span> Winner: {match.winner_name}</div>)}
-                    </div>
-                  </td>
-                  <td style={{ padding: '20px 15px', verticalAlign: 'top', borderLeft: '1px solid var(--border-color)' }}>
-                    {match.scheduled_at || match.venue ? (
+              filteredMatches.map((match, index) => {
+                const schedule = getScheduleForMatch(match.id);
+                const scheduleDisplay = formatScheduleDisplay(schedule);
+
+                return (
+                  <tr key={match.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s ease', background: 'var(--background-card)' }}>
+                    <td style={{ padding: '20px 15px', verticalAlign: 'top' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 12px' }}>
-                          {match.scheduled_at && (<><Calendar style={{ width: '16px', height: '16px', color: '#3b82f6' }} /><span style={{ color: '#e2e8f0', fontSize: '14px' }}>{new Date(match.scheduled_at).toLocaleDateString()}</span><Clock style={{ width: '16px', height: '16px', color: '#f59e0b' }} /><span style={{ color: '#e2e8f0', fontSize: '14px' }}>{new Date(match.scheduled_at).toLocaleTimeString()}</span></>)}
-                          {match.venue && (<><MapPin style={{ width: '16px', height: '16px', color: '#10b981' }} /><span style={{ color: '#e2e8f0', fontSize: '14px' }}>{match.venue}</span></>)}
-                          {match.referee && (<><User style={{ width: '16px', height: '16px', color: '#8b5cf6' }} /><span style={{ color: '#e2e8f0', fontSize: '14px' }}>{match.referee}</span></>)}
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ background: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>Match #{index + 1}</span>
+                          <span style={{ background: 'rgba(99, 102, 241, 0.3)', color: '#a5b4fc', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>{formatRoundDisplay(match)}</span>
+                          <span className={`match-status ${getStatusColor(match.status)}`} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>{match.status}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                          <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '8px 14px', background: loading ? '#64748b' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}><Edit style={{ width: '14px', height: '14px' }} />Edit</button>
-                          <button onClick={() => handleDeleteSchedule(match)} disabled={loading} style={{ padding: '8px 14px', background: loading ? '#64748b' : '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}><Trash2 style={{ width: '14px', height: '14px' }} />Delete</button>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#e2e8f0' }}>{match.team1_name || 'TBD'} vs {match.team2_name || 'TBD'}</div>
+                        {match.status === 'completed' && (<div style={{ fontSize: '18px', fontWeight: '700', color: '#e2e8f0' }}>Score: {match.score_team1} - {match.score_team2}</div>)}
+                        {match.winner_name && (<div style={{ color: '#48bb78', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><span>🏆</span> Winner: {match.winner_name}</div>)}
+                      </div>
+                    </td>
+                    <td style={{ padding: '20px 15px', verticalAlign: 'top', borderLeft: '1px solid var(--border-color)' }}>
+                      {scheduleDisplay ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                            <Calendar style={{ width: '18px', height: '18px', color: '#3b82f6', flexShrink: 0 }} />
+                            <span style={{ color: '#e2e8f0', fontSize: '15px', fontWeight: '600' }}>{scheduleDisplay}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '8px 14px', background: loading ? '#64748b' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}><Edit style={{ width: '14px', height: '14px' }} />Edit</button>
+                            <button onClick={() => handleDeleteSchedule(match)} disabled={loading} style={{ padding: '8px 14px', background: loading ? '#64748b' : '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}><Trash2 style={{ width: '14px', height: '14px' }} />Delete</button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', gap: '12px' }}>
-                        <div style={{ color: '#64748b', fontSize: '14px', textAlign: 'center' }}>No schedule set for this match</div>
-                        <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '10px 16px', background: loading ? '#64748b' : '#48bb78', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}><Plus style={{ width: '16px', height: '16px' }} />Add Schedule</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', gap: '12px' }}>
+                          <div style={{ color: '#64748b', fontSize: '14px', textAlign: 'center' }}>No schedule set for this match</div>
+                          <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '10px 16px', background: loading ? '#64748b' : '#48bb78', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}><Plus style={{ width: '16px', height: '16px' }} />Add Schedule</button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -262,7 +340,10 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
         <div onClick={() => !loading && setShowScheduleModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--background-card)', borderRadius: '12px', width: '100%', maxWidth: '600px', border: '1px solid var(--border-color)', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
-              <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '24px', fontWeight: '600' }}>{selectedMatch?.scheduled_at ? 'Edit Schedule' : 'Add Schedule'}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Calendar style={{ width: '24px', height: '24px', color: '#3b82f6' }} />
+                <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '24px', fontWeight: '600' }}>{getScheduleForMatch(selectedMatch?.id) ? 'Edit Schedule' : 'Add Schedule'}</h2>
+              </div>
               <button onClick={() => !loading && setShowScheduleModal(false)} disabled={loading} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: loading ? 'not-allowed' : 'pointer', padding: '8px', borderRadius: '4px', transition: 'all 0.2s ease', opacity: loading ? 0.5 : 1 }}><X style={{ width: '20px', height: '20px' }} /></button>
             </div>
             <div style={{ padding: '24px' }}>
@@ -270,12 +351,41 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
                 <div style={{ color: 'var(--text-primary)', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>Match #{filteredMatches.findIndex(m => m.id === selectedMatch?.id) + 1} - {formatRoundDisplay(selectedMatch)}</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{selectedMatch?.team1_name || 'TBD'} vs {selectedMatch?.team2_name || 'TBD'}</div>
               </div>
+              
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div><label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Date *</label><input type="date" value={scheduleForm.date} onChange={(e) => setScheduleForm({...scheduleForm, date: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} /></div>
-                <div><label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Time *</label><input type="time" value={scheduleForm.time} onChange={(e) => setScheduleForm({...scheduleForm, time: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} /></div>
-                <div><label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Venue *</label><input type="text" value={scheduleForm.venue} onChange={(e) => setScheduleForm({...scheduleForm, venue: e.target.value})} placeholder="e.g., Main Court A" disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} /></div>
-                <div><label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Referee (Optional)</label><input type="text" value={scheduleForm.referee} onChange={(e) => setScheduleForm({...scheduleForm, referee: e.target.value})} placeholder="e.g., John Martinez" disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} /></div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Date *</label>
+                  <input type="date" value={scheduleForm.date} onChange={(e) => setScheduleForm({...scheduleForm, date: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Start Time *</label>
+                    <input type="time" value={scheduleForm.startTime} onChange={(e) => setScheduleForm({...scheduleForm, startTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>End Time (Optional)</label>
+                    <input type="time" value={scheduleForm.endTime} onChange={(e) => setScheduleForm({...scheduleForm, endTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid var(--border-color)', borderRadius: '8px', background: 'var(--background-secondary)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                  </div>
+                </div>
               </div>
+
+              {/* Preview */}
+              {scheduleForm.date && scheduleForm.startTime && (
+                <div style={{ background: 'rgba(72, 187, 120, 0.1)', padding: '16px', borderRadius: '8px', marginTop: '20px', border: '1px solid rgba(72, 187, 120, 0.2)' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '4px' }}>Schedule Preview:</div>
+                  <div style={{ color: '#48bb78', fontSize: '16px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock style={{ width: '18px', height: '18px' }} />
+                    {formatScheduleDisplay({ 
+                      date: scheduleForm.date, 
+                      time: scheduleForm.startTime,
+                      endTime: scheduleForm.endTime
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
                 <button onClick={() => setShowScheduleModal(false)} disabled={loading} style={{ padding: '12px 24px', background: 'var(--background-secondary)', color: 'var(--text-primary)', border: '2px solid var(--border-color)', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}>Cancel</button>
                 <button onClick={handleSaveSchedule} disabled={loading} style={{ padding: '12px 24px', background: loading ? 'var(--text-muted)' : 'var(--success-color)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}>{loading ? 'Saving...' : 'Save Schedule'}</button>
@@ -285,7 +395,13 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
         </div>
       )}
 
-      <style>{`.match-status { display: inline-block; } .status-scheduled { background: #f97316; color: white; } .status-ongoing { background: #3b82f6; color: white; } .status-completed { background: #22c55e; color: white; } table tbody tr:hover { background: var(--background-secondary) !important; }`}</style>
+      <style>{`
+        .match-status { display: inline-block; } 
+        .status-scheduled { background: #f97316; color: white; } 
+        .status-ongoing { background: #3b82f6; color: white; } 
+        .status-completed { background: #22c55e; color: white; } 
+        table tbody tr:hover { background: var(--background-secondary) !important; }
+      `}</style>
     </div>
   );
 };
