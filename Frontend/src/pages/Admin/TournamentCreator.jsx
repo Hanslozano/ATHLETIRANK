@@ -1557,14 +1557,14 @@ const handleCreateAllBrackets = async () => {
                   </div>
 
                   <div className="bracket-form-actions" style={{ marginTop: '30px', gap: '15px' }}>
-                      <button 
+                     <button 
   onClick={() => {
     // Store context in sessionStorage for AdminEvents to load
     if (createdEvent && createdBrackets.length > 0) {
       sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
         selectedEvent: createdEvent,
         selectedBracket: createdBrackets[0], // Navigate to first bracket
-        contentTab: 'bracket', // Go to Bracket View tab
+        contentTab: 'matches', // Go to Manage Matches tab
         bracketViewType: 'list' // Set to list view
       }));
     }
