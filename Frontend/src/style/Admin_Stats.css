@@ -446,6 +446,22 @@
   border-radius: 0 var(--stats-radius) var(--stats-radius) var(--stats-radius);
   padding: 32px;
 }
+
+/* Match-by-Match View - Special Background */
+.stats-brackets-section {
+  background: #0f172a !important;
+  padding: 32px;
+  border-radius: 0 var(--stats-radius) var(--stats-radius) var(--stats-radius);
+}
+
+/* Ensure match cards in match-by-match view have proper contrast */
+.stats-brackets-section .stats-bracket-section {
+  background: #0f172a !important;
+}
+
+.stats-brackets-section .stats-match-card {
+  background: #151e31 !important;
+}
 .stats-section-title {
   font-size: 1.8rem;
   font-weight: 700;
@@ -844,7 +860,9 @@
   color: var(--stats-text-primary);
 }
 
-/* Table Styles */
+/* ============================================
+   TABLE STYLES - FIXED COLORS
+   ============================================ */
 .stats-table-container {
   margin-top: 24px;
 }
@@ -871,8 +889,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
-  width: 150px;
-  min-width: 200px;
+  min-width: 150px;
 }
 
 .stats-export-btn:hover {
@@ -885,41 +902,37 @@
   cursor: not-allowed;
 }
 
+/* Table wrapper with lighter background for body */
 .stats-table-wrapper {
   overflow-x: auto;
-  border-radius: var(--stats-radius);
+  border-radius: var(--stats-radius-lg);
   border: 1px solid var(--stats-border-color);
-  background: #0f172a;
+  background: var(--stats-background-secondary);
 }
 
 .stats-table {
   width: 100%;
   border-collapse: collapse;
-  background: #0f172a;
+  background: transparent;
 }
 
-.stats-event-card,
-.stats-bracket-section,
-.stats-match-card {
-  background: #0a0f1c !important;
-  border: 1px solid var(--stats-border-color);
-}
-
+/* Darker header background - matching Admin Events */
 .stats-table th {
-  background: #1a2332;
+  background: var(--stats-background-primary) !important;
   color: var(--stats-text-primary);
   font-weight: 600;
   text-align: left;
-  padding: 16px;
+  padding: 15px;
   border-bottom: 1px solid var(--stats-border-color);
   white-space: nowrap;
 }
 
+/* Lighter body cells - transparent to show wrapper background */
 .stats-table td {
-  padding: 12px 16px;
+  padding: 12px 15px;
   border-bottom: 1px solid var(--stats-border-color);
   color: var(--stats-text-secondary);
-  background: #0f172a;
+  background: transparent !important;
 }
 
 .stats-table tr:last-child td {
@@ -927,7 +940,7 @@
 }
 
 .stats-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .stats-player-name {

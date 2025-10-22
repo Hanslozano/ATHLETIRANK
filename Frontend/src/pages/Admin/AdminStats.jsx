@@ -1459,10 +1459,10 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
 
         <div className="dashboard-main">
           <div className="bracket-content">
-            {/* Quick Stats Cards for All Players and Teams View with integrated View Mode */}
-            {(viewMode === "allPlayers" || viewMode === "teams") && selectedEvent && selectedBracket && (
-              renderStatsCards()
-            )}
+           {/* Quick Stats Cards - Show for ALL view modes when event and bracket are selected */}
+{selectedEvent && selectedBracket && (
+  renderStatsCards()
+)}
 
             {/* Tabs Navigation */}
             <div className="stats-tabs-navigation">
@@ -1507,8 +1507,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                 <div className="stats-players-section">
                   <div className="stats-section-header">
                     <h2 className="stats-section-title">
-                      {selectedEvent.name} - Player Statistics
-                      {selectedBracket && ` - ${selectedBracket.name}`}
+                      Player Statistics
                     </h2>
                     <p className="stats-section-subtitle">
                       {selectedBracket 
@@ -1539,8 +1538,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                 <div className="stats-players-section">
                   <div className="stats-section-header">
                     <h2 className="stats-section-title">
-                      {selectedEvent.name} - Team Statistics
-                      {selectedBracket && ` - ${selectedBracket.name}`}
+                      Team Statistics
                     </h2>
                     <p className="stats-section-subtitle">
                       {selectedBracket 
@@ -1569,13 +1567,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
               {/* Brackets & Matches Tab */}
               {activeTab === "brackets" && viewMode === "match" && selectedEvent && selectedBracket && (
                 <div className="stats-brackets-section">
-                  <div className="stats-section-header">
-                    <h2 className="stats-section-title">
-                      {selectedEvent.name} - Results
-                      {selectedBracket && ` - ${selectedBracket.name}`}
-                    </h2>
-                  </div>
-
                   {loading ? (
                     <p className="stats-loading-text">Loading brackets and matches...</p>
                   ) : matches.length === 0 ? (

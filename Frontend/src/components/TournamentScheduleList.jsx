@@ -400,7 +400,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh })
         .status-scheduled { background: #f97316; color: white; } 
         .status-ongoing { background: #3b82f6; color: white; } 
         .status-completed { background: #22c55e; color: white; } 
-        table tbody tr:hover { background: #0a0f1c !important; }
+      
       `}</style>
     </div>
   );
