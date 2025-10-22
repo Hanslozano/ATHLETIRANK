@@ -154,14 +154,14 @@ router.get("/matches/:matchId/stats", async (req, res) => {
   }
 });
 
-// Enhanced Save stats for a match
+// Enhanced Save stats for a match - UPDATED FOR NEW SHOOTING STATS
+// Enhanced Save stats for a match - UPDATED FOR NEW SHOOTING STATS
 router.post("/matches/:matchId/stats", async (req, res) => {
   const { players, team1_id, team2_id, awards = [] } = req.body;
   const matchId = req.params.matchId;
 
   console.log("Saving stats for match:", matchId);
   console.log("Players data:", players);
-  console.log("Awards data:", awards);
 
   const conn = await db.pool.getConnection();
   try {
@@ -199,7 +199,9 @@ router.post("/matches/:matchId/stats", async (req, res) => {
         points = 0,
         assists = 0,
         rebounds = 0,
+        two_points_made = 0,
         three_points_made = 0,
+        free_throws_made = 0,
         steals = 0,
         blocks = 0,
         fouls = 0,
@@ -219,16 +221,18 @@ router.post("/matches/:matchId/stats", async (req, res) => {
 
       await conn.query(
         `INSERT INTO player_stats 
-        (match_id, player_id, points, assists, rebounds, three_points_made, steals, blocks, fouls, turnovers,
+        (match_id, player_id, points, assists, rebounds, two_points_made, three_points_made, free_throws_made, steals, blocks, fouls, turnovers,
          serves, service_aces, serve_errors, receptions, reception_errors, digs, kills, attack_attempts, attack_errors, volleyball_assists) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           matchId,
           player_id,
           points,
           assists,
           rebounds,
+          two_points_made,
           three_points_made,
+          free_throws_made,
           steals,
           blocks,
           fouls,
@@ -297,6 +301,8 @@ router.post("/matches/:matchId/stats", async (req, res) => {
     conn.release();
   }
 });
+
+// ... rest of your backend routes remain the same ...
 
 // Get match awards
 router.get("/matches/:matchId/awards", async (req, res) => {

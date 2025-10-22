@@ -51,7 +51,9 @@ const StaffStats = ({ sidebarOpen }) => {
     points: [0, 0, 0, 0],
     assists: [0, 0, 0, 0],
     rebounds: [0, 0, 0, 0],
+    two_points_made: [0, 0, 0, 0],
     three_points_made: [0, 0, 0, 0],
+    free_throws_made: [0, 0, 0, 0],
     steals: [0, 0, 0, 0],
     blocks: [0, 0, 0, 0],
     fouls: [0, 0, 0, 0],
@@ -75,6 +77,24 @@ const StaffStats = ({ sidebarOpen }) => {
     isOnCourt: false
   };
 
+  // Function to calculate total points from shooting stats
+  const calculateTotalPoints = (player) => {
+    const twoPoints = player.two_points_made ? player.two_points_made.reduce((a, b) => a + b, 0) : 0;
+    const threePoints = player.three_points_made ? player.three_points_made.reduce((a, b) => a + b, 0) : 0;
+    const freeThrows = player.free_throws_made ? player.free_throws_made.reduce((a, b) => a + b, 0) : 0;
+    
+    return (twoPoints * 2) + (threePoints * 3) + freeThrows;
+  };
+
+  // Function to calculate current quarter points from shooting stats
+  const calculateCurrentQuarterPoints = (player) => {
+    const twoPoints = player.two_points_made ? player.two_points_made[currentQuarter] || 0 : 0;
+    const threePoints = player.three_points_made ? player.three_points_made[currentQuarter] || 0 : 0;
+    const freeThrows = player.free_throws_made ? player.free_throws_made[currentQuarter] || 0 : 0;
+    
+    return (twoPoints * 2) + (threePoints * 3) + freeThrows;
+  };
+
   // Function to handle team view shifting - only two options now
   const shiftTeamView = () => {
     setActiveTeamView(prev => prev === 'team1' ? 'team2' : 'team1');
@@ -84,25 +104,116 @@ const StaffStats = ({ sidebarOpen }) => {
     return sportType === "volleyball" ? 6 : 5;
   };
 
+  // NEW: Function to check if a position is already taken in the starting lineup
+  const isPositionTaken = (teamKey, playerId, position) => {
+    if (!position || position === "N/A") return false;
+    
+    const currentStarters = startingPlayers[teamKey];
+    return currentStarters.some(starterId => {
+      const starter = playerStats.find(p => p.player_id === starterId);
+      return starter && starter.player_id !== playerId && starter.position === position;
+    });
+  };
+
+  // NEW: Function to get available positions for a team
+  const getAvailablePositions = (teamKey) => {
+    const currentStarters = startingPlayers[teamKey];
+    const takenPositions = new Set();
+    
+    currentStarters.forEach(starterId => {
+      const starter = playerStats.find(p => p.player_id === starterId);
+      if (starter && starter.position && starter.position !== "N/A") {
+        takenPositions.add(starter.position);
+      }
+    });
+    
+    return takenPositions;
+  };
+
   const initializeStartingPlayers = (stats, team1Id, team2Id, sportType) => {
     const maxStarters = getMaxStartingPlayers(sportType);
-    const team1Players = stats.filter(p => p.team_id === team1Id).slice(0, maxStarters);
-    const team2Players = stats.filter(p => p.team_id === team2Id).slice(0, maxStarters);
     
-    setStartingPlayers({
-      team1: team1Players.map(p => p.player_id),
-      team2: team2Players.map(p => p.player_id)
-    });
+    // For basketball, ensure we have unique positions in starting lineup
+    if (sportType === "basketball") {
+      const team1Players = stats.filter(p => p.team_id === team1Id);
+      const team2Players = stats.filter(p => p.team_id === team2Id);
+      
+      // Select starters with unique positions for team1
+      const team1Starters = [];
+      const usedPositionsTeam1 = new Set();
+      
+      // First pass: try to get players with unique positions
+      team1Players.forEach(player => {
+        if (team1Starters.length < maxStarters && player.position && player.position !== "N/A") {
+          if (!usedPositionsTeam1.has(player.position)) {
+            team1Starters.push(player.player_id);
+            usedPositionsTeam1.add(player.position);
+          }
+        }
+      });
+      
+      // Second pass: fill remaining spots with any players
+      team1Players.forEach(player => {
+        if (team1Starters.length < maxStarters && !team1Starters.includes(player.player_id)) {
+          team1Starters.push(player.player_id);
+        }
+      });
+      
+      // Select starters with unique positions for team2
+      const team2Starters = [];
+      const usedPositionsTeam2 = new Set();
+      
+      // First pass: try to get players with unique positions
+      team2Players.forEach(player => {
+        if (team2Starters.length < maxStarters && player.position && player.position !== "N/A") {
+          if (!usedPositionsTeam2.has(player.position)) {
+            team2Starters.push(player.player_id);
+            usedPositionsTeam2.add(player.position);
+          }
+        }
+      });
+      
+      // Second pass: fill remaining spots with any players
+      team2Players.forEach(player => {
+        if (team2Starters.length < maxStarters && !team2Starters.includes(player.player_id)) {
+          team2Starters.push(player.player_id);
+        }
+      });
+      
+      setStartingPlayers({
+        team1: team1Starters,
+        team2: team2Starters
+      });
 
-    const updatedStats = stats.map(player => ({
-      ...player,
-      isStarting: team1Players.some(p => p.player_id === player.player_id) || 
-                 team2Players.some(p => p.player_id === player.player_id),
-      isOnCourt: team1Players.some(p => p.player_id === player.player_id) || 
-                 team2Players.some(p => p.player_id === player.player_id)
-    }));
+      const updatedStats = stats.map(player => ({
+        ...player,
+        isStarting: team1Starters.includes(player.player_id) || 
+                   team2Starters.includes(player.player_id),
+        isOnCourt: team1Starters.includes(player.player_id) || 
+                   team2Starters.includes(player.player_id)
+      }));
 
-    setPlayerStats(updatedStats);
+      setPlayerStats(updatedStats);
+    } else {
+      // For volleyball, use the original logic (no position restrictions)
+      const team1Players = stats.filter(p => p.team_id === team1Id).slice(0, maxStarters);
+      const team2Players = stats.filter(p => p.team_id === team2Id).slice(0, maxStarters);
+      
+      setStartingPlayers({
+        team1: team1Players.map(p => p.player_id),
+        team2: team2Players.map(p => p.player_id)
+      });
+
+      const updatedStats = stats.map(player => ({
+        ...player,
+        isStarting: team1Players.some(p => p.player_id === player.player_id) || 
+                   team2Players.some(p => p.player_id === player.player_id),
+        isOnCourt: team1Players.some(p => p.player_id === player.player_id) || 
+                   team2Players.some(p => p.player_id === player.player_id)
+      }));
+
+      setPlayerStats(updatedStats);
+    }
   };
 
   const handleStartingPlayerToggle = (playerId, teamId) => {
@@ -110,6 +221,15 @@ const StaffStats = ({ sidebarOpen }) => {
     const maxStarters = getMaxStartingPlayers(sportType);
     const teamKey = teamId === selectedGame.team1_id ? 'team1' : 'team2';
     const currentStarters = [...startingPlayers[teamKey]];
+    const player = playerStats.find(p => p.player_id === playerId);
+    
+    // For basketball, check if position is already taken
+    if (sportType === "basketball" && player && player.position && player.position !== "N/A") {
+      if (isPositionTaken(teamKey, playerId, player.position)) {
+        alert(`Position "${player.position}" is already taken in the starting lineup. Please select a player with a different position.`);
+        return;
+      }
+    }
     
     if (currentStarters.includes(playerId)) {
       const updatedStarters = currentStarters.filter(id => id !== playerId);
@@ -427,16 +547,29 @@ const StaffStats = ({ sidebarOpen }) => {
     const team2Scores = sportType === "basketball" ? [0, 0, 0, 0] : [0, 0, 0, 0, 0];
 
     stats.forEach(player => {
-      const scoringStat = sportType === "basketball" ? "points" : "kills";
       const playerTeamId = player.team_id;
       
       if (playerTeamId === team1Id) {
         for (let i = 0; i < team1Scores.length; i++) {
-          team1Scores[i] += player[scoringStat][i] || 0;
+          if (sportType === "basketball") {
+            const twoPoints = player.two_points_made ? player.two_points_made[i] || 0 : 0;
+            const threePoints = player.three_points_made ? player.three_points_made[i] || 0 : 0;
+            const freeThrows = player.free_throws_made ? player.free_throws_made[i] || 0 : 0;
+            team1Scores[i] += (twoPoints * 2) + (threePoints * 3) + freeThrows;
+          } else {
+            team1Scores[i] += player.kills[i] || 0;
+          }
         }
       } else if (playerTeamId === team2Id) {
         for (let i = 0; i < team2Scores.length; i++) {
-          team2Scores[i] += player[scoringStat][i] || 0;
+          if (sportType === "basketball") {
+            const twoPoints = player.two_points_made ? player.two_points_made[i] || 0 : 0;
+            const threePoints = player.three_points_made ? player.three_points_made[i] || 0 : 0;
+            const freeThrows = player.free_throws_made ? player.free_throws_made[i] || 0 : 0;
+            team2Scores[i] += (twoPoints * 2) + (threePoints * 3) + freeThrows;
+          } else {
+            team2Scores[i] += player.kills[i] || 0;
+          }
         }
       }
     });
@@ -575,6 +708,7 @@ const StaffStats = ({ sidebarOpen }) => {
           player_id: p.id,
           player_name: p.name,
           jersey_number: p.jersey_number || p.jerseyNumber || "N/A",
+          position: p.position || "N/A", // Add position from backend
           team_id: game.team1_id,
           team_name: teams.find((t) => t.id === game.team1_id)?.name,
           ...JSON.parse(JSON.stringify(template)),
@@ -583,6 +717,7 @@ const StaffStats = ({ sidebarOpen }) => {
           player_id: p.id,
           player_name: p.name,
           jersey_number: p.jersey_number || p.jerseyNumber || "N/A",
+          position: p.position || "N/A", // Add position from backend
           team_id: game.team2_id,
           team_name: teams.find((t) => t.id === game.team2_id)?.name,
           ...JSON.parse(JSON.stringify(template)),
@@ -603,28 +738,34 @@ const StaffStats = ({ sidebarOpen }) => {
           const merged = initialStats.map((p) => {
             const found = existingStats.find((s) => s.player_id === p.player_id);
             if (found) {
+              // FIX: Properly load the shooting stats from database instead of converting points
               const mergedPlayer = { ...p };
               
               if (game.sport_type === "basketball") {
-                mergedPlayer.points = [found.points || 0, 0, 0, 0];
-                mergedPlayer.assists = [found.assists || 0, 0, 0, 0];
-                mergedPlayer.rebounds = [found.rebounds || 0, 0, 0, 0];
-                mergedPlayer.three_points_made = [found.three_points_made || 0, 0, 0, 0];
-                mergedPlayer.steals = [found.steals || 0, 0, 0, 0];
-                mergedPlayer.blocks = [found.blocks || 0, 0, 0, 0];
-                mergedPlayer.fouls = [found.fouls || 0, 0, 0, 0];
-                mergedPlayer.turnovers = [found.turnovers || 0, 0, 0, 0];
+                // Load the actual shooting stats from database
+                mergedPlayer.two_points_made = found.two_points_made ? [found.two_points_made, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.three_points_made = found.three_points_made ? [found.three_points_made, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.free_throws_made = found.free_throws_made ? [found.free_throws_made, 0, 0, 0] : [0, 0, 0, 0];
+                
+                // Load other stats
+                mergedPlayer.assists = found.assists ? [found.assists, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.rebounds = found.rebounds ? [found.rebounds, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.steals = found.steals ? [found.steals, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.blocks = found.blocks ? [found.blocks, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.fouls = found.fouls ? [found.fouls, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.turnovers = found.turnovers ? [found.turnovers, 0, 0, 0] : [0, 0, 0, 0];
               } else {
-                mergedPlayer.kills = [found.kills || 0, 0, 0, 0, 0];
-                mergedPlayer.attack_attempts = [found.attack_attempts || 0, 0, 0, 0, 0];
-                mergedPlayer.attack_errors = [found.attack_errors || 0, 0, 0, 0, 0];
-                mergedPlayer.serves = [found.serves || 0, 0, 0, 0, 0];
-                mergedPlayer.service_aces = [found.service_aces || 0, 0, 0, 0, 0];
-                mergedPlayer.serve_errors = [found.serve_errors || 0, 0, 0, 0, 0];
-                mergedPlayer.receptions = [found.receptions || 0, 0, 0, 0, 0];
-                mergedPlayer.reception_errors = [found.reception_errors || 0, 0, 0, 0, 0];
-                mergedPlayer.digs = [found.digs || 0, 0, 0, 0, 0];
-                mergedPlayer.volleyball_assists = [found.volleyball_assists || 0, 0, 0, 0, 0];
+                // Volleyball stats
+                mergedPlayer.kills = found.kills ? [found.kills, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.attack_attempts = found.attack_attempts ? [found.attack_attempts, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.attack_errors = found.attack_errors ? [found.attack_errors, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.serves = found.serves ? [found.serves, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.service_aces = found.service_aces ? [found.service_aces, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.serve_errors = found.serve_errors ? [found.serve_errors, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.receptions = found.receptions ? [found.receptions, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.reception_errors = found.reception_errors ? [found.reception_errors, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.digs = found.digs ? [found.digs, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
+                mergedPlayer.volleyball_assists = found.volleyball_assists ? [found.volleyball_assists, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
               }
               
               return mergedPlayer;
@@ -669,124 +810,126 @@ const StaffStats = ({ sidebarOpen }) => {
     newStats[playerIndex][statName][currentQuarter] = newValue;
     setPlayerStats(newStats);
 
-    if ((statName === "points" || statName === "kills") && selectedGame) {
+    if ((statName === "two_points_made" || statName === "three_points_made" || statName === "free_throws_made" || statName === "kills") && selectedGame) {
       const scores = calculateTeamScores(newStats, selectedGame.team1_id, selectedGame.team2_id, selectedGame.sport_type);
       setTeamScores(scores);
     }
   };
 
   const saveStatistics = async () => {
-  if (!selectedGame) return;
-  setLoading(true);
-  try {
-    const statsRes = await fetch(
-      `http://localhost:5000/api/stats/matches/${selectedGame.id}/stats`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          team1_id: selectedGame.team1_id,
-          team2_id: selectedGame.team2_id,
-          players: playerStats.map((p) => ({
-            player_id: p.player_id,
-            team_id: p.team_id,
-            points: p.points ? p.points.reduce((a, b) => a + b, 0) : 0,
-            assists: p.assists ? p.assists.reduce((a, b) => a + b, 0) : 0,
-            rebounds: p.rebounds ? p.rebounds.reduce((a, b) => a + b, 0) : 0,
-            three_points_made: p.three_points_made ? p.three_points_made.reduce((a, b) => a + b, 0) : 0,
-            steals: p.steals ? p.steals.reduce((a, b) => a + b, 0) : 0,
-            blocks: p.blocks ? p.blocks.reduce((a, b) => a + b, 0) : 0,
-            fouls: p.fouls ? p.fouls.reduce((a, b) => a + b, 0) : 0,
-            turnovers: p.turnovers ? p.turnovers.reduce((a, b) => a + b, 0) : 0,
-            kills: p.kills ? p.kills.reduce((a, b) => a + b, 0) : 0,
-            attack_attempts: p.attack_attempts ? p.attack_attempts.reduce((a, b) => a + b, 0) : 0,
-            attack_errors: p.attack_errors ? p.attack_errors.reduce((a, b) => a + b, 0) : 0,
-            serves: p.serves ? p.serves.reduce((a, b) => a + b, 0) : 0,
-            service_aces: p.service_aces ? p.service_aces.reduce((a, b) => a + b, 0) : 0,
-            serve_errors: p.serve_errors ? p.serve_errors.reduce((a, b) => a + b, 0) : 0,
-            receptions: p.receptions ? p.receptions.reduce((a, b) => a + b, 0) : 0,
-            reception_errors: p.reception_errors ? p.reception_errors.reduce((a, b) => a + b, 0) : 0,
-            digs: p.digs ? p.digs.reduce((a, b) => a + b, 0) : 0,
-            volleyball_assists: p.volleyball_assists ? p.volleyball_assists.reduce((a, b) => a + b, 0) : 0,
-          })),
-        }),
-      }
-    );
-    
-    if (!statsRes.ok) {
-      throw new Error(`Failed to save stats: ${statsRes.status}`);
-    }
-
-    const team1TotalScore = teamScores.team1.reduce((a, b) => a + b, 0);
-    const team2TotalScore = teamScores.team2.reduce((a, b) => a + b, 0);
-    
-    let winner_id;
-    if (team1TotalScore > team2TotalScore) {
-      winner_id = selectedGame.team1_id;
-    } else if (team2TotalScore > team1TotalScore) {
-      winner_id = selectedGame.team2_id;
-    } else {
-      alert("The game is tied! Please enter different scores.");
-      setLoading(false);
-      return;
-    }
-
-    const bracketRes = await fetch(
-      `http://localhost:5000/api/brackets/matches/${selectedGame.id}/complete`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          winner_id: winner_id,
-          scores: {
-            team1: team1TotalScore,
-            team2: team2TotalScore
-          }
-        }),
-      }
-    );
-    
-    if (!bracketRes.ok) {
-      throw new Error(`Failed to complete match: ${bracketRes.status}`);
-    }
-    
-    const bracketData = await bracketRes.json();
-    
-    let message = "Statistics saved successfully!";
-    
-    if (bracketData.bracketReset) {
-      message = "🚨 BRACKET RESET! 🚨\n\nThe Loser's Bracket winner has defeated the Winner's Bracket winner!\nA Reset Final has been scheduled - both teams start fresh!";
-    } else if (bracketData.advanced) {
-      if (selectedGame.elimination_type === 'double') {
-        if (selectedGame.bracket_type === 'winner') {
-          message += " Winner advanced in winner's bracket!";
-        } else if (selectedGame.bracket_type === 'loser') {
-          message += " Winner advanced in loser's bracket!";
-        } else if (selectedGame.bracket_type === 'championship') {
-          message += selectedGame.round_number === 201 ? " Tournament champion determined!" : " Grand Final completed!";
+    if (!selectedGame) return;
+    setLoading(true);
+    try {
+      const statsRes = await fetch(
+        `http://localhost:5000/api/stats/matches/${selectedGame.id}/stats`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            team1_id: selectedGame.team1_id,
+            team2_id: selectedGame.team2_id,
+            players: playerStats.map((p) => ({
+              player_id: p.player_id,
+              team_id: p.team_id,
+              points: calculateTotalPoints(p),
+              assists: p.assists ? p.assists.reduce((a, b) => a + b, 0) : 0,
+              rebounds: p.rebounds ? p.rebounds.reduce((a, b) => a + b, 0) : 0,
+              two_points_made: p.two_points_made ? p.two_points_made.reduce((a, b) => a + b, 0) : 0,
+              three_points_made: p.three_points_made ? p.three_points_made.reduce((a, b) => a + b, 0) : 0,
+              free_throws_made: p.free_throws_made ? p.free_throws_made.reduce((a, b) => a + b, 0) : 0,
+              steals: p.steals ? p.steals.reduce((a, b) => a + b, 0) : 0,
+              blocks: p.blocks ? p.blocks.reduce((a, b) => a + b, 0) : 0,
+              fouls: p.fouls ? p.fouls.reduce((a, b) => a + b, 0) : 0,
+              turnovers: p.turnovers ? p.turnovers.reduce((a, b) => a + b, 0) : 0,
+              kills: p.kills ? p.kills.reduce((a, b) => a + b, 0) : 0,
+              attack_attempts: p.attack_attempts ? p.attack_attempts.reduce((a, b) => a + b, 0) : 0,
+              attack_errors: p.attack_errors ? p.attack_errors.reduce((a, b) => a + b, 0) : 0,
+              serves: p.serves ? p.serves.reduce((a, b) => a + b, 0) : 0,
+              service_aces: p.service_aces ? p.service_aces.reduce((a, b) => a + b, 0) : 0,
+              serve_errors: p.serve_errors ? p.serve_errors.reduce((a, b) => a + b, 0) : 0,
+              receptions: p.receptions ? p.receptions.reduce((a, b) => a + b, 0) : 0,
+              reception_errors: p.reception_errors ? p.reception_errors.reduce((a, b) => a + b, 0) : 0,
+              digs: p.digs ? p.digs.reduce((a, b) => a + b, 0) : 0,
+              volleyball_assists: p.volleyball_assists ? p.volleyball_assists.reduce((a, b) => a + b, 0) : 0,
+            })),
+          }),
         }
-      } else {
-        message += " Winner advanced to next round!";
+      );
+      
+      if (!statsRes.ok) {
+        throw new Error(`Failed to save stats: ${statsRes.status}`);
       }
+
+      const team1TotalScore = teamScores.team1.reduce((a, b) => a + b, 0);
+      const team2TotalScore = teamScores.team2.reduce((a, b) => a + b, 0);
+      
+      let winner_id;
+      if (team1TotalScore > team2TotalScore) {
+        winner_id = selectedGame.team1_id;
+      } else if (team2TotalScore > team1TotalScore) {
+        winner_id = selectedGame.team2_id;
+      } else {
+        alert("The game is tied! Please enter different scores.");
+        setLoading(false);
+        return;
+      }
+
+      const bracketRes = await fetch(
+        `http://localhost:5000/api/brackets/matches/${selectedGame.id}/complete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            winner_id: winner_id,
+            scores: {
+              team1: team1TotalScore,
+              team2: team2TotalScore
+            }
+          }),
+        }
+      );
+      
+      if (!bracketRes.ok) {
+        throw new Error(`Failed to complete match: ${bracketRes.status}`);
+      }
+      
+      const bracketData = await bracketRes.json();
+      
+      let message = "Statistics saved successfully!";
+      
+      if (bracketData.bracketReset) {
+        message = "🚨 BRACKET RESET! 🚨\n\nThe Loser's Bracket winner has defeated the Winner's Bracket winner!\nA Reset Final has been scheduled - both teams start fresh!";
+      } else if (bracketData.advanced) {
+        if (selectedGame.elimination_type === 'double') {
+          if (selectedGame.bracket_type === 'winner') {
+            message += " Winner advanced in winner's bracket!";
+          } else if (selectedGame.bracket_type === 'loser') {
+            message += " Winner advanced in loser's bracket!";
+          } else if (selectedGame.bracket_type === 'championship') {
+            message += selectedGame.round_number === 201 ? " Tournament champion determined!" : " Grand Final completed!";
+          }
+        } else {
+          message += " Winner advanced to next round!";
+        }
+      }
+      
+      alert(message);
+      
+      // Store context and navigate to StaffEvents
+      sessionStorage.setItem('staffEventsContext', JSON.stringify({
+        selectedEvent: selectedEvent,
+        selectedBracket: selectedBracket
+      }));
+      
+      // Navigate back to StaffEvents with the same context
+      navigate('/StaffDashboard/events');
+      
+    } catch (err) {
+      alert("Failed to save stats: " + err.message);
+    } finally {
+      setLoading(false);
     }
-    
-    alert(message);
-    
-    // Store context and navigate to StaffEvents
-    sessionStorage.setItem('staffEventsContext', JSON.stringify({
-      selectedEvent: selectedEvent,
-      selectedBracket: selectedBracket
-    }));
-    
-    // Navigate back to StaffEvents with the same context
-    navigate('/StaffDashboard/events');
-    
-  } catch (err) {
-    alert("Failed to save stats: " + err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const resetStatistics = () => {
     if (window.confirm("Are you sure you want to reset all statistics?")) {
@@ -820,6 +963,9 @@ const StaffStats = ({ sidebarOpen }) => {
     const teamKey = teamId === selectedGame.team1_id ? 'team1' : 'team2';
     const isBenchVisible = showBenchPlayers[teamKey];
 
+    // NEW: Get taken positions for this team
+    const takenPositions = getAvailablePositions(teamKey);
+
     return (
       <div className="stats-team-table">
         <div className="stats-team-header">
@@ -827,6 +973,11 @@ const StaffStats = ({ sidebarOpen }) => {
             <h3>{teamName}</h3>
             <span className="stats-team-hint">
               Max {maxStarters} starters - Click checkbox to set lineup
+              {isBasketball && takenPositions.size > 0 && (
+                <span className="stats-positions-taken">
+                  Positions taken: {Array.from(takenPositions).join(', ')}
+                </span>
+              )}
             </span>
           </div>
           {benchPlayers.length > 0 && (
@@ -847,31 +998,34 @@ const StaffStats = ({ sidebarOpen }) => {
           <table className="stats-table">
             <thead>
               <tr>
-                <th>Start</th>
-                <th style={{ textAlign: 'left' }}>Player</th>
-                <th>#</th>
-                <th>Status</th>
+                <th className="col-start">Start</th>
+                <th className="col-player">Player</th>
+                <th className="col-number">#</th>
+                <th className="col-position">Position</th> {/* NEW: Position column */}
+                <th className="col-status">Status</th>
                 {isBasketball ? (
                   <>
-                    <th>PTS</th>
-                    <th>AST</th>
-                    <th>REB</th>
-                    <th>3PM</th>
-                    <th>STL</th>
-                    <th>BLK</th>
-                    <th>Fouls</th>
-                    <th>TO</th>
+                    <th className="col-score">Score</th>
+                    <th className="col-stat">2PM</th>
+                    <th className="col-stat">3PM</th>
+                    <th className="col-stat">FT</th>
+                    <th className="col-stat">AST</th>
+                    <th className="col-stat">REB</th>
+                    <th className="col-stat">STL</th>
+                    <th className="col-stat">BLK</th>
+                    <th className="col-stat">Fouls</th>
+                    <th className="col-stat">TO</th>
                   </>
                 ) : (
                   <>
-                    <th>Kills</th>
-                    <th>Ast</th>
-                    <th>Digs</th>
-                    <th>Ace</th>
-                    <th>S.Err</th>
-                    <th>A.Err</th>
-                    <th>R.Err</th>
-                    <th>Hit%</th>
+                    <th className="col-stat">Kills</th>
+                    <th className="col-stat">Ast</th>
+                    <th className="col-stat">Digs</th>
+                    <th className="col-stat">Ace</th>
+                    <th className="col-stat">S.Err</th>
+                    <th className="col-stat">A.Err</th>
+                    <th className="col-stat">R.Err</th>
+                    <th className="col-stat">Hit%</th>
                   </>
                 )}
               </tr>
@@ -881,24 +1035,34 @@ const StaffStats = ({ sidebarOpen }) => {
               {starters.map((player) => {
                 const globalIndex = playerStats.findIndex(p => p.player_id === player.player_id);
                 const isStarter = startingPlayers[teamKey].includes(player.player_id);
+                const positionTaken = isBasketball && player.position && player.position !== "N/A" && 
+                  takenPositions.has(player.position) && !isStarter;
                 
                 return (
                   <tr key={player.player_id} className={player.isOnCourt ? 'on-court' : ''}>
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="col-start">
                       <input
                         type="checkbox"
                         checked={isStarter}
                         onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
+                        disabled={positionTaken}
+                        title={positionTaken ? `Position ${player.position} is already taken` : ''}
                       />
                     </td>
-                    <td style={{ textAlign: 'left' }}>
+                    <td className="col-player">
                       {player.player_name}
                       {isPlayerFouledOut(player) && (
                         <span className="stats-fouled-out">FO</span>
                       )}
+                      {positionTaken && (
+                        <span className="stats-position-taken" title={`Position ${player.position} is already taken`}>
+                          ⚠️
+                        </span>
+                      )}
                     </td>
-                    <td>#{player.jersey_number}</td>
-                    <td>
+                    <td className="col-number">#{player.jersey_number}</td>
+                    <td className="col-position">{player.position}</td> {/* NEW: Display position */}
+                    <td className="col-status">
                       <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'}`}>
                         {player.isOnCourt ? 'On Court' : 'Bench'}
                       </span>
@@ -906,40 +1070,25 @@ const StaffStats = ({ sidebarOpen }) => {
                     
                     {isBasketball ? (
                       <>
-                        <td>
+                        <td className="col-score">
+                          <div className="stats-score-display">
+                            <div className="stats-current-score">
+                              {calculateCurrentQuarterPoints(player)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="col-stat">
                           <div className="stats-controls">
-                            <button onClick={() => adjustPlayerStat(globalIndex, "points", false)} className="stats-control-button">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} className="stats-control-button">
                               <FaMinus />
                             </button>
-                            <span className="stats-value">{player.points[currentQuarter]}</span>
-                            <button onClick={() => adjustPlayerStat(globalIndex, "points", true)} className="stats-control-button">
+                            <span className="stats-value">{player.two_points_made[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} className="stats-control-button">
                               <FaPlus />
                             </button>
                           </div>
                         </td>
-                        <td>
-                          <div className="stats-controls">
-                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)} className="stats-control-button">
-                              <FaMinus />
-                            </button>
-                            <span className="stats-value">{player.assists[currentQuarter]}</span>
-                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)} className="stats-control-button">
-                              <FaPlus />
-                            </button>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="stats-controls">
-                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} className="stats-control-button">
-                              <FaMinus />
-                            </button>
-                            <span className="stats-value">{player.rebounds[currentQuarter]}</span>
-                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} className="stats-control-button">
-                              <FaPlus />
-                            </button>
-                          </div>
-                        </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)} className="stats-control-button">
                               <FaMinus />
@@ -950,7 +1099,40 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.free_throws_made[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.assists[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.rebounds[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "steals", false)} className="stats-control-button">
                               <FaMinus />
@@ -961,7 +1143,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "blocks", false)} className="stats-control-button">
                               <FaMinus />
@@ -972,7 +1154,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "fouls", false)} className="stats-control-button">
                               <FaMinus />
@@ -983,7 +1165,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)} className="stats-control-button">
                               <FaMinus />
@@ -997,7 +1179,7 @@ const StaffStats = ({ sidebarOpen }) => {
                       </>
                     ) : (
                       <>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "kills", false)} className="stats-control-button">
                               <FaMinus />
@@ -1008,7 +1190,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "volleyball_assists", false)} className="stats-control-button">
                               <FaMinus />
@@ -1019,7 +1201,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "digs", false)} className="stats-control-button">
                               <FaMinus />
@@ -1030,7 +1212,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "service_aces", false)} className="stats-control-button">
                               <FaMinus />
@@ -1041,7 +1223,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "serve_errors", false)} className="stats-control-button">
                               <FaMinus />
@@ -1052,7 +1234,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "attack_errors", false)} className="stats-control-button">
                               <FaMinus />
@@ -1063,7 +1245,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "reception_errors", false)} className="stats-control-button">
                               <FaMinus />
@@ -1074,7 +1256,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           {calculateHittingPercentage(player)}
                         </td>
                       </>
@@ -1087,24 +1269,34 @@ const StaffStats = ({ sidebarOpen }) => {
               {isBenchVisible && benchPlayers.map((player) => {
                 const globalIndex = playerStats.findIndex(p => p.player_id === player.player_id);
                 const isStarter = startingPlayers[teamKey].includes(player.player_id);
+                const positionTaken = isBasketball && player.position && player.position !== "N/A" && 
+                  takenPositions.has(player.position) && !isStarter;
                 
                 return (
                   <tr key={player.player_id} className="bench-player">
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="col-start">
                       <input
                         type="checkbox"
                         checked={isStarter}
                         onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
+                        disabled={positionTaken}
+                        title={positionTaken ? `Position ${player.position} is already taken` : ''}
                       />
                     </td>
-                    <td style={{ textAlign: 'left' }}>
+                    <td className="col-player">
                       {player.player_name}
                       {isPlayerFouledOut(player) && (
                         <span className="stats-fouled-out">FO</span>
                       )}
+                      {positionTaken && (
+                        <span className="stats-position-taken" title={`Position ${player.position} is already taken`}>
+                          
+                        </span>
+                      )}
                     </td>
-                    <td>#{player.jersey_number}</td>
-                    <td>
+                    <td className="col-number">#{player.jersey_number}</td>
+                    <td className="col-position">{player.position}</td> {/* NEW: Display position */}
+                    <td className="col-status">
                       <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'}`}>
                         {player.isOnCourt ? 'On Court' : 'Bench'}
                       </span>
@@ -1112,40 +1304,25 @@ const StaffStats = ({ sidebarOpen }) => {
                     
                     {isBasketball ? (
                       <>
-                        <td>
+                        <td className="col-score">
+                          <div className="stats-score-display">
+                            <div className="stats-current-score">
+                              {calculateCurrentQuarterPoints(player)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="col-stat">
                           <div className="stats-controls">
-                            <button onClick={() => adjustPlayerStat(globalIndex, "points", false)} className="stats-control-button">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} className="stats-control-button">
                               <FaMinus />
                             </button>
-                            <span className="stats-value">{player.points[currentQuarter]}</span>
-                            <button onClick={() => adjustPlayerStat(globalIndex, "points", true)} className="stats-control-button">
+                            <span className="stats-value">{player.two_points_made[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} className="stats-control-button">
                               <FaPlus />
                             </button>
                           </div>
                         </td>
-                        <td>
-                          <div className="stats-controls">
-                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)} className="stats-control-button">
-                              <FaMinus />
-                            </button>
-                            <span className="stats-value">{player.assists[currentQuarter]}</span>
-                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)} className="stats-control-button">
-                              <FaPlus />
-                            </button>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="stats-controls">
-                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} className="stats-control-button">
-                              <FaMinus />
-                            </button>
-                            <span className="stats-value">{player.rebounds[currentQuarter]}</span>
-                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} className="stats-control-button">
-                              <FaPlus />
-                            </button>
-                          </div>
-                        </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)} className="stats-control-button">
                               <FaMinus />
@@ -1156,7 +1333,40 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.free_throws_made[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.assists[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} className="stats-control-button">
+                              <FaMinus />
+                            </button>
+                            <span className="stats-value">{player.rebounds[currentQuarter]}</span>
+                            <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} className="stats-control-button">
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "steals", false)} className="stats-control-button">
                               <FaMinus />
@@ -1167,7 +1377,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "blocks", false)} className="stats-control-button">
                               <FaMinus />
@@ -1178,7 +1388,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "fouls", false)} className="stats-control-button">
                               <FaMinus />
@@ -1189,7 +1399,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)} className="stats-control-button">
                               <FaMinus />
@@ -1203,7 +1413,7 @@ const StaffStats = ({ sidebarOpen }) => {
                       </>
                     ) : (
                       <>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "kills", false)} className="stats-control-button">
                               <FaMinus />
@@ -1214,7 +1424,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "volleyball_assists", false)} className="stats-control-button">
                               <FaMinus />
@@ -1225,7 +1435,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "digs", false)} className="stats-control-button">
                               <FaMinus />
@@ -1236,7 +1446,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "service_aces", false)} className="stats-control-button">
                               <FaMinus />
@@ -1247,7 +1457,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "serve_errors", false)} className="stats-control-button">
                               <FaMinus />
@@ -1258,7 +1468,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "attack_errors", false)} className="stats-control-button">
                               <FaMinus />
@@ -1269,7 +1479,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           <div className="stats-controls">
                             <button onClick={() => adjustPlayerStat(globalIndex, "reception_errors", false)} className="stats-control-button">
                               <FaMinus />
@@ -1280,7 +1490,7 @@ const StaffStats = ({ sidebarOpen }) => {
                             </button>
                           </div>
                         </td>
-                        <td>
+                        <td className="col-stat">
                           {calculateHittingPercentage(player)}
                         </td>
                       </>
@@ -1507,9 +1717,6 @@ const StaffStats = ({ sidebarOpen }) => {
                   <div className="stats-score-value">
                     {teamScores.team1[currentQuarter]}
                   </div>
-                  <div className="stats-score-total">
-                    Total: {teamScores.team1.reduce((a, b) => a + b, 0)}
-                  </div>
                 </div>
                 <div className="stats-score-separator">-</div>
                 <div className="stats-score-box team2">
@@ -1517,12 +1724,10 @@ const StaffStats = ({ sidebarOpen }) => {
                   <div className="stats-score-value">
                     {teamScores.team2[currentQuarter]}
                   </div>
-                  <div className="stats-score-total">
-                    Total: {teamScores.team2.reduce((a, b) => a + b, 0)}
-                  </div>
                 </div>
               </div>
 
+              
               <div className="stats-actions">
                 <button 
                   onClick={resetStatistics}

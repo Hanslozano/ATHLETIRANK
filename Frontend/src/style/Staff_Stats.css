@@ -548,7 +548,7 @@
   cursor: not-allowed;
 }
 
-/* Stats Player Tables */
+/* Stats Player Tables - IMPROVED WITH VERTICAL SEPARATORS */
 .stats-team-table {
   margin-bottom: 30px;
   background: rgba(0, 0, 0, 0.3);
@@ -579,21 +579,45 @@
   border-collapse: collapse;
   font-size: 14px;
   overflow-x: auto;
+  border-spacing: 0;
 }
 
+/* Table header styling with vertical separators */
 .stats-table th {
   background: rgba(255, 255, 255, 0.05);
   color: #cbd5e0;
   padding: 12px 8px;
   text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  position: relative;
 }
 
+/* Add vertical separators between columns */
+.stats-table th:not(:last-child)::after,
+.stats-table td:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Remove separator from the last column */
+.stats-table th:last-child::after,
+.stats-table td:last-child::after {
+  display: none;
+}
+
+/* Table cell styling with improved spacing */
 .stats-table td {
   padding: 12px 8px;
   text-align: center;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   color: #fff;
+  position: relative;
 }
 
 .stats-table tr:hover {
@@ -602,6 +626,53 @@
 
 .stats-table tr.on-court {
   background: rgba(72, 187, 120, 0.1);
+}
+
+/* Column-specific styling for better visual separation */
+.col-start {
+  width: 60px;
+  text-align: center !important;
+}
+
+.col-player {
+  min-width: 150px;
+  text-align: left !important;
+  padding-left: 12px !important;
+}
+
+.col-number {
+  width: 70px;
+  text-align: center !important;
+}
+
+.col-status {
+  width: 90px;
+  text-align: center !important;
+}
+
+.col-score {
+  width: 80px;
+  text-align: center !important;
+  background: rgba(255, 255, 255, 0.02);
+  font-weight: 600;
+}
+
+.col-stat {
+  width: 90px;
+  text-align: center !important;
+  min-width: 80px;
+}
+
+/* Enhanced vertical separators for specific column groups */
+.col-start::after,
+.col-player::after,
+.col-number::after,
+.col-status::after {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.col-score::after {
+  background: rgba(255, 255, 255, 0.2) !important;
 }
 
 .stats-table input[type="checkbox"] {
@@ -629,9 +700,10 @@
 
 .stats-controls {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   justify-content: center;
   align-items: center;
+  padding: 4px 0;
 }
 
 .stats-control-button {
@@ -646,6 +718,8 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  min-width: 28px;
+  height: 28px;
 }
 
 .stats-control-button:hover {
@@ -656,6 +730,8 @@
   min-width: 30px;
   text-align: center;
   font-weight: bold;
+  font-size: 14px;
+  padding: 0 4px;
 }
 
 .stats-fouled-out {
@@ -668,7 +744,29 @@
   margin-left: 8px;
 }
 
-/* Shift Team Button Styles - Updated to Navy Blue */
+.stats-score-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.stats-current-score {
+  font-weight: bold;
+  font-size: 16px;
+  color: #48bb78;
+}
+
+/* Bench player styling */
+.stats-table tr.bench-player {
+  opacity: 0.8;
+}
+
+.stats-table tr.bench-player:hover {
+  opacity: 1;
+  background: rgba(160, 174, 192, 0.05);
+}
+
+/* Shift Team Button Styles */
 .stats-team-shift-container {
   display: flex;
   align-items: center;
@@ -682,7 +780,6 @@
   flex-wrap: wrap;
 }
 
-/* Rest of the existing CSS remains the same */
 .stats-shift-team-button {
   background: var(--navy-blue);
   color: white;
@@ -723,6 +820,7 @@
   align-items: center;
   gap: 8px;
 }
+
 .view-indicator {
   background: rgba(66, 153, 225, 0.2);
   padding: 6px 12px;
@@ -730,6 +828,7 @@
   font-weight: 600;
   border: 1px solid rgba(66, 153, 225, 0.3);
 }
+
 .view-indicator.team1 {
   color: #fc8181;
   border-color: rgba(252, 129, 129, 0.3);
@@ -748,6 +847,7 @@
   font-size: 14px;
   cursor: pointer;
 }
+
 .show-both-checkbox input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -786,7 +886,7 @@
   background: #2d3748;
 }
 
-/* Responsive */
+/* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-content.sidebar-open {
     margin-left: 0;
@@ -848,9 +948,8 @@
   .stats-show-bench-button {
     align-self: flex-end;
   }
-}
-
-@media (max-width: 480px) {
+  
+  /* Responsive table adjustments */
   .stats-table {
     font-size: 12px;
   }
@@ -860,9 +959,36 @@
     padding: 8px 4px;
   }
   
+  .col-player {
+    min-width: 120px;
+  }
+  
+  .col-stat {
+    width: 70px;
+    min-width: 70px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-table {
+    font-size: 11px;
+  }
+  
+  .stats-table th,
+  .stats-table td {
+    padding: 6px 3px;
+  }
+  
   .stats-control-button {
-    padding: 4px 8px;
+    padding: 4px 6px;
     font-size: 10px;
+    min-width: 24px;
+    height: 24px;
+  }
+  
+  .stats-value {
+    min-width: 20px;
+    font-size: 12px;
   }
   
   .stats-team-view-controls {
@@ -870,4 +996,208 @@
     align-items: flex-start;
     gap: 10px;
   }
+  
+  .col-player {
+    min-width: 100px;
+  }
+  
+  .col-stat {
+    width: 60px;
+    min-width: 60px;
+  }
+}
+
+
+/* Overtime Specific Styles */
+.overtime-badge {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.overtime-indicator {
+  font-size: 12px;
+  color: #f59e0b;
+  margin-top: 4px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.overtime-prompt {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.overtime-alert {
+  background: var(--background-card);
+  border: 2px solid #f59e0b;
+  border-radius: var(--border-radius-lg);
+  padding: 20px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: var(--shadow-medium);
+  animation: pulse-gold 2s infinite;
+}
+
+.overtime-alert h3 {
+  color: #f59e0b;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.overtime-alert p {
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+}
+
+.stats-action-overtime {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600 !important;
+}
+
+.stats-action-overtime:hover {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
+}
+
+.stats-end-period-button {
+  background: var(--purple-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-left: 10px;
+}
+
+.stats-end-period-button:hover {
+  background: var(--purple-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-light);
+}
+
+.stats-total-score {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Animation for overtime alert */
+@keyframes pulse-gold {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+/* Enhanced period navigation for overtime */
+.stats-period-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.stats-period-display {
+  background: var(--background-secondary);
+  padding: 12px 24px;
+  border-radius: var(--border-radius-lg);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+  min-width: 120px;
+  text-align: center;
+  transition: var(--transition);
+}
+
+.stats-period-display:has(.overtime-indicator) {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, var(--background-secondary), #1f2937);
+}
+
+/* Overtime specific table adjustments */
+.stats-table .on-court {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.stats-table .on-court:has(+ .bench-player) {
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .overtime-badge {
+    font-size: 10px;
+    padding: 3px 6px;
+    margin-left: 5px;
+  }
+  
+  .overtime-alert {
+    margin: 0 10px;
+    padding: 15px;
+  }
+  
+  .stats-period-nav {
+    gap: 10px;
+  }
+  
+  .stats-end-period-button {
+    padding: 6px 12px;
+    font-size: 14px;
+    margin-left: 5px;
+  }
+}
+
+/* Dark theme enhancements for overtime */
+.stats-score-box {
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-score-box:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.stats-score-box:hover:before {
+  opacity: 1;
+}
+
+/* Overtime score highlighting */
+.stats-score-value {
+  transition: var(--transition);
+}
+
+.stats-period-nav:has(.overtime-indicator) .stats-score-value {
+  color: #f59e0b;
+  font-weight: 700;
 }
