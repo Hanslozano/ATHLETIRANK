@@ -1509,7 +1509,7 @@ const StaffStats = ({ sidebarOpen }) => {
     <div className="admin-dashboard">
       <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="dashboard-header">
-          <h1>Staff Statistics</h1>
+          <h1>Match Scoring</h1>
           <p>Record player statistics for matches</p>
         </div>
 

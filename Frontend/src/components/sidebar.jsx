@@ -43,8 +43,8 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
     ];
     const staffMenuItems = [
         { icon: <IoIosHome />, label: "Dashboard", id: "dashboard", path: "/StaffDashboard" },
-        { icon: <AiFillSchedule />, label: "Events", id: "events", path: "/StaffDashboard/events" },
-        { icon: <IoStatsChart />, label: "Stats", id: "stats", path: "/StaffDashboard/stats" },
+        { icon: <IoStatsChart />, label: "Events", id: "events", path: "/StaffDashboard/events" },
+      
     ];
 
     const menuItems = user?.role === 'admin' ? adminMenuItems : staffMenuItems;

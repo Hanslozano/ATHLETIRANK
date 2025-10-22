@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaTrophy, FaCrown, FaChartBar, FaEye } from "react-icons/fa";
 import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
+import TournamentScheduleList from "../../components/TournamentScheduleList";
 import "../../style/Staff_Events.css";
 
 const StaffEvents = ({ sidebarOpen }) => {
@@ -17,6 +18,7 @@ const StaffEvents = ({ sidebarOpen }) => {
   const [matches, setMatches] = useState([]);
   const [bracketMatches, setBracketMatches] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [bracketViewType, setBracketViewType] = useState("bracket"); // Default to "bracket" for staff
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -86,13 +88,22 @@ const StaffEvents = ({ sidebarOpen }) => {
     
     if (storedContext) {
       try {
-        const { selectedEvent: savedEvent, selectedBracket: savedBracket } = JSON.parse(storedContext);
+        const { 
+          selectedEvent: savedEvent, 
+          selectedBracket: savedBracket,
+          bracketViewType: savedViewType 
+        } = JSON.parse(storedContext);
         
         if (savedEvent && events.length > 0) {
           const event = events.find(e => e.id === savedEvent.id);
           
           if (event) {
             setSelectedEvent(event);
+            
+            // Restore bracket view type if available
+            if (savedViewType) {
+              setBracketViewType(savedViewType);
+            }
             
             if (savedBracket) {
               const bracket = event.brackets?.find(b => b.id === savedBracket.id);
@@ -125,6 +136,7 @@ const StaffEvents = ({ sidebarOpen }) => {
     setSelectedBracket(bracket);
     setActiveTab("results");
     setContentTab("matches");
+    setBracketViewType("bracket"); // Default to bracket view for staff
     setLoadingDetails(true);
     setError(null);
 
@@ -156,9 +168,11 @@ const StaffEvents = ({ sidebarOpen }) => {
       match: match
     }));
     
+    // Save current context including view type
     sessionStorage.setItem('staffEventsContext', JSON.stringify({
       selectedEvent: selectedEvent,
-      selectedBracket: selectedBracket
+      selectedBracket: selectedBracket,
+      bracketViewType: bracketViewType
     }));
     
     navigate('/StaffDashboard/stats');
@@ -186,14 +200,14 @@ const StaffEvents = ({ sidebarOpen }) => {
               >
                 Select Events & Brackets
               </button>
-             {selectedBracket && (
-            <button
-              className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
-              onClick={() => setActiveTab("results")}
+              {selectedBracket && (
+                <button
+                  className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
+                  onClick={() => setActiveTab("results")}
                 >
-               {selectedBracket.name} - Matches
-  </button>
-)}
+                  {selectedBracket.name} - Matches
+                </button>
+              )}
             </div>
 
             {/* Events Selection Tab */}
@@ -357,10 +371,8 @@ const StaffEvents = ({ sidebarOpen }) => {
             {activeTab === "results" && selectedEvent && selectedBracket && (
               <div className="bracket-visualization-section">
                 <div className="event-details-header">
-                  {/* Change this line: */}
                   <h2>{selectedBracket.name}</h2>
                   <div className="event-details-info">
-                    {/* Add event name here: */}
                     <span><strong>Event:</strong> {selectedEvent.name}</span>
                     <span><strong>Sport:</strong> {capitalize(selectedBracket.sport_type)}</span>
                     <span><strong>Type:</strong> {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}</span>
@@ -373,13 +385,7 @@ const StaffEvents = ({ sidebarOpen }) => {
                     className={`awards_standings_tab_button ${contentTab === "matches" ? "awards_standings_tab_active" : ""}`}
                     onClick={() => setContentTab("matches")}
                   >
-                    <FaChartBar /> View Matches
-                  </button>
-                  <button
-                    className={`awards_standings_tab_button ${contentTab === "bracket" ? "awards_standings_tab_active" : ""}`}
-                    onClick={() => setContentTab("bracket")}
-                  >
-                    <FaEye /> Bracket View
+                    <FaChartBar /> Live Match Scoring
                   </button>
                 </div>
 
@@ -394,120 +400,101 @@ const StaffEvents = ({ sidebarOpen }) => {
                   <>
                     {contentTab === "matches" && (
                       <div className="awards_standings_tab_content">
-                        {matches.length === 0 ? (
-                          <div className="bracket-no-brackets">
-                            <p>No matches available for this bracket.</p>
+                        {/* View Type Selector */}
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          marginBottom: '24px',
+                          flexWrap: 'wrap',
+                          gap: '16px'
+                        }}>
+                          {/* View Toggle Buttons */}
+                          <div style={{ 
+                            display: 'flex', 
+                            gap: '12px',
+                            background: 'rgba(51, 65, 85, 0.5)',
+                            padding: '6px',
+                            borderRadius: '8px',
+                            border: '1px solid #334155'
+                          }}>
+                            <button
+                              onClick={() => setBracketViewType("bracket")}
+                              style={{
+                                padding: '10px 20px',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: bracketViewType === "bracket" ? '#3b82f6' : 'transparent',
+                                color: bracketViewType === "bracket" ? '#ffffff' : '#cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                              }}
+                            >
+                              <FaEye /> Bracket View
+                            </button>
+                            <button
+                              onClick={() => setBracketViewType("list")}
+                              style={{
+                                padding: '10px 20px',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: bracketViewType === "list" ? '#3b82f6' : 'transparent',
+                                color: bracketViewType === "list" ? '#ffffff' : '#cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                              }}
+                            >
+                              <FaChartBar /> List View
+                            </button>
                           </div>
-                        ) : (
-                          <div className="awards_standings_table_container">
-                            <table className="awards_standings_table">
-                              <thead>
-                                <tr>
-                                  <th style={{ fontSize: '15px' }}>Round</th>
-                                  {selectedBracket.elimination_type === 'double' && <th style={{ fontSize: '15px' }}>Bracket</th>}
-                                  <th style={{ fontSize: '15px' }}>Match</th>
-                                  <th style={{ fontSize: '15px' }}>Status</th>
-                                  <th style={{ fontSize: '15px' }}>Score</th>
-                                  <th style={{ fontSize: '15px' }}>Winner</th>
-                                  <th style={{ fontSize: '15px' }}>MVP</th>
-                                  <th style={{ fontSize: '15px' }}>Scheduled</th>
-                                  <th style={{ textAlign: 'center', width: '120px', fontSize: '15px' }}>Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {matches.map((match) => {
-                                  const isResetFinal = match.round_number === 201;
-                                  const isChampionship = match.round_number === 200 || match.round_number === 201;
-                                  
-                                  return (
-                                    <tr key={match.id}>
-                                      <td style={{ fontWeight: '600', fontSize: '15px' }}>
-                                        {formatRoundDisplay(match)}
-                                        {isResetFinal && (
-                                          <span className="reset-final-badge" style={{ marginLeft: '8px', fontSize: '11px' }}>RESET</span>
-                                        )}
-                                      </td>
-                                      {selectedBracket.elimination_type === 'double' && (
-                                        <td>
-                                          <span className="bracket-type-badge" style={{ fontSize: '13px' }}>
-                                            {match.bracket_type ? match.bracket_type.charAt(0).toUpperCase() + match.bracket_type.slice(1) : 'Winner'}
-                                          </span>
-                                        </td>
-                                      )}
-                                      <td style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '15px' }}>
-                                        {match.team1_name || "TBD"} vs {match.team2_name || "TBD"}
-                                      </td>
-                                      <td>{getStatusBadge(match.status)}</td>
-                                      <td style={{ fontWeight: '700', fontSize: '17px' }}>
-                                        {match.status === "completed" ? (
-                                          `${match.score_team1} - ${match.score_team2}`
-                                        ) : (
-                                          <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                        )}
-                                      </td>
-                                      <td style={{ fontSize: '15px' }}>
-                                        {match.winner_name ? (
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ color: 'var(--success-color)', fontWeight: '600' }}>
-                                              {match.winner_name}
-                                            </span>
-                                            {isChampionship && <FaCrown style={{ color: '#ffd700', fontSize: '16px' }} />}
-                                          </div>
-                                        ) : (
-                                          <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                        )}
-                                      </td>
-                                      <td style={{ fontSize: '15px' }}>
-                                        {match.mvp_name ? (
-                                          <span style={{ color: '#fbbf24', fontWeight: '600' }}>{match.mvp_name}</span>
-                                        ) : (
-                                          <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                        )}
-                                      </td>
-                                      <td style={{ fontSize: '14px' }}>
-                                        {match.scheduled_at ? new Date(match.scheduled_at).toLocaleString() : '-'}
-                                      </td>
-                                      <td>
-                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                          <button
-                                            onClick={() => handleInputStats(match)}
-                                            className="bracket-view-btn"
-                                            style={{ 
-                                              fontSize: '13px', 
-                                              padding: '8px 12px', 
-                                              flex: '1 1 auto', 
-                                              minWidth: '50px',
-                                              background: match.status === 'completed' ? 'var(--purple-color)' : 'var(--success-color)'
-                                            }}
-                                            title={match.status === 'completed' ? 'Edit Stats' : 'Input Stats'}
-                                          >
-                                            <FaChartBar />
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                        </div>
 
-                    {contentTab === "bracket" && (
-                      <div className="awards_standings_tab_content">
-                        {selectedBracket.elimination_type === 'single' ? (
-                          <CustomBracket 
-                            matches={bracketMatches} 
-                            eliminationType={selectedBracket.elimination_type} 
-                          />
-                        ) : (
-                          <DoubleEliminationBracket 
-                            matches={bracketMatches} 
-                            eliminationType={selectedBracket.elimination_type} 
-                          />
-                        )}
+                        {/* Conditional Rendering Based on View Type */}
+                            {bracketViewType === "bracket" ? (
+                              selectedBracket.elimination_type === 'single' ? (
+                                <CustomBracket
+                                  matches={bracketMatches}
+                                  eliminationType={selectedBracket.elimination_type}
+                                />
+                              ) : (
+                                <DoubleEliminationBracket
+                                  matches={bracketMatches}
+                                  eliminationType={selectedBracket.elimination_type}
+                                />
+                              )
+                           ) : (
+  <TournamentScheduleList
+    matches={bracketMatches}
+    eventId={selectedEvent?.id}
+    bracketId={selectedBracket?.id}
+    onViewStats={(match) => handleInputStats(match)}
+    onInputStats={(match) => handleInputStats(match)}
+    onRefresh={async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);
+        if (res.ok) {
+          const data = await res.json();
+          const visibleMatches = data.filter(match => match.status !== 'hidden');
+          setMatches(visibleMatches);
+          setBracketMatches(visibleMatches);
+        }
+      } catch (err) {
+        console.error('Error refreshing matches:', err);
+      }
+    }}
+    isStaffView={true}
+  />
+)}
                       </div>
                     )}
                   </>
