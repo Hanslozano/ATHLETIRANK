@@ -49,26 +49,31 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
   };
 
   // Format round display
-  const formatRoundDisplay = (match) => {
-    if (!match) return '';
-    const roundNum = match.round_number;
-    
-    if (roundNum === 200) return 'Grand Final';
-    if (roundNum === 201) return 'Bracket Reset';
-    if (match.bracket_type === 'championship') {
-      return `Championship Round ${roundNum - 199}`;
-    }
-    
-    if (match.bracket_type === 'loser' || (roundNum >= 101 && roundNum < 200)) {
-      return `LB Round ${roundNum - 100}`;
-    }
-    
-    if (match.bracket_type === 'winner' || roundNum < 100) {
-      return `Round ${roundNum}`;
-    }
-    
+ const formatRoundDisplay = (match) => {
+  if (!match) return '';
+  const roundNum = match.round_number;
+  
+  // Handle Round Robin
+  if (match.bracket_type === 'round_robin') {
     return `Round ${roundNum}`;
-  };
+  }
+  
+  if (roundNum === 200) return 'Grand Final';
+  if (roundNum === 201) return 'Bracket Reset';
+  if (match.bracket_type === 'championship') {
+    return `Championship Round ${roundNum - 199}`;
+  }
+  
+  if (match.bracket_type === 'loser' || (roundNum >= 101 && roundNum < 200)) {
+    return `LB Round ${roundNum - 100}`;
+  }
+  
+  if (match.bracket_type === 'winner' || roundNum < 100) {
+    return `Round ${roundNum}`;
+  }
+  
+  return `Round ${roundNum}`;
+};
 
   const formatScheduleDisplay = (schedule) => {
     if (!schedule || !schedule.date) return null;

@@ -5,6 +5,7 @@ import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import "../../style/Admin_Events.css";
 import TournamentScheduleList from "../../components/TournamentScheduleList";
+import RoundRobinBracketDisplay from "../../components/RoundRobin"; // ADD THIS
 import AdminStats from "./AdminStats";
 
 const AdminEvents = ({ sidebarOpen }) => {
@@ -1126,9 +1127,13 @@ const AdminEvents = ({ sidebarOpen }) => {
                                     {bracket.sport_type?.toUpperCase() || 'N/A'}
                                   </span>
                                 </td>
-                                <td style={{ fontSize: '15px' }}>
-                                  {bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elim.
-                                </td>
+                               <td style={{ fontSize: '15px' }}>
+  {bracket.elimination_type === 'double' 
+    ? 'Double Elim.' 
+    : bracket.elimination_type === 'round_robin'
+      ? 'Round Robin'
+      : 'Single Elim.'}
+</td>
                                 <td style={{ fontSize: '15px' }}>{bracket.team_count || 0}</td>
                                 <td>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1320,7 +1325,13 @@ const AdminEvents = ({ sidebarOpen }) => {
                   <div className="event-details-info">
                     <span><strong>Event:</strong> {selectedEvent.name}</span>
                     <span><strong>Sport:</strong> {capitalize(selectedBracket.sport_type)}</span>
-                    <span><strong>Type:</strong> {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}</span>
+                    <span><strong>Type:</strong> {
+  selectedBracket.elimination_type === 'double' 
+    ? 'Double Elimination' 
+    : selectedBracket.elimination_type === 'round_robin'
+      ? 'Round Robin'
+      : 'Single Elimination'
+}</span>
                     <span><strong>Teams:</strong> {selectedBracket.team_count || 0}</span>
                   </div>
                 </div>
@@ -1491,48 +1502,58 @@ const AdminEvents = ({ sidebarOpen }) => {
 </div>
     </div>
 
-    {/* Conditional Rendering Based on View Type */}
     {bracketViewType === "bracket" ? (
-      selectedBracket.elimination_type === 'single' ? (
-        <CustomBracket 
-          matches={bracketMatches} 
-          eliminationType={selectedBracket.elimination_type} 
-        />
-      ) : (
-        <DoubleEliminationBracket 
-          matches={bracketMatches} 
-          eliminationType={selectedBracket.elimination_type} 
-        />
-      )
-    ) : (
-      <TournamentScheduleList
-  matches={bracketMatches}
-  eventId={selectedEvent?.id}
-  bracketId={selectedBracket?.id}
-  onViewStats={(match) => {
-    sessionStorage.setItem('selectedMatchData', JSON.stringify({
-      matchId: match.id,
-      eventId: selectedEvent?.id,
-      bracketId: selectedBracket?.id,
-      match: match
-    }));
-    setContentTab("statistics");
-  }}
-  onRefresh={async () => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);
-      if (res.ok) {
-        const data = await res.json();
-        const visibleMatches = data.filter(match => match.status !== 'hidden');
-        setMatches(visibleMatches);
-        setBracketMatches(visibleMatches);
-      }
-    } catch (err) {
-      console.error('Error refreshing matches:', err);
-    }
-  }}
-/>
+  // UPDATED: Handle all three bracket types
+  <>
+    {selectedBracket.elimination_type === 'single' && (
+      <CustomBracket 
+        matches={bracketMatches} 
+        eliminationType={selectedBracket.elimination_type} 
+      />
     )}
+    
+    {selectedBracket.elimination_type === 'double' && (
+      <DoubleEliminationBracket 
+        matches={bracketMatches} 
+        eliminationType={selectedBracket.elimination_type} 
+      />
+    )}
+    
+    {selectedBracket.elimination_type === 'round_robin' && (
+      <RoundRobinBracketDisplay 
+        matches={bracketMatches} 
+      />
+    )}
+  </>
+) : (
+  <TournamentScheduleList
+    matches={bracketMatches}
+    eventId={selectedEvent?.id}
+    bracketId={selectedBracket?.id}
+    onViewStats={(match) => {
+      sessionStorage.setItem('selectedMatchData', JSON.stringify({
+        matchId: match.id,
+        eventId: selectedEvent?.id,
+        bracketId: selectedBracket?.id,
+        match: match
+      }));
+      setContentTab("statistics");
+    }}
+    onRefresh={async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);
+        if (res.ok) {
+          const data = await res.json();
+          const visibleMatches = data.filter(match => match.status !== 'hidden');
+          setMatches(visibleMatches);
+          setBracketMatches(visibleMatches);
+        }
+      } catch (err) {
+        console.error('Error refreshing matches:', err);
+      }
+    }}
+  />
+)}
   </div>
 )}
 

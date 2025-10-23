@@ -685,11 +685,12 @@ const handleCreateAllBrackets = async () => {
     }
   }
 
+ 
   setLoading(true);
   const createdBracketsList = [];
 
   try {
-    // STEP 1: Create the event FIRST
+    // STEP 1: Create the event FIRST (existing code)
     console.log("Creating event:", eventData);
     const eventRes = await fetch("http://localhost:5000/api/events", {
       method: "POST",
@@ -728,7 +729,7 @@ const handleCreateAllBrackets = async () => {
         event_id: newEvent.id,
         name: bracketName,
         sport_type: sportType,
-        elimination_type: bracket.bracketType
+        elimination_type: bracket.bracketType // This will now include 'round_robin'
       };
 
       console.log(`Creating bracket ${i + 1}:`, requestBody);
@@ -759,8 +760,17 @@ const handleCreateAllBrackets = async () => {
         });
       }
 
-      // Generate matches
-      const generateRes = await fetch(`http://localhost:5000/api/brackets/${newBracket.id}/generate`, {
+      // UPDATED: Route to correct endpoint based on bracket type
+      let generateEndpoint;
+      if (bracket.bracketType === 'round_robin') {
+        generateEndpoint = `http://localhost:5000/api/round-robin/${newBracket.id}/generate`;
+      } else {
+        generateEndpoint = `http://localhost:5000/api/brackets/${newBracket.id}/generate`;
+      }
+
+      console.log(`Generating matches for ${bracket.bracketType} bracket at: ${generateEndpoint}`);
+
+      const generateRes = await fetch(generateEndpoint, {
         method: "POST"
       });
 
@@ -769,11 +779,15 @@ const handleCreateAllBrackets = async () => {
         throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to generate matches"}`);
       }
 
+      const generateData = await generateRes.json();
+      console.log(`Generated ${generateData.matches?.length || 0} matches for bracket ${i + 1}`);
+
       createdBracketsList.push({
-  ...newBracket,
-  selectedTeams: bracket.selectedTeamIds.length,
-  team_count: bracket.selectedTeamIds.length  // Add this property for AdminEvents
-});
+        ...newBracket,
+        selectedTeams: bracket.selectedTeamIds.length,
+        team_count: bracket.selectedTeamIds.length,
+        bracket_type: bracket.bracketType // Store bracket type for reference
+      });
     }
 
     setCreatedBrackets(createdBracketsList);
@@ -785,8 +799,8 @@ const handleCreateAllBrackets = async () => {
   } finally {
     setLoading(false);
   }
-};
-
+  };
+  
   const handleStartNew = () => {
     setCurrentStep(1);
     setEventData({ name: "", startDate: "", endDate: "", numberOfBrackets: 1 });
@@ -1388,19 +1402,36 @@ const handleCreateAllBrackets = async () => {
                         </div>
 
                         <div className="bracket-form-group">
-                          <label htmlFor={`bracketType-${bracket.id}`}>Bracket Type *</label>
-                          <select 
-                            id={`bracketType-${bracket.id}`}
-                            name="bracketType"
-                            value={bracket.bracketType}
-                            onChange={(e) => handleBracketInputChange(bracket.id, 'bracketType', e.target.value)}
-                            style={{ fontSize: '16px' }}
-                          >
-                            <option value="single">Single Elimination</option>
-                            <option value="double">Double Elimination</option>
-                          </select>
-                        </div>
-
+  <label htmlFor={`bracketType-${bracket.id}`}>Bracket Type *</label>
+  <select 
+    id={`bracketType-${bracket.id}`}
+    name="bracketType"
+    value={bracket.bracketType}
+    onChange={(e) => handleBracketInputChange(bracket.id, 'bracketType', e.target.value)}
+    style={{ fontSize: '16px' }}
+  >
+    <option value="single">Single Elimination</option>
+    <option value="double">Double Elimination</option>
+    <option value="round_robin">Round Robin</option>
+  </select>
+  
+  {/* Add description for each type */}
+  {bracket.bracketType === 'single' && (
+    <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+      Single game knockout - one loss eliminates a team
+    </small>
+  )}
+  {bracket.bracketType === 'double' && (
+    <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+      Teams get a second chance - must lose twice to be eliminated
+    </small>
+  )}
+  {bracket.bracketType === 'round_robin' && (
+    <small style={{ color: '#10b981', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+      All teams play each other once - winner determined by standings
+    </small>
+  )}
+</div>
                         <div className="bracket-form-group">
                           <label>Assigned Teams</label>
                           {bracket.selectedTeamIds.length === 0 ? (
