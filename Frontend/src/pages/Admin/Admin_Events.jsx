@@ -5,6 +5,7 @@ import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import "../../style/Admin_Events.css";
 import TournamentScheduleList from "../../components/TournamentScheduleList";
+import RoundRobinBracketDisplay from "../../components/RoundRobin"; // ADD THIS
 import AdminStats from "./AdminStats";
 
 const AdminEvents = ({ sidebarOpen }) => {
@@ -347,28 +348,29 @@ const AdminEvents = ({ sidebarOpen }) => {
     setSelectedBracket(bracket);
     setActiveTab("results");
     setContentTab("matches");
+    setBracketViewType("list"); // Default to list view - ADD THIS LIN
     setLoadingDetails(true);
     setError(null);
     setRoundFilter("all"); // Reset round filter when selecting new bracket
 
-    try {
-      const res = await fetch(`http://localhost:5000/api/brackets/${bracket.id}/matches`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      
-      const data = await res.json();
-      const visibleMatches = data.filter(match => match.status !== 'hidden');
-      setMatches(visibleMatches);
-      setBracketMatches(visibleMatches);
+     try {
+    const res = await fetch(`http://localhost:5000/api/brackets/${bracket.id}/matches`);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    
+    const data = await res.json();
+    const visibleMatches = data.filter(match => match.status !== 'hidden');
+    setMatches(visibleMatches);
+    setBracketMatches(visibleMatches);
 
-      if (visibleMatches.length === 0) {
-        setError("No matches found for this bracket.");
-      }
-    } catch (err) {
-      setError("Failed to load matches: " + err.message);
-    } finally {
-      setLoadingDetails(false);
+    if (visibleMatches.length === 0) {
+      setError("No matches found for this bracket.");
     }
-  };
+  } catch (err) {
+    setError("Failed to load matches: " + err.message);
+  } finally {
+    setLoadingDetails(false);
+  }
+};
 
   // Navigate to stats view - REMOVED since stats is now integrated
   const handleViewStats = (match) => {
@@ -1125,9 +1127,13 @@ const AdminEvents = ({ sidebarOpen }) => {
                                     {bracket.sport_type?.toUpperCase() || 'N/A'}
                                   </span>
                                 </td>
-                                <td style={{ fontSize: '15px' }}>
-                                  {bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elim.
-                                </td>
+                               <td style={{ fontSize: '15px' }}>
+  {bracket.elimination_type === 'double' 
+    ? 'Double Elim.' 
+    : bracket.elimination_type === 'round_robin'
+      ? 'Round Robin'
+      : 'Single Elim.'}
+</td>
                                 <td style={{ fontSize: '15px' }}>{bracket.team_count || 0}</td>
                                 <td>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1319,7 +1325,13 @@ const AdminEvents = ({ sidebarOpen }) => {
                   <div className="event-details-info">
                     <span><strong>Event:</strong> {selectedEvent.name}</span>
                     <span><strong>Sport:</strong> {capitalize(selectedBracket.sport_type)}</span>
-                    <span><strong>Type:</strong> {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}</span>
+                    <span><strong>Type:</strong> {
+  selectedBracket.elimination_type === 'double' 
+    ? 'Double Elimination' 
+    : selectedBracket.elimination_type === 'round_robin'
+      ? 'Round Robin'
+      : 'Single Elimination'
+}</span>
                     <span><strong>Teams:</strong> {selectedBracket.team_count || 0}</span>
                   </div>
                 </div>
@@ -1331,12 +1343,7 @@ const AdminEvents = ({ sidebarOpen }) => {
                   >
                     <FaChartBar /> Manage Matches
                   </button>
-                  <button
-                    className={`awards_standings_tab_button ${contentTab === "bracket" ? "awards_standings_tab_active" : ""}`}
-                    onClick={() => setContentTab("bracket")}
-                  >
-                    <FaEye /> Bracket View
-                  </button>
+                  
                   <button
                     className={`awards_standings_tab_button ${contentTab === "awards" ? "awards_standings_tab_active" : ""}`}
                     onClick={() => setContentTab("awards")}
@@ -1361,257 +1368,6 @@ const AdminEvents = ({ sidebarOpen }) => {
                 ) : (
                   <>
                     {contentTab === "matches" && (
-                      <div className="awards_standings_tab_content">
-                        {/* Round Filter Only - Removed Show per page */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '30px' }}>
-                          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', minWidth: '200px' }}>
-                            <label style={{ 
-                              fontSize: '14px', 
-                              color: 'var(--text-secondary)',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              Sort Rounds:
-                            </label>
-                            <select
-                              value={roundFilter}
-                              onChange={(e) => setRoundFilter(e.target.value)}
-                              style={{
-                                padding: '12px 16px',
-                                border: '2px solid var(--border-color)',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                backgroundColor: 'var(--background-secondary)',
-                                color: 'var(--text-primary)',
-                                minWidth: '200px',
-                              }}
-                            >
-                              <option value="all">All Rounds</option>
-                              {getUniqueRounds().map(round => (
-                                <option key={round.value} value={round.value}>
-                                  {round.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Matches Count Info */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                          <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                            {roundFilter === "all" ? (
-                              <>Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches</>
-                            ) : (
-                              <>Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches in {getUniqueRounds().find(r => r.value === parseInt(roundFilter))?.label}</>
-                            )}
-                          </div>
-                        </div>
-
-                        {filteredMatches.length === 0 ? (
-                          <div className="bracket-no-brackets">
-                            <p>No matches available {roundFilter !== "all" ? "for the selected round" : "for this bracket"}.</p>
-                            {roundFilter !== "all" && (
-                              <button 
-                                className="bracket-view-btn" 
-                                onClick={() => setRoundFilter("all")}
-                              >
-                                Show All Rounds
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <>
-                            <div className="awards_standings_table_container">
-                              <table className="awards_standings_table">
-                                <thead>
-                                  <tr>
-                                    <th style={{ fontSize: '15px' }}>Round</th>
-                                    {selectedBracket.elimination_type === 'double' && <th style={{ fontSize: '15px' }}>Bracket</th>}
-                                    <th style={{ fontSize: '15px' }}>Match</th>
-                                    <th style={{ fontSize: '15px' }}>Status</th>
-                                    <th style={{ fontSize: '15px' }}>Score</th>
-                                    <th style={{ fontSize: '15px' }}>Winner</th>
-                                    <th style={{ fontSize: '15px' }}>MVP</th>
-                                    <th style={{ fontSize: '15px' }}>Scheduled</th>
-                                    <th style={{ textAlign: 'center', width: '180px', fontSize: '15px' }}>Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {currentMatches.map((match) => {
-                                    const isResetFinal = match.round_number === 201;
-                                    const isChampionship = match.round_number === 200 || match.round_number === 201;
-                                    
-                                    return (
-                                      <tr key={match.id}>
-                                        <td style={{ fontWeight: '600', fontSize: '15px' }}>
-                                          {formatRoundDisplay(match)}
-                                          {isResetFinal && (
-                                            <span className="reset-final-badge" style={{ marginLeft: '8px', fontSize: '11px' }}>RESET</span>
-                                          )}
-                                        </td>
-                                        {selectedBracket.elimination_type === 'double' && (
-                                          <td>
-                                            <span className="bracket-type-badge" style={{ fontSize: '13px' }}>
-                                              {match.bracket_type ? match.bracket_type.charAt(0).toUpperCase() + match.bracket_type.slice(1) : 'Winner'}
-                                            </span>
-                                          </td>
-                                        )}
-                                        <td style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '15px' }}>
-                                          {match.team1_name || "TBD"} vs {match.team2_name || "TBD"}
-                                        </td>
-                                        <td>{getStatusBadge(match.status)}</td>
-                                        <td style={{ fontWeight: '700', fontSize: '17px' }}>
-                                          {match.status === "completed" ? (
-                                            `${match.score_team1} - ${match.score_team2}`
-                                          ) : (
-                                            <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                          )}
-                                        </td>
-                                        <td style={{ fontSize: '15px' }}>
-                                          {match.winner_name ? (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                              <span style={{ color: 'var(--success-color)', fontWeight: '600' }}>
-                                                {match.winner_name}
-                                              </span>
-                                              {isChampionship && <FaCrown style={{ color: '#ffd700', fontSize: '16px' }} />}
-                                            </div>
-                                          ) : (
-                                            <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                          )}
-                                        </td>
-                                        <td style={{ fontSize: '15px' }}>
-                                          {match.mvp_name ? (
-                                            <span style={{ color: '#fbbf24', fontWeight: '600' }}>{match.mvp_name}</span>
-                                          ) : (
-                                            <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                          )}
-                                        </td>
-                                        <td style={{ fontSize: '14px' }}>
-                                          {match.scheduled_at ? new Date(match.scheduled_at).toLocaleString() : '-'}
-                                        </td>
-                                        <td>
-                                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                            <button
-                                              onClick={() => handleViewStats(match)}
-                                              className="bracket-view-btn"
-                                              style={{ fontSize: '13px', padding: '8px 12px', flex: '1 1 auto', minWidth: '50px' }}
-                                              title="View Stats"
-                                            >
-                                              <FaChartBar />
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-
-                            {/* Matches Pagination Controls */}
-                            {totalMatchesPages > 1 && (
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginTop: '30px',
-                                padding: '20px',
-                                background: 'var(--background-secondary)',
-                                borderRadius: '8px',
-                                flexWrap: 'wrap',
-                                gap: '15px'
-                              }}>
-                                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                                  Page {currentMatchesPage} of {totalMatchesPages}
-                                </div>
-                                
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                  <button
-                                    onClick={goToPrevMatchesPage}
-                                    disabled={currentMatchesPage === 1}
-                                    style={{
-                                      padding: '10px 16px',
-                                      background: currentMatchesPage === 1 ? 'var(--text-muted)' : 'var(--primary-color)',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '6px',
-                                      cursor: currentMatchesPage === 1 ? 'not-allowed' : 'pointer',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '6px',
-                                      fontSize: '14px',
-                                      opacity: currentMatchesPage === 1 ? 0.5 : 1,
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    <FaChevronLeft /> Previous
-                                  </button>
-
-                                  {/* Page Numbers */}
-                                  <div style={{ display: 'flex', gap: '5px' }}>
-                                    {Array.from({ length: Math.min(5, totalMatchesPages) }, (_, i) => {
-                                      let pageNum;
-                                      if (totalMatchesPages <= 5) {
-                                        pageNum = i + 1;
-                                      } else if (currentMatchesPage <= 3) {
-                                        pageNum = i + 1;
-                                      } else if (currentMatchesPage >= totalMatchesPages - 2) {
-                                        pageNum = totalMatchesPages - 4 + i;
-                                      } else {
-                                        pageNum = currentMatchesPage - 2 + i;
-                                      }
-
-                                      return (
-                                        <button
-                                          key={pageNum}
-                                          onClick={() => goToMatchesPage(pageNum)}
-                                          style={{
-                                            padding: '10px 14px',
-                                            background: currentMatchesPage === pageNum ? 'var(--primary-color)' : 'var(--background-card)',
-                                            color: currentMatchesPage === pageNum ? 'white' : 'var(--text-primary)',
-                                            border: currentMatchesPage === pageNum ? 'none' : '2px solid var(--border-color)',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontSize: '14px',
-                                            fontWeight: currentMatchesPage === pageNum ? '600' : '400',
-                                            minWidth: '40px',
-                                            transition: 'all 0.2s ease'
-                                          }}
-                                        >
-                                          {pageNum}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-
-                                  <button
-                                    onClick={goToNextMatchesPage}
-                                    disabled={currentMatchesPage === totalMatchesPages}
-                                    style={{
-                                      padding: '10px 16px',
-                                      background: currentMatchesPage === totalMatchesPages ? 'var(--text-muted)' : 'var(--primary-color)',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '6px',
-                                      cursor: currentMatchesPage === totalMatchesPages ? 'not-allowed' : 'pointer',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '6px',
-                                      fontSize: '14px',
-                                      opacity: currentMatchesPage === totalMatchesPages ? 0.5 : 1,
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    Next <FaChevronRight />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {contentTab === "bracket" && (
   <div className="awards_standings_tab_content">
     {/* View Type Selector */}
     <div style={{ 
@@ -1672,109 +1428,136 @@ const AdminEvents = ({ sidebarOpen }) => {
       </div>
 
       {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <button
-          onClick={() => handleEditTeam(selectedBracket)}
-          style={{ 
-            fontSize: '13px', 
-            padding: '10px 16px', 
-            background: 'var(--success-color)', 
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--border-radius)',
-            cursor: 'pointer',
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            width: 'auto',
-            whiteSpace: 'nowrap',
-            transition: 'var(--transition)'
-          }}
-          title="Manage Team Players"
-        >
-          <FaUsers /> Edit Teams
-        </button>
-        <button
-          onClick={() => handleEditBracket(selectedBracket)}
-          style={{ 
-            fontSize: '13px', 
-            padding: '10px 16px', 
-            background: 'var(--primary-color)', 
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--border-radius)',
-            cursor: 'pointer',
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            width: 'auto',
-            whiteSpace: 'nowrap',
-            transition: 'var(--transition)'
-          }}
-          title="Edit Bracket"
-        >
-          <FaEdit /> Edit Bracket
-        </button>
-        <button
-          onClick={() => handleDeleteBracket(selectedBracket)}
-          style={{ 
-            fontSize: '13px', 
-            padding: '10px 16px', 
-            background: 'var(--error-color)', 
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--border-radius)',
-            cursor: 'pointer',
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            width: 'auto',
-            whiteSpace: 'nowrap',
-            transition: 'var(--transition)'
-          }}
-          title="Delete Bracket"
-        >
-          <FaTrash /> Delete Bracket
-        </button>
-      </div>
+      <div style={{ 
+  display: 'flex', 
+  gap: '12px',
+
+  padding: '6px',
+  borderRadius: '8px',
+
+}}>
+  <button
+    onClick={() => handleEditTeam(selectedBracket)}
+    style={{ 
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      background: 'var(--success-color)',
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      whiteSpace: 'nowrap'
+    }}
+    title="Manage Team Players"
+  >
+    <FaUsers /> Edit Teams
+  </button>
+  <button
+    onClick={() => handleEditBracket(selectedBracket)}
+    style={{ 
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      background: 'var(--primary-color)',
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      whiteSpace: 'nowrap'
+    }}
+    title="Edit Bracket"
+  >
+    <FaEdit /> Edit Bracket
+  </button>
+  <button
+    onClick={() => handleDeleteBracket(selectedBracket)}
+    style={{ 
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      background: 'var(--error-color)',
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      whiteSpace: 'nowrap'
+    }}
+    title="Delete Bracket"
+  >
+    <FaTrash /> Delete Bracket
+  </button>
+</div>
     </div>
 
-    {/* Conditional Rendering Based on View Type */}
     {bracketViewType === "bracket" ? (
-      selectedBracket.elimination_type === 'single' ? (
-        <CustomBracket 
-          matches={bracketMatches} 
-          eliminationType={selectedBracket.elimination_type} 
-        />
-      ) : (
-        <DoubleEliminationBracket 
-          matches={bracketMatches} 
-          eliminationType={selectedBracket.elimination_type} 
-        />
-      )
-    ) : (
-     <TournamentScheduleList
-  matches={bracketMatches}
-  eventId={selectedEvent?.id}
-  bracketId={selectedBracket?.id}
-  onRefresh={async () => {
-    // Refresh matches after schedule update
-    try {
-      const res = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);
-      if (res.ok) {
-        const data = await res.json();
-        const visibleMatches = data.filter(match => match.status !== 'hidden');
-        setMatches(visibleMatches);
-        setBracketMatches(visibleMatches);
-      }
-    } catch (err) {
-      console.error('Error refreshing matches:', err);
-    }
-  }}
-/>
+  // UPDATED: Handle all three bracket types
+  <>
+    {selectedBracket.elimination_type === 'single' && (
+      <CustomBracket 
+        matches={bracketMatches} 
+        eliminationType={selectedBracket.elimination_type} 
+      />
     )}
+    
+    {selectedBracket.elimination_type === 'double' && (
+      <DoubleEliminationBracket 
+        matches={bracketMatches} 
+        eliminationType={selectedBracket.elimination_type} 
+      />
+    )}
+    
+    {selectedBracket.elimination_type === 'round_robin' && (
+      <RoundRobinBracketDisplay 
+        matches={bracketMatches} 
+      />
+    )}
+  </>
+) : (
+  <TournamentScheduleList
+    matches={bracketMatches}
+    eventId={selectedEvent?.id}
+    bracketId={selectedBracket?.id}
+    onViewStats={(match) => {
+      sessionStorage.setItem('selectedMatchData', JSON.stringify({
+        matchId: match.id,
+        eventId: selectedEvent?.id,
+        bracketId: selectedBracket?.id,
+        match: match
+      }));
+      setContentTab("statistics");
+    }}
+    onRefresh={async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);
+        if (res.ok) {
+          const data = await res.json();
+          const visibleMatches = data.filter(match => match.status !== 'hidden');
+          setMatches(visibleMatches);
+          setBracketMatches(visibleMatches);
+        }
+      } catch (err) {
+        console.error('Error refreshing matches:', err);
+      }
+    }}
+  />
+)}
   </div>
 )}
+
+                   
 
                     {contentTab === "awards" && (
                       <div className="awards_standings_tab_content">
