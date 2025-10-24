@@ -942,3 +942,65 @@
 .awards_standings_tab_content .stats-tab-content {
   border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
+
+
+.admin-teams-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.admin-teams-modal {
+  background: var(--background-card);
+  border-radius: 12px;
+  width: 100%;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.admin-teams-modal-body {
+  padding: 24px;
+}
+
+.admin-teams-cancel-btn {
+  padding: 12px 24px;
+  background: var(--background-secondary);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-teams-cancel-btn:hover {
+  background: var(--border-color);
+}
+
+.bracket-player-management-back-btn {
+  padding: 8px 16px;
+  background: var(--text-muted);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bracket-player-management-back-btn:hover {
+  background: var(--text-secondary);
+}

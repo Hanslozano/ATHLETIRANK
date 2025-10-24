@@ -1253,4 +1253,79 @@ router.post("/:id/reset", async (req, res) => {
   }
 });
 
+// GET - Check if teams can be edited for a bracket
+router.get("/:id/can-edit-teams", async (req, res) => {
+  const bracketId = req.params.id;
+
+  try {
+    // Get bracket info
+    const [bracketInfo] = await db.pool.query(
+      "SELECT elimination_type FROM brackets WHERE id = ?",
+      [bracketId]
+    );
+
+    if (bracketInfo.length === 0) {
+      return res.status(404).json({ error: "Bracket not found" });
+    }
+
+    const eliminationType = bracketInfo[0].elimination_type;
+    let canEdit = true;
+    let reason = "";
+
+    if (eliminationType === 'single') {
+      // Single Elimination: Check Round 1 matches
+      const [round1Matches] = await db.pool.query(
+        `SELECT COUNT(*) as completed_count 
+         FROM matches 
+         WHERE bracket_id = ? AND round_number = 1 AND status = 'completed'`,
+        [bracketId]
+      );
+
+      if (round1Matches[0].completed_count > 0) {
+        canEdit = false;
+        reason = "May completed match na sa Round 1";
+      }
+    } else if (eliminationType === 'double') {
+      // Double Elimination: Check Winner's Bracket Round 1
+      const [wbRound1Matches] = await db.pool.query(
+        `SELECT COUNT(*) as completed_count 
+         FROM matches 
+         WHERE bracket_id = ? 
+         AND bracket_type = 'winner' 
+         AND round_number = 1 
+         AND status = 'completed'`,
+        [bracketId]
+      );
+
+      if (wbRound1Matches[0].completed_count > 0) {
+        canEdit = false;
+        reason = "May completed match na sa Winner's Bracket Round 1";
+      }
+    } else if (eliminationType === 'round_robin') {
+      // Round Robin: Check any Round 1 matches
+      const [round1Matches] = await db.pool.query(
+        `SELECT COUNT(*) as completed_count 
+         FROM matches 
+         WHERE bracket_id = ? AND round_number = 1 AND status = 'completed'`,
+        [bracketId]
+      );
+
+      if (round1Matches[0].completed_count > 0) {
+        canEdit = false;
+        reason = "May completed match na sa Round 1";
+      }
+    }
+
+    res.json({
+      canEdit: canEdit,
+      reason: reason,
+      eliminationType: eliminationType
+    });
+
+  } catch (err) {
+    console.error("Error checking team edit permissions:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 module.exports = router;

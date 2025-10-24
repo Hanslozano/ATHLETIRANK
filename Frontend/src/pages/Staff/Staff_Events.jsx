@@ -4,6 +4,7 @@ import { FaTrophy, FaCrown, FaChartBar, FaEye } from "react-icons/fa";
 import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import TournamentScheduleList from "../../components/TournamentScheduleList";
+import RoundRobinBracketDisplay from "../../components/RoundRobin";
 import "../../style/Staff_Events.css";
 
 const StaffEvents = ({ sidebarOpen }) => {
@@ -325,9 +326,13 @@ const StaffEvents = ({ sidebarOpen }) => {
                                     {bracket.sport_type?.toUpperCase() || 'N/A'}
                                   </span>
                                 </td>
-                                <td style={{ fontSize: '15px' }}>
-                                  {bracket.elimination_type === 'double' ? 'Double' : 'Single'} Elim.
-                                </td>
+                               <td style={{ fontSize: '15px' }}>
+  {bracket.elimination_type === 'double' 
+    ? 'Double Elim.' 
+    : bracket.elimination_type === 'round_robin'
+      ? 'Round Robin'
+      : 'Single Elim.'}
+</td>
                                 <td style={{ fontSize: '15px' }}>{bracket.team_count || 0}</td>
                                 <td>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -460,20 +465,31 @@ const StaffEvents = ({ sidebarOpen }) => {
                         </div>
 
                         {/* Conditional Rendering Based on View Type */}
-                            {bracketViewType === "bracket" ? (
-                              selectedBracket.elimination_type === 'single' ? (
-                                <CustomBracket
-                                  matches={bracketMatches}
-                                  eliminationType={selectedBracket.elimination_type}
-                                />
-                              ) : (
-                                <DoubleEliminationBracket
-                                  matches={bracketMatches}
-                                  eliminationType={selectedBracket.elimination_type}
-                                />
-                              )
-                           ) : (
-  <TournamentScheduleList
+                           {bracketViewType === "bracket" ? (
+  // UPDATED: Handle all three bracket types
+  <>
+    {selectedBracket.elimination_type === 'single' && (
+      <CustomBracket
+        matches={bracketMatches}
+        eliminationType={selectedBracket.elimination_type}
+      />
+    )}
+    
+    {selectedBracket.elimination_type === 'double' && (
+      <DoubleEliminationBracket
+        matches={bracketMatches}
+        eliminationType={selectedBracket.elimination_type}
+      />
+    )}
+    
+    {selectedBracket.elimination_type === 'round_robin' && (
+      <RoundRobinBracketDisplay
+        matches={bracketMatches}
+      />
+    )}
+  </>
+) : (
+   <TournamentScheduleList
     matches={bracketMatches}
     eventId={selectedEvent?.id}
     bracketId={selectedBracket?.id}
