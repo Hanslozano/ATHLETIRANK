@@ -44,7 +44,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     avg_bpg: 0,
     avg_kpg: 0,
     avg_dpg: 0,
-    avg_hitting_percentage: 0
+    avg_total_errors: 0
   });
 
   // Get current sport type
@@ -186,7 +186,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         avg_bpg: 0,
         avg_kpg: 0,
         avg_dpg: 0,
-        avg_hitting_percentage: 0
+        avg_total_errors: 0
       });
     }
   };
@@ -230,7 +230,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         avg_bpg: 0,
         avg_kpg: 0,
         avg_dpg: 0,
-        avg_hitting_percentage: 0
+        avg_total_errors: 0
       });
       setAllPlayersData([]);
       setAllTeamsData([]);
@@ -315,7 +315,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         avg_bpg: 0,
         avg_kpg: 0,
         avg_dpg: 0,
-        avg_hitting_percentage: 0
+        avg_total_errors: 0
       });
     } finally {
       setLoading(false);
@@ -497,18 +497,27 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       if (value <= threshold.low) return 'stats-low-value';
       return 'stats-medium-value';
     } else {
-      // Volleyball thresholds
+      // Volleyball thresholds - UPDATED for total errors (lower is better)
       const thresholds = {
         kpg: { high: 15, low: 8 },
         apg: { high: 10, low: 5 },
         dpg: { high: 12, low: 6 },
         bpg: { high: 3, low: 1 },
-        hitting_percentage: { high: 40, low: 20 },
+        sapg: { high: 2, low: 0.5 },
+        total_errors: { high: 5, low: 2 }, // Lower errors are better
+        eff: { high: 20, low: 10 },
         overall_score: { high: 25, low: 12 }
       };
       
       const threshold = thresholds[stat];
       if (!threshold) return 'text-gray-300';
+      
+      // For total_errors, lower values are better (reverse logic)
+      if (stat === 'total_errors') {
+        if (value <= threshold.low) return 'stats-high-value'; // Low errors = good
+        if (value >= threshold.high) return 'stats-low-value'; // High errors = bad
+        return 'stats-medium-value';
+      }
       
       if (value >= threshold.high) return 'stats-high-value';
       if (value <= threshold.low) return 'stats-low-value';
@@ -542,8 +551,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.total_rebounds
       ]);
     } else {
-      // Volleyball
-      headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 'KPG', 'APG', 'DPG', 'BPG', 'SAPG', 'Hit%', 'Total Kills', 'Total Assists', 'Total Digs'];
+      // Volleyball - UPDATED with total errors instead of hitting percentage
+      headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 'KPG', 'APG', 'DPG', 'BPG', 'SAPG', 'Total Errors', 'Eff', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Service Aces'];
       rows = filteredPlayers.map((player, index) => [
         index + 1,
         player.name,
@@ -556,10 +565,13 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.dpg,
         player.bpg,
         player.sapg,
-        player.hitting_percentage,
+        player.total_errors, // Replaced hitting_percentage with total_errors
+        player.eff,
         player.total_kills,
         player.total_volleyball_assists,
-        player.total_digs
+        player.total_digs,
+        player.total_volleyball_blocks,
+        player.total_service_aces
       ]);
     }
     
@@ -597,8 +609,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         team.total_rebounds
       ]);
     } else {
-      // Volleyball
-      headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'KPG', 'APG', 'DPG', 'BPG', 'SAPG', 'Hit%', 'Total Kills', 'Total Assists', 'Total Digs'];
+      // Volleyball - UPDATED with total errors instead of hitting percentage
+      headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'KPG', 'APG', 'DPG', 'BPG', 'SAPG', 'Total Errors', 'Eff', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Service Aces'];
       rows = filteredTeams.map((team, index) => [
         index + 1,
         team.team_name,
@@ -609,10 +621,13 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         team.dpg,
         team.bpg,
         team.sapg,
-        team.hitting_percentage,
+        team.total_errors, // Replaced hitting_percentage with total_errors
+        team.eff,
         team.total_kills,
         team.total_volleyball_assists,
-        team.total_digs
+        team.total_digs,
+        team.total_volleyball_blocks,
+        team.total_service_aces
       ]);
     }
     
@@ -722,7 +737,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-  // Render Volleyball Players Table Headers
+  // Render Volleyball Players Table Headers - UPDATED with Total Errors instead of Hit%
   const renderVolleyballPlayerHeaders = () => {
     return (
       <>
@@ -758,9 +773,15 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('hitting_percentage')}
+          onClick={() => handleSort('total_errors')}
         >
-          Hit% {sortConfig.key === 'hitting_percentage' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Errors {sortConfig.key === 'total_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+        </th>
+        <th 
+          className="stats-sortable-header"
+          onClick={() => handleSort('eff')}
+        >
+          Eff {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
       </>
     );
@@ -795,7 +816,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     ));
   };
 
-  // Render Volleyball Players Table Rows
+  // Render Volleyball Players Table Rows - UPDATED with Total Errors instead of Hit%
   const renderVolleyballPlayerRows = () => {
     return currentPlayers.map((player, index) => (
       <tr key={player.id} className="stats-player-row">
@@ -820,8 +841,11 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(player.dpg, 'dpg')}>{player.dpg}</td>
         <td className="stats-bpg">{player.bpg}</td>
         <td className="stats-sapg">{player.sapg}</td>
-        <td className={getPerformanceColor(player.hitting_percentage, 'hitting_percentage')}>
-          {player.hitting_percentage}%
+        <td className={getPerformanceColor(player.total_errors, 'total_errors')}>
+          {player.total_errors}
+        </td>
+        <td className={getPerformanceColor(player.eff, 'eff')}>
+          {player.eff}
         </td>
       </tr>
     ));
@@ -865,7 +889,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-  // Render Volleyball Teams Table Headers
+  // Render Volleyball Teams Table Headers - UPDATED with Total Errors instead of Hit%
   const renderVolleyballTeamHeaders = () => {
     return (
       <>
@@ -901,9 +925,15 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('hitting_percentage')}
+          onClick={() => handleSort('total_errors')}
         >
-          Hit% {sortConfig.key === 'hitting_percentage' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Errors {sortConfig.key === 'total_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+        </th>
+        <th 
+          className="stats-sortable-header"
+          onClick={() => handleSort('eff')}
+        >
+          Eff {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
       </>
     );
@@ -936,7 +966,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     ));
   };
 
-  // Render Volleyball Teams Table Rows
+  // Render Volleyball Teams Table Rows - UPDATED with Total Errors instead of Hit%
   const renderVolleyballTeamRows = () => {
     return currentTeams.map((team, index) => (
       <tr key={team.team_id} className="stats-player-row">
@@ -959,8 +989,11 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(team.dpg, 'dpg')}>{team.dpg}</td>
         <td className="stats-bpg">{team.bpg}</td>
         <td className="stats-sapg">{team.sapg}</td>
-        <td className={getPerformanceColor(team.hitting_percentage, 'hitting_percentage')}>
-          {team.hitting_percentage}%
+        <td className={getPerformanceColor(team.total_errors, 'total_errors')}>
+          {team.total_errors}
+        </td>
+        <td className={getPerformanceColor(team.eff, 'eff')}>
+          {team.eff}
         </td>
       </tr>
     ));
@@ -1293,9 +1326,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                     <th>Digs</th>
                     <th>Blocks</th>
                     <th>Aces</th>
-                    <th>Serve Err</th>
-                    <th>Att Err</th>
-                    <th>Rec Err</th>
+                    <th>Total Errors</th>
+                    <th>Eff</th>
                   </>
                 )}
               </tr>
@@ -1303,6 +1335,10 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
             <tbody>
               {filteredPlayerStats.map((player) => {
                 const jerseyNumber = player.jersey_number || player.jerseyNumber || "N/A";
+                // Calculate total errors for volleyball
+                const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0);
+                // Calculate efficiency for volleyball: (Kills + Digs + Blocks + Aces) - Errors
+                const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
                 
                 return (
                   <tr key={player.player_id}>
@@ -1326,11 +1362,10 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                         <td className="stats-highlight">{player.kills || 0}</td>
                         <td>{player.volleyball_assists || 0}</td>
                         <td>{player.digs || 0}</td>
-                        <td>{player.blocks || 0}</td>
+                        <td>{player.volleyball_blocks || 0}</td>
                         <td>{player.service_aces || 0}</td>
-                        <td>{player.serve_errors || 0}</td>
-                        <td>{player.attack_errors || 0}</td>
-                        <td>{player.reception_errors || 0}</td>
+                        <td>{totalErrors}</td>
+                        <td className={getPerformanceColor(efficiency, 'eff')}>{efficiency}</td>
                       </>
                     )}
                   </tr>
@@ -1353,7 +1388,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     if (isBasketball) {
       csvContent += "Player,Team,Jersey,PTS,AST,REB,STL,BLK,3PM,Fouls,TO\n";
     } else {
-      csvContent += "Player,Team,Jersey,Kills,Assists,Digs,Blocks,Aces,Serve Err,Att Err,Rec Err\n";
+      csvContent += "Player,Team,Jersey,Kills,Assists,Digs,Blocks,Aces,Total Errors,Eff\n";
     }
     
     playerStats.forEach(player => {
@@ -1361,7 +1396,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       if (isBasketball) {
         csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.points || 0},${player.assists || 0},${player.rebounds || 0},${player.steals || 0},${player.blocks || 0},${player.three_points_made || 0},${player.fouls || 0},${player.turnovers || 0}\n`;
       } else {
-        csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.kills || 0},${player.volleyball_assists || 0},${player.digs || 0},${player.blocks || 0},${player.service_aces || 0},${player.serve_errors || 0},${player.attack_errors || 0},${player.reception_errors || 0}\n`;
+        const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0);
+        const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
+        csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.kills || 0},${player.volleyball_assists || 0},${player.digs || 0},${player.volleyball_blocks || 0},${player.service_aces || 0},${totalErrors},${efficiency}\n`;
       }
     });
     
