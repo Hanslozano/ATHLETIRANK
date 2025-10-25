@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, Clock, Plus, X, Edit, Trash2 } from 'lucide-react';
+import { Search, Calendar, Clock, Plus, X, Edit, Trash2, BarChart3 } from 'lucide-react';
 
 const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, onViewStats, isStaffView, onInputStats }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -7,6 +7,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
   const [filterRound, setFilterRound] = useState('all');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [showTBDMatches, setShowTBDMatches] = useState(false); // ADD THIS LINE
   const [scheduleForm, setScheduleForm] = useState({
     date: '',
     startTime: '',
@@ -123,16 +124,22 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
 
   // Filter matches
   const filteredMatches = matches.filter(match => {
-    const matchesSearch = 
-      match.team1_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.team2_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.id.toString().includes(searchTerm);
-    
-    const matchesStatus = filterStatus === 'all' || match.status === filterStatus;
-    const matchesRound = filterRound === 'all' || match.round_number.toString() === filterRound;
-    
-    return matchesSearch && matchesStatus && matchesRound;
-  });
+  // Hide TBD matches unless explicitly shown
+  if (!showTBDMatches && (!match.team1_name || !match.team2_name)) {
+    return false;
+  }
+  
+  const matchesSearch = 
+    match.team1_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    match.team2_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    match.id.toString().includes(searchTerm);
+  
+  const matchesStatus = filterStatus === 'all' || match.status === filterStatus;
+  const matchesRound = filterRound === 'all' || match.round_number.toString() === filterRound;
+  
+  return matchesSearch && matchesStatus && matchesRound;
+});
+
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -296,6 +303,24 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
             <option value="all">All Rounds</option>
             {rounds.map(round => (<option key={round.value} value={round.value}>{round.label}</option>))}
           </select>
+
+          <button
+  onClick={() => setShowTBDMatches(!showTBDMatches)}
+  style={{
+    padding: '12px 16px',
+    border: '1px solid #2d3748',
+    borderRadius: '8px',
+    fontSize: '14px',
+    backgroundColor: showTBDMatches ? '#3b82f6' : '#0f172a',
+    color: '#e2e8f0',
+    cursor: 'pointer',
+    fontWeight: '600',
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap'
+  }}
+>
+  {showTBDMatches ? '✓ Show TBD' : 'Hide TBD'}
+</button>
         </div>
       </div>
 
@@ -387,7 +412,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                           </span>
                         </div>
                       ) : (
-                        <span style={{ color: '#64748b', fontSize: '14px' }}>Not scheduled</span>
+                        <span style={{ color: '#64748b', fontSize: '14px' }}>-</span>
                       )}
                     </td>
 
@@ -420,30 +445,33 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                         
                         {/* View Stats button - visible for everyone when stats exist */}
                         {hasStats && (
-                          <button
-                            onClick={() => handleViewStats(match)}
-                            disabled={loading}
-                            style={{
-                              padding: '8px 12px',
-                              background: loading ? '#64748b' : '#8b5cf6',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              cursor: loading ? 'not-allowed' : 'pointer',
-                              transition: 'all 0.2s ease',
-                              opacity: loading ? 0.6 : 1,
-                              whiteSpace: 'nowrap'
-                            }}
-                            title="View Match Statistics"
-                          >
-                            View Match Stats
-                          </button>
-                        )}
+  <button
+    onClick={() => handleViewStats(match)}
+    disabled={loading}
+    style={{
+      padding: '8px 12px',
+      background: loading ? '#64748b' : '#8b5cf6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '13px',
+      fontWeight: '600',
+      cursor: loading ? 'not-allowed' : 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      transition: 'all 0.2s ease',
+      opacity: loading ? 0.6 : 1
+    }}
+    title="View Match Statistics"
+  >
+    <BarChart3 style={{ width: '14px', height: '14px' }} />
+  </button>
+)}
                         
                         {/* Only show schedule buttons if NOT staff view */}
-                        {!isStaffView && (
+                       {!isStaffView && match.status !== 'bye' && (
+
                           <>
                             {scheduleDisplay ? (
                               <>
