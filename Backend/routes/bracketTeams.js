@@ -40,6 +40,44 @@ router.post("/", async (req, res) => {
   }
 });
 
+// GET - Get available teams for a bracket (MOVED UP - BEFORE other GET routes)
+router.get("/bracket/:bracketId/available", async (req, res) => {
+  try {
+    const { bracketId } = req.params;
+    
+    // First get the bracket's sport type
+    const [bracketInfo] = await db.pool.query(
+      "SELECT sport_type FROM brackets WHERE id = ?",
+      [bracketId]
+    );
+
+    if (bracketInfo.length === 0) {
+      return res.status(404).json({ error: "Bracket not found" });
+    }
+
+    const sportType = bracketInfo[0].sport_type;
+
+    // Get all teams matching the sport type that are NOT already in this bracket
+    const [availableTeams] = await db.pool.query(`
+      SELECT t.id, t.name, t.sport
+      FROM teams t
+      WHERE t.sport = ?
+      AND t.id NOT IN (
+        SELECT team_id 
+        FROM bracket_teams 
+        WHERE bracket_id = ?
+      )
+      ORDER BY t.name
+    `, [sportType, bracketId]);
+
+    console.log(`✅ Found ${availableTeams.length} available ${sportType} teams for bracket ${bracketId}`);
+    res.json(availableTeams);
+  } catch (err) {
+    console.error("Error fetching available teams:", err);
+    res.status(500).json({ error: "Database error: " + err.message });
+  }
+});
+
 // GET - Get all teams in a bracket
 router.get("/bracket/:bracketId", async (req, res) => {
   try {
@@ -100,42 +138,6 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: "Database error: " + err.message });
   } finally {
     conn.release();
-  }
-});
-
-router.get("/bracket/:bracketId/available", async (req, res) => {
-  try {
-    const { bracketId } = req.params;
-    
-    // First get the bracket's sport type
-    const [bracketInfo] = await db.pool.query(
-      "SELECT sport_type FROM brackets WHERE id = ?",
-      [bracketId]
-    );
-
-    if (bracketInfo.length === 0) {
-      return res.status(404).json({ error: "Bracket not found" });
-    }
-
-    const sportType = bracketInfo[0].sport_type;
-
-    // Get all teams matching the sport type that are NOT already in this bracket
-    const [availableTeams] = await db.pool.query(`
-      SELECT t.id, t.name, t.sport
-      FROM teams t
-      WHERE t.sport = ?
-      AND t.id NOT IN (
-        SELECT team_id 
-        FROM bracket_teams 
-        WHERE bracket_id = ?
-      )
-      ORDER BY t.name
-    `, [sportType, bracketId]);
-
-    res.json(availableTeams);
-  } catch (err) {
-    console.error("Error fetching available teams:", err);
-    res.status(500).json({ error: "Database error" });
   }
 });
 

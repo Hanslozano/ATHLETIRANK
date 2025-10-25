@@ -355,29 +355,37 @@ const [editTeamModal, setEditTeamModal] = useState({
     setSelectedBracket(bracket);
     setActiveTab("results");
     setContentTab("matches");
-    setBracketViewType("list"); // Default to list view - ADD THIS LIN
+    setBracketViewType("list");
     setLoadingDetails(true);
     setError(null);
-    setRoundFilter("all"); // Reset round filter when selecting new bracket
+    setRoundFilter("all");
 
-     try {
-    const res = await fetch(`http://localhost:5000/api/brackets/${bracket.id}/matches`);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    
-    const data = await res.json();
-    const visibleMatches = data.filter(match => match.status !== 'hidden');
-    setMatches(visibleMatches);
-    setBracketMatches(visibleMatches);
+    try {
+      // Use correct endpoint based on bracket type
+      let matchesEndpoint;
+      if (bracket.elimination_type === 'round_robin') {
+        matchesEndpoint = `http://localhost:5000/api/round-robin/${bracket.id}/matches`;
+      } else {
+        matchesEndpoint = `http://localhost:5000/api/brackets/${bracket.id}/matches`;
+      }
+      
+      const res = await fetch(matchesEndpoint);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      
+      const data = await res.json();
+      const visibleMatches = data.filter(match => match.status !== 'hidden');
+      setMatches(visibleMatches);
+      setBracketMatches(visibleMatches);
 
-    if (visibleMatches.length === 0) {
-      setError("No matches found for this bracket.");
+      if (visibleMatches.length === 0) {
+        setError("No matches found for this bracket.");
+      }
+    } catch (err) {
+      setError("Failed to load matches: " + err.message);
+    } finally {
+      setLoadingDetails(false);
     }
-  } catch (err) {
-    setError("Failed to load matches: " + err.message);
-  } finally {
-    setLoadingDetails(false);
-  }
-};
+  };
 
   // Navigate to stats view - REMOVED since stats is now integrated
   const handleViewStats = (match) => {
@@ -558,9 +566,17 @@ const [editTeamModal, setEditTeamModal] = useState({
   };
 
   // Regenerate bracket after team changes
-const regenerateBracket = async (bracketId) => {
+const regenerateBracket = async (bracketId, eliminationType) => {
   try {
-    const response = await fetch(`http://localhost:5000/api/brackets/${bracketId}/generate`, {
+    // Use different endpoints based on elimination type
+    let endpoint;
+    if (eliminationType === 'round_robin') {
+      endpoint = `http://localhost:5000/api/roundRobin/${bracketId}/generate`;
+    } else {
+      endpoint = `http://localhost:5000/api/brackets/${bracketId}/generate`;
+    }
+    
+    const response = await fetch(endpoint, {
       method: 'POST'
     });
 
@@ -656,7 +672,7 @@ const handleEditTeam = async (bracket) => {
   }
 };
 
- const refreshTeamsInModal = async () => {
+const refreshTeamsInModal = async () => {
   if (!editTeamModal.bracket) return;
   
   try {
@@ -664,22 +680,88 @@ const handleEditTeam = async (bracket) => {
     const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}`);
     const teams = await teamsRes.json();
     
-  const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}/available`);
-const availableTeams = await availableTeamsRes.json();
+    console.log('🔍 Current teams in bracket:', teams.length, 'teams');
     
-    // 4. CRITICAL: Auto-regenerate bracket after team change
+    // 2. Fetch available teams
+    const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}/available`);
+    const availableTeams = await availableTeamsRes.json();
+    
+    console.log('🔍 Available teams:', availableTeams.length, 'teams');
+    
+    // 3. CRITICAL: Auto-regenerate bracket ONLY if we have at least 2 teams
     if (teams.length >= 2) {
-      console.log(`Auto-regenerating bracket with ${teams.length} teams...`);
+      console.log(`🔄 Auto-regenerating bracket with ${teams.length} teams...`);
       try {
-        await regenerateBracket(editTeamModal.bracket.id);
-        console.log('✅ Bracket regenerated successfully');
+        // Use different endpoints for different bracket types
+        let generateEndpoint;
+        if (editTeamModal.bracket.elimination_type === 'round_robin') {
+         generateEndpoint = `http://localhost:5000/api/round-robin/${editTeamModal.bracket.id}/generate`;
+        } else {
+          generateEndpoint = `http://localhost:5000/api/brackets/${editTeamModal.bracket.id}/generate`;
+        }
+        
+        console.log(`📡 Calling: ${generateEndpoint}`);
+        
+        const response = await fetch(generateEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('📡 Response status:', response.status);
+
+        if (!response.ok) {
+          // Try to parse error as JSON, fallback to text if it fails
+          let errorMessage;
+          try {
+            const error = await response.json();
+            errorMessage = error.error || error.message || 'Failed to regenerate bracket';
+          } catch (e) {
+            const errorText = await response.text();
+            console.error('❌ Server returned HTML instead of JSON:', errorText.substring(0, 200));
+            errorMessage = `Server error (${response.status}). Check console for details.`;
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Bracket regenerated successfully:', result);
       } catch (err) {
         console.error('❌ Failed to regenerate bracket:', err);
-        alert('Failed to regenerate bracket. Please try again.');
+        alert('Failed to regenerate bracket: ' + err.message);
+        return; // Stop execution if regeneration fails
+      }
+    } else if (teams.length === 1) {
+      console.log('⚠️ Only 1 team remaining - clearing all matches');
+      // Clear all matches when only 1 team remains
+      try {
+        const clearEndpoint = editTeamModal.bracket.elimination_type === 'round_robin'
+         ? `http://localhost:5000/api/round-robin/${editTeamModal.bracket.id}/reset`
+  : `http://localhost:5000/api/brackets/${editTeamModal.bracket.id}/reset`;
+        
+        await fetch(clearEndpoint, { method: 'POST' });
+        console.log('✅ Matches cleared');
+      } catch (err) {
+        console.error('Error clearing matches:', err);
+      }
+    } else {
+      console.log('⚠️ No teams in bracket - clearing all matches');
+      // Clear all matches when no teams remain
+      try {
+       const clearEndpoint = editTeamModal.bracket.elimination_type === 'round_robin'
+  ? `http://localhost:5000/api/round-robin/${editTeamModal.bracket.id}/reset`
+  : `http://localhost:5000/api/brackets/${editTeamModal.bracket.id}/reset`;
+
+        
+        await fetch(clearEndpoint, { method: 'POST' });
+        console.log('✅ Matches cleared');
+      } catch (err) {
+        console.error('Error clearing matches:', err);
       }
     }
     
-    // 5. Fetch players for each team
+    // 4. Fetch players for each team
     const teamsWithPlayers = await Promise.all(
       teams.map(async (team) => {
         try {
@@ -695,22 +777,34 @@ const availableTeams = await availableTeamsRes.json();
       })
     );
     
-    // 6. Update modal state
+    // 5. Update modal state
     setEditTeamModal(prev => ({
       ...prev,
       teams: teamsWithPlayers,
       availableTeams: availableTeams
     }));
     
-    // 7. Refresh matches to show NEW bracket structure
+    // 6. Refresh matches to show NEW bracket structure
     if (selectedBracket && selectedBracket.id === editTeamModal.bracket.id) {
-      const matchesRes = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);
+      // For Round Robin, fetch from roundRobin endpoint
+      let matchesEndpoint;
+      if (editTeamModal.bracket.elimination_type === 'round_robin') {
+        matchesEndpoint = `http://localhost:5000/api/round-robin/${selectedBracket.id}/matches`;
+      } else {
+        matchesEndpoint = `http://localhost:5000/api/brackets/${selectedBracket.id}/matches`;
+      }
+      
+      console.log(`📡 Fetching matches from: ${matchesEndpoint}`);
+      
+      const matchesRes = await fetch(matchesEndpoint);
       if (matchesRes.ok) {
         const updatedMatches = await matchesRes.json();
         const visibleMatches = updatedMatches.filter(match => match.status !== 'hidden');
         setMatches(visibleMatches);
         setBracketMatches(visibleMatches);
-        console.log(`✅ Loaded ${visibleMatches.length} matches for new bracket structure`);
+        console.log(`✅ Loaded ${visibleMatches.length} matches for bracket`);
+      } else {
+        console.error('❌ Failed to fetch matches:', matchesRes.status);
       }
       
       // Update bracket team count
@@ -720,7 +814,7 @@ const availableTeams = await availableTeamsRes.json();
       }));
     }
     
-    // 8. Refresh the main events list to update team counts in the table
+    // 7. Refresh the main events list to update team counts in the table
     await fetchEvents();
     
   } catch (err) {
