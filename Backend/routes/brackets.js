@@ -304,7 +304,7 @@ router.post("/:id/generate", async (req, res) => {
     const totalTeams = shuffledTeams.length;
 
     if (eliminationType === "single") {
-      // Single elimination logic (unchanged)
+      // Single elimination logic
       const nextPowerOfTwo = Math.pow(2, Math.ceil(Math.log2(shuffledTeams.length)));
       while (shuffledTeams.length < nextPowerOfTwo) {
         shuffledTeams.push(null);
@@ -331,13 +331,14 @@ router.post("/:id/generate", async (req, res) => {
             match_order: Math.floor(i / 2)
           };
 
+          // UPDATED: Handle BYE situations with 'bye' status
           if (team1 && !team2) {
             matchData.winner_id = team1.id;
-            matchData.status = "completed";
+            matchData.status = "bye";  // CHANGED FROM "completed" TO "bye"
             nextRoundTeams.push(team1);
           } else if (team2 && !team1) {
             matchData.winner_id = team2.id;
-            matchData.status = "completed";
+            matchData.status = "bye";  // CHANGED FROM "completed" TO "bye"
             nextRoundTeams.push(team2);
           } else {
             nextRoundTeams.push({ placeholder: true });
@@ -421,14 +422,14 @@ router.post("/:id/generate", async (req, res) => {
             match_order: i
           };
 
-          // Handle BYE situations
+          // UPDATED: Handle BYE situations with 'bye' status
           if (team1 && !team2) {
             matchData.winner_id = team1.id;
-            matchData.status = "completed";
+            matchData.status = "bye";  // CHANGED FROM "completed" TO "bye"
             nextRoundTeams.push(team1);
           } else if (!team1 && team2) {
             matchData.winner_id = team2.id;
-            matchData.status = "completed";
+            matchData.status = "bye";  // CHANGED FROM "completed" TO "bye"
             nextRoundTeams.push(team2);
           } else if (team1 && team2) {
             nextRoundTeams.push({ placeholder: true });
@@ -708,7 +709,8 @@ router.post("/matches/:id/complete", async (req, res) => {
         // LOSER BRACKET LOGIC
         
         const [maxLoserRound] = await db.pool.query(
-          `SELECT MAX(round_number) as max_round FROM matches 
+          `SELECT MAX
+          (round_number) as max_round FROM matches 
            WHERE bracket_id = ? AND bracket_type = 'loser'`,
           [match.bracket_id]
         );
@@ -1273,11 +1275,14 @@ router.get("/:id/can-edit-teams", async (req, res) => {
     let reason = "";
 
     if (eliminationType === 'single') {
-      // Single Elimination: Check Round 1 matches
+      // Single Elimination: Check Round 1 matches (exclude BYE)
       const [round1Matches] = await db.pool.query(
         `SELECT COUNT(*) as completed_count 
          FROM matches 
-         WHERE bracket_id = ? AND round_number = 1 AND status = 'completed'`,
+         WHERE bracket_id = ? 
+         AND round_number = 1 
+         AND status = 'completed'
+         AND status != 'bye'`,
         [bracketId]
       );
 
@@ -1286,14 +1291,15 @@ router.get("/:id/can-edit-teams", async (req, res) => {
         reason = "May completed match na sa Round 1";
       }
     } else if (eliminationType === 'double') {
-      // Double Elimination: Check Winner's Bracket Round 1
+      // Double Elimination: Check Winner's Bracket Round 1 (exclude BYE)
       const [wbRound1Matches] = await db.pool.query(
         `SELECT COUNT(*) as completed_count 
          FROM matches 
          WHERE bracket_id = ? 
          AND bracket_type = 'winner' 
          AND round_number = 1 
-         AND status = 'completed'`,
+         AND status = 'completed'
+         AND status != 'bye'`,
         [bracketId]
       );
 
@@ -1302,11 +1308,14 @@ router.get("/:id/can-edit-teams", async (req, res) => {
         reason = "May completed match na sa Winner's Bracket Round 1";
       }
     } else if (eliminationType === 'round_robin') {
-      // Round Robin: Check any Round 1 matches
+      // Round Robin: Check any Round 1 matches (exclude BYE)
       const [round1Matches] = await db.pool.query(
         `SELECT COUNT(*) as completed_count 
          FROM matches 
-         WHERE bracket_id = ? AND round_number = 1 AND status = 'completed'`,
+         WHERE bracket_id = ? 
+         AND round_number = 1 
+         AND status = 'completed'
+         AND status != 'bye'`,
         [bracketId]
       );
 

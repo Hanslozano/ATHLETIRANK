@@ -44,7 +44,11 @@ router.post("/", async (req, res) => {
 router.get("/bracket/:bracketId", async (req, res) => {
   try {
     const [teams] = await db.pool.query(`
-      SELECT t.*, bt.id as assignment_id
+      SELECT 
+        bt.id as assignment_id,
+        t.id,
+        t.name,
+        t.sport
       FROM bracket_teams bt
       JOIN teams t ON bt.team_id = t.id
       WHERE bt.bracket_id = ?
@@ -59,11 +63,78 @@ router.get("/bracket/:bracketId", async (req, res) => {
 
 // DELETE - Remove team from bracket
 router.delete("/:id", async (req, res) => {
+  const conn = await db.pool.getConnection();
+  
   try {
-    await db.pool.query("DELETE FROM bracket_teams WHERE id = ?", [req.params.id]);
-    res.json({ success: true, message: "Team removed from bracket" });
+    await conn.beginTransaction();
+
+    // Get the team_id and bracket_id before deletion
+    const [assignment] = await conn.query(
+      "SELECT team_id, bracket_id FROM bracket_teams WHERE id = ?",
+      [req.params.id]
+    );
+
+    if (assignment.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: "Team assignment not found" });
+    }
+
+    const { team_id, bracket_id } = assignment[0];
+
+    // Delete the bracket_teams assignment FIRST
+    await conn.query("DELETE FROM bracket_teams WHERE id = ?", [req.params.id]);
+
+    // Note: We DON'T update matches here because the bracket will be regenerated
+    // The frontend will call /api/brackets/:id/generate after this
+
+    await conn.commit();
+    
+    res.json({ 
+      success: true, 
+      message: "Team removed from bracket. Bracket will be regenerated." 
+    });
+
   } catch (err) {
+    await conn.rollback();
     console.error("Error removing team from bracket:", err);
+    res.status(500).json({ error: "Database error: " + err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+router.get("/bracket/:bracketId/available", async (req, res) => {
+  try {
+    const { bracketId } = req.params;
+    
+    // First get the bracket's sport type
+    const [bracketInfo] = await db.pool.query(
+      "SELECT sport_type FROM brackets WHERE id = ?",
+      [bracketId]
+    );
+
+    if (bracketInfo.length === 0) {
+      return res.status(404).json({ error: "Bracket not found" });
+    }
+
+    const sportType = bracketInfo[0].sport_type;
+
+    // Get all teams matching the sport type that are NOT already in this bracket
+    const [availableTeams] = await db.pool.query(`
+      SELECT t.id, t.name, t.sport
+      FROM teams t
+      WHERE t.sport = ?
+      AND t.id NOT IN (
+        SELECT team_id 
+        FROM bracket_teams 
+        WHERE bracket_id = ?
+      )
+      ORDER BY t.name
+    `, [sportType, bracketId]);
+
+    res.json(availableTeams);
+  } catch (err) {
+    console.error("Error fetching available teams:", err);
     res.status(500).json({ error: "Database error" });
   }
 });

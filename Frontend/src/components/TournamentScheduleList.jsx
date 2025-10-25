@@ -139,13 +139,19 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
       case 'completed': return 'status-completed';
       case 'ongoing': return 'status-ongoing';
       case 'scheduled': return 'status-scheduled';
+      case 'bye': return 'status-bye';
       default: return 'status-scheduled';
     }
   };
-
   const handleAddSchedule = (match) => {
     setSelectedMatch(match);
     const existingSchedule = getScheduleForMatch(match.id);
+
+    if (match.status === 'bye') {
+    alert('Cannot schedule a BYE match');
+    return;
+  }
+  
     
     if (existingSchedule) {
       setScheduleForm({
@@ -319,7 +325,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                 const scheduleDisplay = formatScheduleDisplay(schedule);
                 const isResetFinal = match.round_number === 201;
                 const isChampionship = match.round_number === 200 || match.round_number === 201;
-                const hasStats = match.status === 'completed' && (match.score_team1 !== null || match.mvp_name);
+                const hasStats = match.status === 'completed' && match.status !== 'bye' && (match.score_team1 !== null || match.mvp_name);
 
                 return (
                   <tr key={match.id} style={{ borderBottom: '1px solid #2d3748', background: '#1a2332' }}>
@@ -353,17 +359,23 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
 
                     {/* Winner */}
                     <td style={{ padding: '15px', verticalAlign: 'middle' }}>
-                      {match.winner_name ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ color: '#48bb78', fontWeight: '600', fontSize: '15px' }}>
-                            {match.winner_name}
-                          </span>
-                          {isChampionship && <span style={{ fontSize: '16px' }}>👑</span>}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#64748b' }}>-</span>
-                      )}
-                    </td>
+  {match.status === 'bye' ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ color: '#94a3b8', fontWeight: '600', fontSize: '15px' }}>
+        {match.winner_name} (BYE)
+      </span>
+    </div>
+  ) : match.winner_name ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ color: '#48bb78', fontWeight: '600', fontSize: '15px' }}>
+        {match.winner_name}
+      </span>
+      {isChampionship && <span style={{ fontSize: '16px' }}>👑</span>}
+    </div>
+  ) : (
+    <span style={{ color: '#64748b' }}>-</span>
+  )}
+</td>
 
                     {/* Schedule */}
                     <td style={{ padding: '15px', verticalAlign: 'middle' }}>
@@ -583,6 +595,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
         .status-scheduled { background: #f97316; color: white; } 
         .status-ongoing { background: #3b82f6; color: white; } 
         .status-completed { background: #22c55e; color: white; } 
+        .status-bye { background: #94a3b8; color: white; }  /* ADD THIS LINE */
       `}</style>
     </div>
   );
