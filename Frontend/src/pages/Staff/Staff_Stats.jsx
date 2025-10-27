@@ -52,15 +52,15 @@ const StaffStats = ({ sidebarOpen }) => {
   });
   const [activeTeamView, setActiveTeamView] = useState('team1');
   const [showBothTeams, setShowBothTeams] = useState(false);
-  const [showBenchPlayers, setShowBenchPlayers] = useState({
-    team1: false,
-    team2: false
-  });
+const [showBenchPlayers, setShowBenchPlayers] = useState({
+  team1: true,
+  team2: true
+});
 
   // QuickScore States
   const [isQuickScoreExpanded, setIsQuickScoreExpanded] = useState(true);
   const [selectedQuickScorePlayer, setSelectedQuickScorePlayer] = useState(null);
-  const [hideButtons, setHideButtons] = useState(false);
+ const [hideButtons, setHideButtons] = useState(true);
 
   const basketballStatsTemplate = {
     points: [0, 0, 0, 0],
@@ -1657,12 +1657,12 @@ const StaffStats = ({ sidebarOpen }) => {
   };
 
   const handleGameSelect = async (game) => {
-    setSelectedGame(game);
-    setLoading(true);
-    setActiveTeamView('team1');
-    setShowBothTeams(false);
-    setShowBenchPlayers({ team1: false, team2: false });
-    setCurrentQuarter(0);
+  setSelectedGame(game);
+  setLoading(true);
+  setActiveTeamView('team1');
+  setShowBothTeams(false);
+  setShowBenchPlayers({ team1: true, team2: true });
+  setCurrentQuarter(0);
     setCurrentOvertime(0);
     setIsOvertime(false);
     setOvertimePeriods(0);
@@ -3059,22 +3059,24 @@ const StaffStats = ({ sidebarOpen }) => {
               {renderScores()}
 
               {/* Action Buttons */}
-              <div className="stats-actions">
-                <button 
-                  onClick={resetStatistics}
-                  className="stats-action-button stats-action-reset"
-                >
-                  <FaRedo /> Reset All
-                </button>
-                <button
-                  onClick={saveStatistics}
-                  disabled={loading}
-                  className="stats-action-button stats-action-save"
-                >
-                  <FaSave /> {loading ? "Saving..." : "Save Statistics"}
-                </button>
-              </div>
-
+ {/* Action Buttons */}
+{selectedGame.status !== 'completed' && (
+  <div className="stats-actions">
+    <button 
+      onClick={resetStatistics}
+      className="stats-action-button stats-action-reset"
+    >
+      <FaRedo /> Reset All
+    </button>
+    <button
+      onClick={saveStatistics}
+      disabled={loading}
+      className="stats-action-button stats-action-save"
+    >
+      <FaSave /> {loading ? "Saving..." : "Save Statistics"}
+    </button>
+  </div>
+)}
               {/* Control Bar */}
               <ControlBar />
 

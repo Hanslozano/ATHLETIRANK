@@ -625,11 +625,11 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                       </td>
                       <td style={{ padding: '15px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                          {isStaffView && (
-                            <button onClick={() => onInputStats && onInputStats(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1, whiteSpace: 'nowrap' }} title="Input Match Statistics">
-                              Input Stats
-                            </button>
-                          )}
+                          {isStaffView && match.status !== 'completed' && match.status !== 'bye' && !isTBD && (
+  <button onClick={() => onInputStats && onInputStats(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1, whiteSpace: 'nowrap' }} title="Input Match Statistics">
+    Input Stats
+  </button>
+)}
                           {hasStats && (
                             <button onClick={() => handleViewStats(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#8b5cf6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }} title="View Match Statistics">
                               <BarChart3 style={{ width: '14px', height: '14px' }} />
