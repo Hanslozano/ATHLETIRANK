@@ -19,11 +19,12 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
     startTime: '09:00',
     matchDuration: 60,
     breakDuration: 15,
-    scheduleMode: 'single', // ADD THIS
-    roundDates: {} // ADD THIS
+    scheduleMode: 'single',
+    roundDates: {}
   });
   const [loading, setLoading] = useState(false);
   const [schedules, setSchedules] = useState([]);
+  const [showStandings, setShowStandings] = useState(false);
 
   const getUniqueRoundsForScheduling = () => {
     const rounds = [...new Set(unscheduledMatches.map(m => m.round_number))].sort((a, b) => a - b);
@@ -66,7 +67,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
     const roundNum = match.round_number;
     
     if (match.bracket_type === 'round_robin') {
-      return `Round ${roundNum}`; // Changed from `Matchday ${roundNum}`
+      return `Round ${roundNum}`;
     }
     
     if (roundNum === 200) return 'Grand Final';
@@ -183,6 +184,75 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
 
   const canBulkSchedule = isRoundRobin && unscheduledMatches.length > 0;
 
+  const calculateStandings = () => {
+    if (!isRoundRobin) return [];
+    
+    const standings = {};
+    const teamsSet = new Set();
+    
+    matches.forEach(match => {
+      if (match.team1_name) teamsSet.add(match.team1_name);
+      if (match.team2_name) teamsSet.add(match.team2_name);
+    });
+    
+    teamsSet.forEach(team => {
+      standings[team] = {
+        team: team,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDifference: 0,
+        points: 0
+      };
+    });
+
+    matches.forEach(match => {
+      if (match.status === 'completed' && match.team1_name && match.team2_name) {
+        const team1 = match.team1_name;
+        const team2 = match.team2_name;
+        const score1 = match.score_team1 || 0;
+        const score2 = match.score_team2 || 0;
+
+        standings[team1].played++;
+        standings[team2].played++;
+        standings[team1].goalsFor += score1;
+        standings[team1].goalsAgainst += score2;
+        standings[team2].goalsFor += score2;
+        standings[team2].goalsAgainst += score1;
+
+        if (match.winner_id === match.team1_id) {
+          standings[team1].won++;
+          standings[team1].points += 3;
+          standings[team2].lost++;
+        } else if (match.winner_id === match.team2_id) {
+          standings[team2].won++;
+          standings[team2].points += 3;
+          standings[team1].lost++;
+        } else if (score1 === score2) {
+          standings[team1].drawn++;
+          standings[team2].drawn++;
+          standings[team1].points += 1;
+          standings[team2].points += 1;
+        }
+
+        standings[team1].goalDifference = standings[team1].goalsFor - standings[team1].goalsAgainst;
+        standings[team2].goalDifference = standings[team2].goalsFor - standings[team2].goalsAgainst;
+      }
+    });
+
+    return Object.values(standings).sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+      return b.goalsFor - a.goalsFor;
+    });
+  };
+
+  const standings = calculateStandings();
+  const allMatchesCompleted = matches.every(m => m.status === 'completed' || m.status === 'bye');
+
   const calculateBulkScheduleTimes = () => {
     if (bulkScheduleForm.scheduleMode === 'single') {
       if (!bulkScheduleForm.date || !bulkScheduleForm.startTime) return [];
@@ -214,7 +284,6 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
       
       return times;
     } else {
-      // Per round scheduling
       const rounds = getUniqueRoundsForScheduling();
       const allRoundsFilled = rounds.every(r => bulkScheduleForm.roundDates[r]);
       
@@ -462,6 +531,12 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
               Schedule All ({unscheduledMatches.length})
             </button>
           )}
+          {isRoundRobin && (
+            <button onClick={() => setShowStandings(!showStandings)} style={{ padding: '12px 20px', border: 'none', borderRadius: '8px', fontSize: '14px', background: showStandings ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: showStandings ? '0 4px 12px rgba(245, 158, 11, 0.4)' : '0 4px 12px rgba(59, 130, 246, 0.4)' }}>
+              <BarChart3 style={{ width: '16px', height: '16px' }} />
+              {showStandings ? 'Hide Standings' : 'Show Standings'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -469,131 +544,229 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
         Showing {filteredMatches.length} of {matches.length} matches
       </div>
 
-      <div style={{ borderRadius: '12px', border: '1px solid #2d3748', overflow: 'hidden', background: '#1a2332' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#1a2332' }}>
-          <thead>
-            <tr style={{ background: '#0a0f1c', borderBottom: '1px solid #2d3748' }}>
-              <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Round</th>
-              <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Match</th>
-              <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Status</th>
-              <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Winner</th>
-              <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Schedule</th>
-              <th style={{ padding: '15px', textAlign: 'center', color: '#e2e8f0', fontWeight: '600', fontSize: '15px', width: '150px' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMatches.length === 0 ? (
-              <tr><td colSpan="8" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '16px', background: '#1a2332' }}>No matches found</td></tr>
-            ) : (
-              filteredMatches.map((match) => {
-                const schedule = getScheduleForMatch(match.id);
-                const scheduleDisplay = formatScheduleDisplay(schedule);
-                const isResetFinal = match.round_number === 201;
-                const isChampionship = match.round_number === 200 || match.round_number === 201;
-                const hasStats = match.status === 'completed' && match.status !== 'bye' && (match.score_team1 !== null || match.mvp_name);
-                const isTBD = !match.team1_name || !match.team2_name;
-                const canSchedule = !isTBD && match.status !== 'bye';
+      <div style={{ display: 'grid', gridTemplateColumns: showStandings && isRoundRobin ? '1fr 400px' : '1fr', gap: '20px' }}>
+        <div style={{ borderRadius: '12px', border: '1px solid #2d3748', overflow: 'hidden', background: '#1a2332' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: '#1a2332' }}>
+            <thead>
+              <tr style={{ background: '#0a0f1c', borderBottom: '1px solid #2d3748' }}>
+                <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Round</th>
+                <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Match</th>
+                <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Status</th>
+                <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Winner</th>
+                <th style={{ padding: '15px', textAlign: 'left', color: '#e2e8f0', fontWeight: '600', fontSize: '15px' }}>Schedule</th>
+                <th style={{ padding: '15px', textAlign: 'center', color: '#e2e8f0', fontWeight: '600', fontSize: '15px', width: '150px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMatches.length === 0 ? (
+                <tr><td colSpan="8" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '16px', background: '#1a2332' }}>No matches found</td></tr>
+              ) : (
+                filteredMatches.map((match) => {
+                  const schedule = getScheduleForMatch(match.id);
+                  const scheduleDisplay = formatScheduleDisplay(schedule);
+                  const isResetFinal = match.round_number === 201;
+                  const isChampionship = match.round_number === 200 || match.round_number === 201;
+                  const hasStats = match.status === 'completed' && match.status !== 'bye' && (match.score_team1 !== null || match.mvp_name);
+                  const isTBD = !match.team1_name || !match.team2_name;
+                  const canSchedule = !isTBD && match.status !== 'bye';
 
-                return (
-                  <tr key={match.id} style={{ borderBottom: '1px solid #2d3748', background: '#1a2332', opacity: isTBD ? 0.6 : 1 }}>
-                    <td style={{ padding: '15px', verticalAlign: 'middle' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <span style={{ background: 'rgba(99, 102, 241, 0.3)', color: '#a5b4fc', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', display: 'inline-block', width: 'fit-content' }}>
-                          {formatRoundDisplay(match)}
+                  return (
+                    <tr key={match.id} style={{ borderBottom: '1px solid #2d3748', background: '#1a2332', opacity: isTBD ? 0.6 : 1 }}>
+                      <td style={{ padding: '15px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <span style={{ background: 'rgba(99, 102, 241, 0.3)', color: '#a5b4fc', padding: '4px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', display: 'inline-block', width: 'fit-content' }}>
+                            {formatRoundDisplay(match)}
+                          </span>
+                          {isResetFinal && (
+                            <span style={{ background: '#ff6b35', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', display: 'inline-block', width: 'fit-content' }}>RESET</span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '15px', verticalAlign: 'middle' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#e2e8f0' }}>
+                          {match.team1_name || 'TBD'} vs {match.team2_name || 'TBD'}
+                        </div>
+                        {isTBD && (
+                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
+                            ⏳ Waiting for previous round
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '15px', verticalAlign: 'middle' }}>
+                        <span className={`match-status ${getStatusColor(match.status, schedule)}`} style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', display: 'inline-block' }}>
+                          {getStatusDisplay(match, schedule)}
                         </span>
-                        {isResetFinal && (
-                          <span style={{ background: '#ff6b35', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', display: 'inline-block', width: 'fit-content' }}>RESET</span>
+                      </td>
+                      <td style={{ padding: '15px', verticalAlign: 'middle' }}>
+                        {match.status === 'bye' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: '#94a3b8', fontWeight: '600', fontSize: '15px' }}>{match.winner_name} (BYE)</span>
+                          </div>
+                        ) : match.winner_name ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: '#48bb78', fontWeight: '600', fontSize: '15px' }}>{match.winner_name}</span>
+                            {isChampionship && <span style={{ fontSize: '16px' }}>👑</span>}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#64748b' }}>-</span>
                         )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '15px', verticalAlign: 'middle' }}>
-                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#e2e8f0' }}>
-                        {match.team1_name || 'TBD'} vs {match.team2_name || 'TBD'}
-                      </div>
-                      {isTBD && (
-                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
-                          ⏳ Waiting for previous round
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '15px', verticalAlign: 'middle' }}>
-                      <span className={`match-status ${getStatusColor(match.status, schedule)}`} style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', display: 'inline-block' }}>
-                        {getStatusDisplay(match, schedule)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '15px', verticalAlign: 'middle' }}>
-                      {match.status === 'bye' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ color: '#94a3b8', fontWeight: '600', fontSize: '15px' }}>{match.winner_name} (BYE)</span>
-                        </div>
-                      ) : match.winner_name ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ color: '#48bb78', fontWeight: '600', fontSize: '15px' }}>{match.winner_name}</span>
-                          {isChampionship && <span style={{ fontSize: '16px' }}>👑</span>}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#64748b' }}>-</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '15px', verticalAlign: 'middle' }}>
-                      {scheduleDisplay ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Calendar style={{ width: '16px', height: '16px', color: '#3b82f6', flexShrink: 0 }} />
-                          <span style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: '500' }}>{scheduleDisplay}</span>
-                        </div>
-                      ) : (
-                        <span style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>
-                          {match.status === 'bye' ? 'N/A' : isTBD ? 'Cannot schedule yet' : 'Not scheduled'}
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '15px', verticalAlign: 'middle' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        {isStaffView && (
-                          <button onClick={() => onInputStats && onInputStats(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1, whiteSpace: 'nowrap' }} title="Input Match Statistics">
-                            Input Stats
-                          </button>
-                        )}
-                        {hasStats && (
-                          <button onClick={() => handleViewStats(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#8b5cf6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }} title="View Match Statistics">
-                            <BarChart3 style={{ width: '14px', height: '14px' }} />
-                          </button>
-                        )}
-                        {!isStaffView && canSchedule && (
-                          <>
-                            {scheduleDisplay ? (
-                              <>
-                                <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }} title="Edit Schedule">
-                                  <Edit style={{ width: '14px', height: '14px' }} />
-                                </button>
-                                <button onClick={() => handleDeleteSchedule(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }} title="Delete Schedule">
-                                  <Trash2 style={{ width: '14px', height: '14px' }} />
-                                </button>
-                              </>
-                            ) : (
-                              <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '8px 14px', background: loading ? '#64748b' : '#48bb78', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1, whiteSpace: 'nowrap' }} title="Add Schedule">
-                                <Plus style={{ width: '16px', height: '16px' }} />
-                                Schedule
-                              </button>
-                            )}
-                          </>
-                        )}
-                        {!isStaffView && isTBD && (
-                          <span style={{ padding: '8px 14px', background: '#2d3748', color: '#64748b', borderRadius: '6px', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                            🔒 Locked
+                      </td>
+                      <td style={{ padding: '15px', verticalAlign: 'middle' }}>
+                        {scheduleDisplay ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Calendar style={{ width: '16px', height: '16px', color: '#3b82f6', flexShrink: 0 }} />
+                            <span style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: '500' }}>{scheduleDisplay}</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>
+                            {match.status === 'bye' ? 'N/A' : isTBD ? 'Cannot schedule yet' : 'Not scheduled'}
                           </span>
                         )}
+                      </td>
+                      <td style={{ padding: '15px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {isStaffView && (
+                            <button onClick={() => onInputStats && onInputStats(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1, whiteSpace: 'nowrap' }} title="Input Match Statistics">
+                              Input Stats
+                            </button>
+                          )}
+                          {hasStats && (
+                            <button onClick={() => handleViewStats(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#8b5cf6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }} title="View Match Statistics">
+                              <BarChart3 style={{ width: '14px', height: '14px' }} />
+                            </button>
+                          )}
+                          {!isStaffView && canSchedule && (
+                            <>
+                              {scheduleDisplay ? (
+                                <>
+                                  <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }} title="Edit Schedule">
+                                    <Edit style={{ width: '14px', height: '14px' }} />
+                                  </button>
+                                  <button onClick={() => handleDeleteSchedule(match)} disabled={loading} style={{ padding: '8px 12px', background: loading ? '#64748b' : '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }} title="Delete Schedule">
+                                    <Trash2 style={{ width: '14px', height: '14px' }} />
+                                  </button>
+                                </>
+                              ) : (
+                                <button onClick={() => handleAddSchedule(match)} disabled={loading} style={{ padding: '8px 14px', background: loading ? '#64748b' : '#48bb78', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1, whiteSpace: 'nowrap' }} title="Add Schedule">
+                                  <Plus style={{ width: '16px', height: '16px' }} />
+                                  Schedule
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {!isStaffView && isTBD && (
+                            <span style={{ padding: '8px 14px', background: '#2d3748', color: '#64748b', borderRadius: '6px', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                              🔒 Locked
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {showStandings && isRoundRobin && (
+          <div style={{ borderRadius: '12px', border: '1px solid #2d3748', overflow: 'hidden', background: '#1a2332', maxHeight: 'fit-content', position: 'sticky', top: '20px' }}>
+            <div style={{ background: '#0a0f1c', padding: '20px', borderBottom: '1px solid #2d3748' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BarChart3 style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
+                  Team Standings
+                </h3>
+                {allMatchesCompleted && standings.length > 0 && (
+                  <span style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)' }}>
+                    👑 CHAMPION
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              {standings.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <BarChart3 style={{ width: '48px', height: '48px', margin: '0 auto 12px', opacity: 0.3 }} />
+                  <p>No standings available yet</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '16px' }}>
+                    {standings.map((team, index) => (
+                      <div key={team.team} style={{
+                        background: index === 0 && allMatchesCompleted 
+                          ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.1) 100%)' 
+                          : index % 2 === 0 
+                            ? 'rgba(30, 41, 59, 0.3)' 
+                            : 'rgba(15, 23, 42, 0.5)',
+                        border: index === 0 && allMatchesCompleted ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        marginBottom: '8px',
+                        transition: 'all 0.2s ease'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{ 
+                              background: index === 0 && allMatchesCompleted ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'rgba(99, 102, 241, 0.3)',
+                              color: index === 0 && allMatchesCompleted ? 'white' : '#a5b4fc',
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: '700',
+                              fontSize: '14px',
+                              boxShadow: index === 0 && allMatchesCompleted ? '0 4px 12px rgba(245, 158, 11, 0.4)' : 'none'
+                            }}>
+                              {index === 0 && allMatchesCompleted ? '👑' : index + 1}
+                            </span>
+                            <div>
+                              <div style={{ color: '#e2e8f0', fontWeight: '700', fontSize: '15px' }}>{team.team}</div>
+                              <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>
+                                {team.played} {team.played === 1 ? 'match' : 'matches'} played
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ 
+                            background: 'rgba(16, 185, 129, 0.2)', 
+                            padding: '8px 16px', 
+                            borderRadius: '8px',
+                            border: '1px solid rgba(16, 185, 129, 0.3)'
+                          }}>
+                            <div style={{ color: '#10b981', fontWeight: '700', fontSize: '20px', textAlign: 'center' }}>{team.points}</div>
+                            <div style={{ color: '#6ee7b7', fontSize: '10px', textAlign: 'center', fontWeight: '600' }}>PTS</div>
+                          </div>
+                        </div>
+
+                        <div style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(2, 1fr)', 
+                          gap: '8px',
+                          marginBottom: '12px'
+                        }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '8px', borderRadius: '6px', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            <div style={{ color: '#10b981', fontWeight: '700', fontSize: '16px' }}>{team.won}</div>
+                            <div style={{ color: '#6ee7b7', fontSize: '10px', fontWeight: '600' }}>WINS</div>
+                          </div>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '8px', borderRadius: '6px', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <div style={{ color: '#ef4444', fontWeight: '700', fontSize: '16px' }}>{team.lost}</div>
+                            <div style={{ color: '#fca5a5', fontSize: '10px', fontWeight: '600' }}>LOSSES</div>
+                          </div>
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Bulk Schedule Modal - Round Robin Only */}
       {showBulkScheduleModal && (
         <div onClick={() => !loading && setShowBulkScheduleModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#0f172a', borderRadius: '12px', width: '100%', maxWidth: '700px', border: '1px solid #2d3748', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)', maxHeight: '90vh', overflow: 'auto' }}>
@@ -614,7 +787,6 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                 </div>
               </div>
 
-              {/* Schedule Mode Selection */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ display: 'block', marginBottom: '12px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Schedule Mode</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -651,8 +823,8 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                       opacity: loading ? 0.6 : 1
                     }}
                   >
-                    <div style={{ fontWeight: '600', marginBottom: '4px', color: bulkScheduleForm.scheduleMode === 'perRound' ? '#667eea' : '#e2e8f0' }}>Per Round</div>  {/* Changed from Per Match Day */}
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Different date per round</div>  {/* Changed from Different date per match day */}
+                    <div style={{ fontWeight: '600', marginBottom: '4px', color: bulkScheduleForm.scheduleMode === 'perRound' ? '#667eea' : '#e2e8f0' }}>Per Round</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Different date per round</div>
                   </button>
                 </div>
               </div>
@@ -694,7 +866,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                   </div>
                   
                   <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid #2d3748' }}>
-                    <label style={{ display: 'block', marginBottom: '12px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Round Dates *</label>  {/* Changed from Match Day Dates */}
+                    <label style={{ display: 'block', marginBottom: '12px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Round Dates *</label>
                     <div style={{ display: 'grid', gap: '12px' }}>
                       {getUniqueRoundsForScheduling().map(roundNum => {
                         const roundMatches = unscheduledMatches.filter(m => m.round_number === roundNum);
@@ -709,7 +881,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                               fontWeight: '600',
                               textAlign: 'center'
                             }}>
-                              Round {roundNum}  {/* Changed from Matchday {roundNum} */}
+                              Round {roundNum}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <input 
@@ -748,7 +920,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                 <div style={{ background: 'rgba(72, 187, 120, 0.1)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(72, 187, 120, 0.2)', marginBottom: '20px', maxHeight: '300px', overflowY: 'auto' }}>
                   <div style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '12px', fontWeight: '600' }}>Schedule Preview:</div>
                   {bulkScheduleTimes.map(({ match, date, startTime, endTime }, index) => {
-                    const displayMatchNumber = index + 1; // Add this counter
+                    const displayMatchNumber = index + 1;
                     const dateObj = new Date(date + 'T00:00:00');
                     const dateDisplay = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     
@@ -756,7 +928,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                       <div key={match.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '6px', marginBottom: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                           <span style={{ color: '#667eea', fontWeight: '600', fontSize: '13px', minWidth: '90px' }}>
-                            Match {displayMatchNumber}  {/* Changed from Matchday {match.round_number} */}
+                            Match {displayMatchNumber}
                           </span>
                           <span style={{ color: '#e2e8f0', fontSize: '13px' }}>{match.team1_name} vs {match.team2_name}</span>
                         </div>
@@ -784,7 +956,6 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
         </div>
       )}
 
-      {/* Individual Schedule Modal */}
       {showScheduleModal && (
         <div onClick={() => !loading && setShowScheduleModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#0f172a', borderRadius: '12px', width: '100%', maxWidth: '600px', border: '1px solid #2d3748', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)' }}>
