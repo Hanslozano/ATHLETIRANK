@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import '../style/RegisterAndLogin.css';
 import universityLogo from '../assets/Arellano_University_logo.png';
 
-const Login = ({ setCurrentView }) => {
+const Login = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
@@ -95,11 +95,8 @@ const Login = ({ setCurrentView }) => {
                 </div>
 
                 <div className="auth-tabs">
-                    <button className="tab-btn active" onClick={() => setCurrentView('login')}>
+                    <button className="tab-btn active">
                         Login
-                    </button>
-                    <button className="tab-btn" onClick={() => setCurrentView('register')}>
-                        Register
                     </button>
                 </div>
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { pool } = require('../config/database');
 
 const router = express.Router();
@@ -112,6 +113,62 @@ router.get('/users', verifyAdminToken, async (req, res) => {
     }
 });
 
+// Create user (admin only) - No ID verification required
+router.post('/users/create', verifyAdminToken, async (req, res) => {
+    try {
+        const { username, email, password, role } = req.body;
+
+        console.log('Admin creating user:', { username, email, role });
+
+        // Validation
+        if (!username || !email || !password || !role) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'All fields are required' 
+            });
+        }
+
+        // Check if user exists
+        const [existingUsers] = await pool.execute(
+            'SELECT * FROM users WHERE email = ? OR username = ?',
+            [email, username]
+        );
+
+        if (existingUsers.length > 0) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'User already exists' 
+            });
+        }
+
+        // Hash password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Insert new user - Auto-approved, no ID verification required
+        const [result] = await pool.execute(
+            'INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, 1)',
+            [username, email, hashedPassword, role]
+        );
+
+        console.log(`User ${username} (${email}) created by admin ${req.user.username}`);
+
+        res.status(201).json({ 
+            success: true,
+            message: 'User created successfully and auto-approved',
+            userId: result.insertId
+        });
+
+    } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to create user',
+            error: error.message 
+        });
+    }
+});
+
 // Approve user (admin only)
 router.put('/users/:userId/approve', verifyAdminToken, async (req, res) => {
     try {
@@ -152,7 +209,7 @@ router.put('/users/:userId/approve', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Approve all pending users (admin only) - ADD THIS NEW ENDPOINT
+// Approve all pending users (admin only)
 router.put('/users/approve-all', verifyAdminToken, async (req, res) => {
     try {
         // First, get count of pending users
@@ -297,14 +354,12 @@ router.delete('/users/:userId', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Get user statistics (admin only)
+// Get user statistics (admin only) - Updated to remove approval stats
 router.get('/stats', verifyAdminToken, async (req, res) => {
     try {
         const [stats] = await pool.execute(`
             SELECT 
                 COUNT(*) as total_users,
-                SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_users,
-                SUM(CASE WHEN is_approved = 0 THEN 1 ELSE 0 END) as pending_users,
                 SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as admin_users,
                 SUM(CASE WHEN role = 'staff' THEN 1 ELSE 0 END) as staff_users
             FROM users

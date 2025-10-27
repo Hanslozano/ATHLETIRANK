@@ -1,4 +1,4 @@
-/* Admin_Users.css - Matches Brackets Page Styling */
+/* Admin_Users.css - Updated Styling */
 
 /* Main content wrapper */
 .dashboard-main {
@@ -86,8 +86,17 @@
 
 .select-filter:focus {
   outline: none;
-  border-color: var(--border-focus);
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Search and Create Container */
+.search-create-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 /* Search Container Styles */
@@ -98,84 +107,8 @@
   width: 300px;
 }
 
-/* Add these styles to your admin_Users.css file */
-
-/* Accept All Button */
-.accept-all-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border: none;
-  border-radius: var(--border-radius);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  white-space: nowrap;
-}
-
-.accept-all-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-medium);
-}
-
-.accept-all-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.accept-all-btn.loading {
-  position: relative;
-  color: transparent;
-}
-
-.accept-all-btn.loading::after {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border: 2px solid transparent;
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: bracket-spin 1s linear infinite;
-}
-
-/* Filter controls layout */
-.filter-controls {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-/* Responsive adjustments for the accept all button */
-@media (max-width: 768px) {
-  .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .accept-all-btn {
-    justify-content: center;
-    width: 100%;
-  }
-  
-  .select-filter {
-    width: 100%;
-  }
-}
-
-/* Pending count in filter dropdown */
-.select-filter option[value="pending"] {
-  position: relative;
-}
-
 .search-input {
-  padding: 12px 100px 100px 100px;
+  padding: 12px 16px 12px 40px;
   border: 2px solid var(--border-color);
   border-radius: var(--border-radius);
   font-size: 16px;
@@ -189,17 +122,39 @@
 
 .search-input:focus {
   outline: none;
-  border-color: var(--border-focus);
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-icon {
   position: absolute;
-  left: 8px;
-  margin: 15rem;
+  left: 12px;
   color: var(--text-muted);
   z-index: 1;
   pointer-events: none;
+}
+
+/* Create User Button */
+.create-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--primary-color);
+  border: none;
+  border-radius: var(--border-radius);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  height: 44px;
+}
+
+.create-user-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
 }
 
 /* Mobile Search */
@@ -216,23 +171,16 @@
   justify-content: center;
   height: 44px;
   width: 44px;
+  background: var(--primary-color);
+  border: none;
+  border-radius: var(--border-radius);
+  color: white;
+  cursor: pointer;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .search-container {
-    width: 100%;
-    margin-top: 10px;
-  }
-  
-  .mobile-search-container {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
+.search-toggle-btn:hover {
+  background: var(--primary-hover);
 }
-
-/* Rest of the CSS remains the same as before */
 
 /* Loading State */
 .bracket-loading {
@@ -285,13 +233,51 @@
   padding: 16px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary);
+  vertical-align: middle;
 }
 
 .users-table tr:hover {
   background: rgba(59, 130, 246, 0.05);
 }
 
-/* User Cards (Mobile) */
+/* Center the actions column */
+.users-table th:nth-child(5),
+.users-table td:nth-child(5) {
+  text-align: center;
+}
+
+/* Action buttons in table */
+.users-table .bracket-card-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.users-table .bracket-delete-btn {
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  color: #ef4444;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.users-table .bracket-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+/* User Cards (Mobile) - Keep actions on right for mobile */
+.bracket-grid {
+  display: grid;
+  gap: 16px;
+}
+
 .user-card {
   background: var(--background-secondary);
   border: 1px solid var(--border-color);
@@ -303,6 +289,24 @@
 .user-card:hover {
   box-shadow: var(--shadow-medium);
   transform: translateY(-2px);
+}
+
+.bracket-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.bracket-card-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.bracket-card-info {
+  margin-bottom: 16px;
 }
 
 .user-email {
@@ -332,42 +336,49 @@
   color: #f97316;
 }
 
-.user-id-verification {
-  margin-bottom: 16px;
-}
-
-.no-id {
-  color: var(--text-muted);
-  font-style: italic;
+/* For mobile cards, keep actions on the right */
+.bracket-card-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 /* Role badges */
+.bracket-sport-badge {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.8em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .bracket-sport-badge.admin {
-  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-  color: white;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
 }
 
 .bracket-sport-badge.staff {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--primary-color);
 }
 
-.bracket-sport-badge.user {
-  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-  color: white;
-}
-
-/* Action buttons in table */
-.users-table .bracket-card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.users-table .bracket-submit-btn,
-.users-table .bracket-cancel-btn,
-.users-table .bracket-delete-btn {
+/* Action buttons for mobile (keep on right) */
+.bracket-delete-btn {
   padding: 8px 12px;
-  font-size: 14px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  color: #ef4444;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bracket-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
 }
 
 /* No users state */
@@ -380,6 +391,252 @@
 .bracket-no-brackets p {
   font-size: 18px;
   margin-bottom: 20px;
+}
+
+/* Create User Modal Styling */
+.create-user-modal {
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-medium);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title-section h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.modal-subtitle {
+  margin: 8px 0 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.modal-close-btn:hover {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+/* Create User Form */
+.create-user-form {
+  padding: 0;
+}
+
+.create-user-form .form-group {
+  margin-bottom: 24px;
+}
+
+.create-user-form .form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.create-user-form .form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background-secondary);
+  color: var(--text-primary);
+  font-size: 16px;
+  transition: var(--transition);
+  box-sizing: border-box;
+}
+
+.create-user-form .form-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.create-user-form .form-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Role Selector */
+.role-selector {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.role-btn {
+  flex: 1;
+  padding: 16px;
+  border: 2px solid var(--border-color);
+  background: var(--background-secondary);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.role-btn.active {
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color);
+}
+
+.role-btn:hover:not(.active) {
+  border-color: var(--primary-color);
+  background: var(--background-primary);
+}
+
+/* Password Requirements */
+.password-requirements {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--background-secondary);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--primary-color);
+}
+
+.requirements-title {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.requirements-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.requirements-list li {
+  margin-bottom: 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.requirements-list .valid {
+  color: #10b981;
+}
+
+.requirements-list .invalid {
+  color: var(--text-muted);
+}
+
+/* Modal Actions */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-actions .cancel-btn {
+  flex: 1;
+  padding: 14px;
+  background: var(--background-secondary);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.modal-actions .cancel-btn:hover {
+  background: var(--background-primary);
+  border-color: var(--primary-color);
+}
+
+.create-submit-btn {
+  flex: 1;
+  padding: 14px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.create-submit-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+.create-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Small Spinner */
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: bracket-spin 1s linear infinite;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
 }
 
 /* Responsive Design */
@@ -397,12 +654,32 @@
     width: 100%;
   }
   
+  .search-create-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
   .search-container {
     width: 100%;
   }
   
-  .search-input {
+  .create-user-btn {
+    justify-content: center;
     width: 100%;
+  }
+  
+  .role-selector {
+    flex-direction: column;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .create-user-modal {
+    margin: 20px;
+    max-height: calc(100vh - 40px);
   }
   
   .users-table {
@@ -417,6 +694,11 @@
   .bracket-card-actions {
     flex-wrap: wrap;
   }
+}
+
+/* Remove old user-management-header styles */
+.user-management-header {
+  display: none;
 }
 
 /* CSS Variables */

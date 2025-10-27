@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import Login from "../components/Login"
-import Register from "../components/Register"
 import Athletirank_Logo from '../assets/Athletirank_Logo.png';
 import '../style/RegisterAndLogin.css'
 
 export default function RegisterAndLoginPage() {
-    const [currentView, setCurrentView] = useState('login');
     const [displayText, setDisplayText] = useState('');
     const [isAnimating, setIsAnimating] = useState(true);
     
@@ -103,8 +101,7 @@ export default function RegisterAndLoginPage() {
 
                     {/* Right Side - Auth Forms */}
                     <div className="right-section">
-                        {currentView === "register" && <Register setCurrentView={setCurrentView} />}
-                        {currentView === "login" && <Login setCurrentView={setCurrentView} />}
+                        <Login />
                     </div>
                 </div>
             </div>

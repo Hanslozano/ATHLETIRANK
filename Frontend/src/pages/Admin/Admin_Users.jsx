@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../services/api';
 import '../../style/admin_Users.css';
-import { FaEye, FaCheck, FaTimes, FaTrash, FaSearch, FaCheckDouble } from 'react-icons/fa';
+import { FaTrash, FaSearch, FaUserPlus } from 'react-icons/fa';
 
 const AdminUsers = ({ sidebarOpen }) => {
   const { user } = useAuth();
@@ -14,7 +14,25 @@ const AdminUsers = ({ sidebarOpen }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showSearch, setShowSearch] = useState(false);
-  const [acceptingAll, setAcceptingAll] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+
+  // Create user form state
+  const [createUserData, setCreateUserData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'staff'
+  });
+
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasMinLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecialChar: false
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -47,27 +65,108 @@ const AdminUsers = ({ sidebarOpen }) => {
     }
   };
 
-  const approveUser = async (userId) => {
-    try {
-      await API.put(`/admin/users/${userId}/approve`);
-      setSuccess('User approved successfully!');
-      fetchUsers();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (error) {
-      setError('Failed to approve user.');
-      console.error('Error approving user:', error);
-    }
+  // Validate password strength
+  const validatePasswordStrength = (password) => {
+    return {
+      hasMinLength: password.length >= 8,
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
   };
 
-  const rejectUser = async (userId) => {
+  // Handle create user form changes
+  const handleCreateUserChange = (e) => {
+    const { name, value } = e.target;
+    
+    if (name === 'password') {
+      setPasswordStrength(validatePasswordStrength(value));
+    }
+
+    setCreateUserData({
+      ...createUserData,
+      [name]: value
+    });
+  };
+
+  // Handle role selection
+  const handleRoleSelect = (role) => {
+    setCreateUserData({
+      ...createUserData,
+      role: role
+    });
+  };
+
+  // Create new user
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    // Validation
+    if (createUserData.password !== createUserData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Strong password validation
+    const strength = validatePasswordStrength(createUserData.password);
+    if (!strength.hasMinLength) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+    if (!strength.hasUppercase) {
+      setError('Password must contain at least one uppercase letter');
+      return;
+    }
+    if (!strength.hasLowercase) {
+      setError('Password must contain at least one lowercase letter');
+      return;
+    }
+    if (!strength.hasNumber) {
+      setError('Password must contain at least one number');
+      return;
+    }
+    if (!strength.hasSpecialChar) {
+      setError('Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)');
+      return;
+    }
+
+    setCreateUserLoading(true);
+
     try {
-      await API.put(`/admin/users/${userId}/reject`);
-      setSuccess('User rejected successfully!');
-      fetchUsers();
+      const { confirmPassword, ...userData } = createUserData;
+      
+      // Call admin create user endpoint
+      await API.post('/admin/users/create', userData);
+      
+      setSuccess('User created successfully! The account is automatically approved.');
+      
+      // Reset form
+      setCreateUserData({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'staff'
+      });
+      setPasswordStrength({
+        hasMinLength: false,
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSpecialChar: false
+      });
+      
+      setShowCreateUser(false);
+      fetchUsers(); // Refresh users list
+      
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      setError('Failed to reject user.');
-      console.error('Error rejecting user:', error);
+      setError(error.response?.data?.message || 'Failed to create user');
+    } finally {
+      setCreateUserLoading(false);
     }
   };
 
@@ -85,48 +184,13 @@ const AdminUsers = ({ sidebarOpen }) => {
     }
   };
 
-  // New function to approve all pending users
-  const approveAllPendingUsers = async () => {
-    const pendingUsers = users.filter(user => !user.is_approved);
-    
-    if (pendingUsers.length === 0) {
-      setError('No pending users to approve.');
-      setTimeout(() => setError(''), 3000);
-      return;
-    }
-
-    if (!window.confirm(`Are you sure you want to approve all ${pendingUsers.length} pending users?`)) {
-      return;
-    }
-
-    try {
-      setAcceptingAll(true);
-      // Call the API endpoint to approve all pending users
-      await API.put('/admin/users/approve-all');
-      setSuccess(`Successfully approved all ${pendingUsers.length} pending users!`);
-      fetchUsers();
-      setTimeout(() => setSuccess(''), 5000);
-    } catch (error) {
-      setError('Failed to approve all users. Please try again.');
-      console.error('Error approving all users:', error);
-    } finally {
-      setAcceptingAll(false);
-    }
-  };
-
-  const downloadId = (imagePath) => {
-    window.open(`http://localhost:5000/uploads/${imagePath}`, '_blank');
-  };
-
   const filteredUsers = users.filter(user => {
-    // Apply filter
     if (filter === 'pending') return !user.is_approved;
     if (filter === 'approved') return user.is_approved;
     if (filter === 'staff') return user.role === 'staff';
     if (filter === 'admin') return user.role === 'admin';
     return true;
   }).filter(user => {
-    // Apply search
     if (!searchTerm) return true;
     return (
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,7 +198,6 @@ const AdminUsers = ({ sidebarOpen }) => {
     );
   });
 
-  // Get count of pending users
   const pendingUsersCount = users.filter(user => !user.is_approved).length;
 
   return (
@@ -164,8 +227,6 @@ const AdminUsers = ({ sidebarOpen }) => {
 
             {/* Filter and Search Controls */}
             <div className="bracket-view-section">
-              
-              {/* Filter and Search Controls */}
               <div className="user-management-toolbar">
                 <div className="filter-controls">
                   <select 
@@ -180,51 +241,49 @@ const AdminUsers = ({ sidebarOpen }) => {
                     <option value="admin">Admins Only</option>
                   </select>
                   
-                  {/* Accept All Button - Only show when viewing pending users or when there are pending users */}
-                  {pendingUsersCount > 0 && (
+                  <div className="search-create-container">
+                    {isMobile ? (
+                      <div className="mobile-search-container">
+                        <button 
+                          className="bracket-submit-btn search-toggle-btn"
+                          onClick={() => setShowSearch(!showSearch)}
+                        >
+                          <FaSearch />
+                        </button>
+                        {showSearch && (
+                          <div className="search-container">
+                            <FaSearch className="search-icon" />
+                            <input
+                              type="text"
+                              placeholder="Search users..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="search-input"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="search-container">
+                        <FaSearch className="search-icon" />
+                        <input
+                          type="text"
+                          placeholder="Search users..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="search-input"
+                        />
+                      </div>
+                    )}
+                    
                     <button
-                      onClick={approveAllPendingUsers}
-                      disabled={acceptingAll}
-                      className={`bracket-submit-btn accept-all-btn ${acceptingAll ? 'loading' : ''}`}
+                      onClick={() => setShowCreateUser(true)}
+                      className="bracket-submit-btn create-user-btn"
                     >
-                      <FaCheckDouble />
-                      {acceptingAll ? 'Approving All...' : `Approve All (${pendingUsersCount})`}
+                      <FaUserPlus />
+                      Create New User
                     </button>
-                  )}
-                  
-                  {isMobile ? (
-                    <div className="mobile-search-container">
-                      <button 
-                        className="bracket-submit-btn search-toggle-btn"
-                        onClick={() => setShowSearch(!showSearch)}
-                      >
-                        <FaSearch />
-                      </button>
-                      {showSearch && (
-                        <div className="search-container">
-                          <FaSearch className="search-icon" />
-                          <input
-                            type="text"
-                            placeholder="Search users..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="search-container">
-                      <FaSearch className="search-icon" />
-                      <input
-                        type="text"
-                        placeholder="Search users..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="search-input"
-                      />
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -253,38 +312,8 @@ const AdminUsers = ({ sidebarOpen }) => {
                                   {user.is_approved ? 'Approved' : 'Pending'}
                                 </span>
                               </div>
-                              <div className="user-id-verification">
-                                {user.university_id_image ? (
-                                  <button 
-                                    onClick={() => downloadId(user.university_id_image)}
-                                    className="bracket-view-btn"
-                                  >
-                                    <FaEye /> View ID
-                                  </button>
-                                ) : (
-                                  <span className="no-id">No ID uploaded</span>
-                                )}
-                              </div>
                             </div>
                             <div className="bracket-card-actions">
-                              {!user.is_approved && (
-                                <>
-                                  <button 
-                                    onClick={() => approveUser(user.id)}
-                                    className="bracket-submit-btn"
-                                    title="Approve"
-                                  >
-                                    <FaCheck />
-                                  </button>
-                                  <button 
-                                    onClick={() => rejectUser(user.id)}
-                                    className="bracket-cancel-btn"
-                                    title="Reject"
-                                  >
-                                    <FaTimes />
-                                  </button>
-                                </>
-                              )}
                               <button 
                                 onClick={() => deleteUser(user.id)}
                                 className="bracket-delete-btn"
@@ -309,7 +338,6 @@ const AdminUsers = ({ sidebarOpen }) => {
                           <th>Email</th>
                           <th>Role</th>
                           <th>Status</th>
-                          <th>ID Verification</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -330,37 +358,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                                 </span>
                               </td>
                               <td>
-                                {user.university_id_image ? (
-                                  <button 
-                                    onClick={() => downloadId(user.university_id_image)}
-                                    className="bracket-view-btn"
-                                  >
-                                    <FaEye /> View ID
-                                  </button>
-                                ) : (
-                                  <span className="no-id">No ID uploaded</span>
-                                )}
-                              </td>
-                              <td>
                                 <div className="bracket-card-actions">
-                                  {!user.is_approved && (
-                                    <>
-                                      <button 
-                                        onClick={() => approveUser(user.id)}
-                                        className="bracket-submit-btn"
-                                        title="Approve"
-                                      >
-                                        <FaCheck />
-                                      </button>
-                                      <button 
-                                        onClick={() => rejectUser(user.id)}
-                                        className="bracket-cancel-btn"
-                                        title="Reject"
-                                      >
-                                        <FaTimes />
-                                      </button>
-                                    </>
-                                  )}
                                   <button 
                                     onClick={() => deleteUser(user.id)}
                                     className="bracket-delete-btn"
@@ -374,7 +372,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="bracket-no-brackets">
+                            <td colSpan="5" className="bracket-no-brackets">
                               No users found matching your criteria
                             </td>
                           </tr>
@@ -388,6 +386,146 @@ const AdminUsers = ({ sidebarOpen }) => {
           </div>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      {showCreateUser && (
+        <div className="modal-overlay" onClick={() => setShowCreateUser(false)}>
+          <div className="modal-content create-user-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-section">
+                <h2>Create New User</h2>
+                <p className="modal-subtitle">Add a new staff or admin account to the system</p>
+              </div>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowCreateUser(false)}
+              >
+                &times;
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateUser} className="auth-form create-user-form">
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input
+                  type="text"
+                  name="username"
+                  className="form-input"
+                  placeholder="Enter full name"
+                  value={createUserData.username}
+                  onChange={handleCreateUserChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  name="email"
+                  className="form-input"
+                  placeholder="Enter email address"
+                  value={createUserData.email}
+                  onChange={handleCreateUserChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  className="form-input"
+                  placeholder="Create password"
+                  value={createUserData.password}
+                  onChange={handleCreateUserChange}
+                  required
+                />
+                {createUserData.password && (
+                  <div className="password-requirements">
+                    <p className="requirements-title">Password must contain:</p>
+                    <ul className="requirements-list">
+                      <li className={passwordStrength.hasMinLength ? 'valid' : 'invalid'}>
+                        {passwordStrength.hasMinLength ? '✓' : '✗'} At least 8 characters
+                      </li>
+                      <li className={passwordStrength.hasUppercase ? 'valid' : 'invalid'}>
+                        {passwordStrength.hasUppercase ? '✓' : '✗'} One uppercase letter
+                      </li>
+                      <li className={passwordStrength.hasLowercase ? 'valid' : 'invalid'}>
+                        {passwordStrength.hasLowercase ? '✓' : '✗'} One lowercase letter
+                      </li>
+                      <li className={passwordStrength.hasNumber ? 'valid' : 'invalid'}>
+                        {passwordStrength.hasNumber ? '✓' : '✗'} One number
+                      </li>
+                      <li className={passwordStrength.hasSpecialChar ? 'valid' : 'invalid'}>
+                        {passwordStrength.hasSpecialChar ? '✓' : '✗'} One special character
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  className="form-input"
+                  placeholder="Confirm password"
+                  value={createUserData.confirmPassword}
+                  onChange={handleCreateUserChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Select Role</label>
+                <div className="role-selector">
+                  <button
+                    type="button"
+                    className={`role-btn ${createUserData.role === 'admin' ? 'active' : ''}`}
+                    onClick={() => handleRoleSelect('admin')}
+                  >
+                    Admin
+                  </button>
+                  <button
+                    type="button"
+                    className={`role-btn ${createUserData.role === 'staff' ? 'active' : ''}`}
+                    onClick={() => handleRoleSelect('staff')}
+                  >
+                    Staff
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={() => setShowCreateUser(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="submit-btn create-submit-btn"
+                  disabled={createUserLoading}
+                >
+                  {createUserLoading ? (
+                    <>
+                      <div className="spinner-small"></div>
+                      Creating User...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
