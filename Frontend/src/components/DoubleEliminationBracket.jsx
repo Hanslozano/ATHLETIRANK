@@ -249,220 +249,299 @@ const DoubleEliminationBracket = ({ matches, eliminationType = 'double' }) => {
   );
 
   return (
-    <div className="double-bracket-wrapper" style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', maxWidth: '100vw' }}>
-      <div className="double-bracket" ref={bracketRef} style={{ minWidth: 'fit-content', display: 'inline-block', paddingRight: '500px', paddingBottom: '50px' }}>
-        
-        <svg className="double-connection-lines" xmlns="http://www.w3.org/2000/svg">
+    <div className="double-bracket-wrapper">
+      {/* Header Section */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '8px', color: 'white' }}>
+          Double Elimination Tournament
+        </h1>
+        <div style={{ 
+          height: '4px', 
+          width: '64px', 
+          background: '#8b5cf6',
+          marginBottom: '24px'
+        }}></div>
+
+        {/* Tournament Info */}
+        <div style={{ 
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderRadius: '16px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '2px solid rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '32px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Teams:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f97316' }}>
+              {new Set([...matches.map(m => m.team1_name), ...matches.map(m => m.team2_name)].filter(Boolean)).size}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Format:</span>
+            <span style={{ fontSize: '1rem', color: '#a5b4fc' }}>Double Elimination</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Winner Rounds:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>{winnerRounds.length}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Loser Rounds:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#ef4444' }}>{loserRounds.length}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Total Matches:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#3b82f6' }}>{matches.length}</span>
+          </div>
+        </div>
+
+        {/* Info Banner */}
+        <div style={{ 
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderLeft: '4px solid #8b5cf6',
+          padding: '16px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px',
+          borderRadius: '8px',
+          border: '2px solid rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(8px)'
+        }}>
+          <span style={{ fontSize: '1.25rem', color: '#8b5cf6' }}>ℹ️</span>
+          <span style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+            Double elimination format. Teams get a second chance in the loser's bracket after their first loss.
+            The winner's bracket champion gets an advantage in the grand final.
+          </span>
+        </div>
+      </div>
+
+      {/* Bracket Container */}
+      <div style={{ 
+        padding: '32px',
+        background: 'rgba(15, 23, 42, 0.6)',
+        borderRadius: '16px',
+        border: '2px solid rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(8px)'
+      }}>
+        <div className="double-bracket" ref={bracketRef} style={{ minWidth: 'fit-content', display: 'inline-block', paddingRight: '500px', paddingBottom: '50px' }}>
           
-          {/* Draw all regular bracket connections */}
-          {connectionPoints.map((fromPoint, i) => {
-            const toPoint = connectionPoints.find(
-              (p) =>
-                p.bracketType === fromPoint.bracketType &&
-                p.roundIndex === fromPoint.roundIndex + 1 &&
-                Math.floor(fromPoint.matchIndex / 2) === p.matchIndex
-            );
-
-            if (!toPoint) return null;
-
-            let strokeColor = '#6366f1';
-            if (fromPoint.bracketType === 'winner') {
-              strokeColor = '#2563eb';
-            } else if (fromPoint.bracketType === 'loser') {
-              strokeColor = '#dc2626';
-            }
-
-            const midX = (fromPoint.x + toPoint.xLeft) / 2;
-
-            return (
-              <g key={`connection-${i}`} className="double-bracket-connection">
-                <line
-                  x1={fromPoint.x}
-                  y1={fromPoint.y}
-                  x2={midX}
-                  y2={fromPoint.y}
-                  stroke={strokeColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1={midX}
-                  y1={fromPoint.y}
-                  x2={midX}
-                  y2={toPoint.yLeft}
-                  stroke={strokeColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1={midX}
-                  y1={toPoint.yLeft}
-                  x2={toPoint.xLeft}
-                  y2={toPoint.yLeft}
-                  stroke={strokeColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-              </g>
-            );
-          })}
-
-          {/* Draw merged line from Winner's and Loser's brackets to Championship */}
-          {(() => {
-            const championshipPoints = connectionPoints.filter(p => p.bracketType === 'championship');
-            const grandFinalPoint = championshipPoints[0];
-            const resetFinalPoint = championshipPoints[1];
+          <svg className="double-connection-lines" xmlns="http://www.w3.org/2000/svg">
             
-            if (!grandFinalPoint) return null;
+            {/* Draw all regular bracket connections */}
+            {connectionPoints.map((fromPoint, i) => {
+              const toPoint = connectionPoints.find(
+                (p) =>
+                  p.bracketType === fromPoint.bracketType &&
+                  p.roundIndex === fromPoint.roundIndex + 1 &&
+                  Math.floor(fromPoint.matchIndex / 2) === p.matchIndex
+              );
 
-            const winnerPoints = connectionPoints.filter(p => p.bracketType === 'winner');
-            const loserPoints = connectionPoints.filter(p => p.bracketType === 'loser');
-            
-            const maxWinnerRound = Math.max(...winnerPoints.map(p => p.roundIndex), -1);
-            const maxLoserRound = Math.max(...loserPoints.map(p => p.roundIndex), -1);
-            
-            const winnerFinalPoint = winnerPoints.find(p => p.roundIndex === maxWinnerRound);
-            const loserFinalPoint = loserPoints.find(p => p.roundIndex === maxLoserRound);
-            
-            if (!winnerFinalPoint || !loserFinalPoint) return null;
+              if (!toPoint) return null;
 
-            const mergeX = grandFinalPoint.xLeft - 60;
-            const midY = grandFinalPoint.yLeft;
-            
-            return (
-              <>
-                <g key="merged-to-grand-final">
-                  {/* Winner's bracket to merge point */}
+              let strokeColor = '#6366f1';
+              if (fromPoint.bracketType === 'winner') {
+                strokeColor = '#2563eb';
+              } else if (fromPoint.bracketType === 'loser') {
+                strokeColor = '#dc2626';
+              }
+
+              const midX = (fromPoint.x + toPoint.xLeft) / 2;
+
+              return (
+                <g key={`connection-${i}`} className="double-bracket-connection">
                   <line
-                    x1={winnerFinalPoint.x}
-                    y1={winnerFinalPoint.y}
-                    x2={mergeX}
-                    y2={winnerFinalPoint.y}
-                    stroke="#FFD700"
-                    strokeWidth="4"
+                    x1={fromPoint.x}
+                    y1={fromPoint.y}
+                    x2={midX}
+                    y2={fromPoint.y}
+                    stroke={strokeColor}
+                    strokeWidth="3"
                     strokeLinecap="round"
                   />
                   <line
-                    x1={mergeX}
-                    y1={winnerFinalPoint.y}
-                    x2={mergeX}
-                    y2={midY}
-                    stroke="#FFD700"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                  />
-                  
-                  {/* Loser's bracket to merge point */}
-                  <line
-                    x1={loserFinalPoint.x}
-                    y1={loserFinalPoint.y}
-                    x2={mergeX}
-                    y2={loserFinalPoint.y}
-                    stroke="#FFD700"
-                    strokeWidth="4"
+                    x1={midX}
+                    y1={fromPoint.y}
+                    x2={midX}
+                    y2={toPoint.yLeft}
+                    stroke={strokeColor}
+                    strokeWidth="3"
                     strokeLinecap="round"
                   />
                   <line
-                    x1={mergeX}
-                    y1={loserFinalPoint.y}
-                    x2={mergeX}
-                    y2={midY}
-                    stroke="#FFD700"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                  />
-                  
-                  {/* Merged line to Grand Final */}
-                  <line
-                    x1={mergeX}
-                    y1={midY}
-                    x2={grandFinalPoint.xLeft}
-                    y2={grandFinalPoint.yLeft}
-                    stroke="#FFD700"
-                    strokeWidth="5"
+                    x1={midX}
+                    y1={toPoint.yLeft}
+                    x2={toPoint.xLeft}
+                    y2={toPoint.yLeft}
+                    stroke={strokeColor}
+                    strokeWidth="3"
                     strokeLinecap="round"
                   />
                 </g>
-                
-                {/* Line from Grand Final to Reset Final if it exists */}
-                {resetFinalPoint && (
-                  <g key="grand-to-reset-line">
+              );
+            })}
+
+            {/* Draw merged line from Winner's and Loser's brackets to Championship */}
+            {(() => {
+              const championshipPoints = connectionPoints.filter(p => p.bracketType === 'championship');
+              const grandFinalPoint = championshipPoints[0];
+              const resetFinalPoint = championshipPoints[1];
+              
+              if (!grandFinalPoint) return null;
+
+              const winnerPoints = connectionPoints.filter(p => p.bracketType === 'winner');
+              const loserPoints = connectionPoints.filter(p => p.bracketType === 'loser');
+              
+              const maxWinnerRound = Math.max(...winnerPoints.map(p => p.roundIndex), -1);
+              const maxLoserRound = Math.max(...loserPoints.map(p => p.roundIndex), -1);
+              
+              const winnerFinalPoint = winnerPoints.find(p => p.roundIndex === maxWinnerRound);
+              const loserFinalPoint = loserPoints.find(p => p.roundIndex === maxLoserRound);
+              
+              if (!winnerFinalPoint || !loserFinalPoint) return null;
+
+              const mergeX = grandFinalPoint.xLeft - 60;
+              const midY = grandFinalPoint.yLeft;
+              
+              return (
+                <>
+                  <g key="merged-to-grand-final">
+                    {/* Winner's bracket to merge point */}
                     <line
-                      x1={grandFinalPoint.x}
-                      y1={grandFinalPoint.y}
-                      x2={resetFinalPoint.xLeft}
-                      y2={resetFinalPoint.yLeft}
-                      stroke="#FF6B35"
+                      x1={winnerFinalPoint.x}
+                      y1={winnerFinalPoint.y}
+                      x2={mergeX}
+                      y2={winnerFinalPoint.y}
+                      stroke="#FFD700"
                       strokeWidth="4"
-                      strokeDasharray="8,4"
+                      strokeLinecap="round"
+                    />
+                    <line
+                      x1={mergeX}
+                      y1={winnerFinalPoint.y}
+                      x2={mergeX}
+                      y2={midY}
+                      stroke="#FFD700"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                    
+                    {/* Loser's bracket to merge point */}
+                    <line
+                      x1={loserFinalPoint.x}
+                      y1={loserFinalPoint.y}
+                      x2={mergeX}
+                      y2={loserFinalPoint.y}
+                      stroke="#FFD700"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                    <line
+                      x1={mergeX}
+                      y1={loserFinalPoint.y}
+                      x2={mergeX}
+                      y2={midY}
+                      stroke="#FFD700"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                    
+                    {/* Merged line to Grand Final */}
+                    <line
+                      x1={mergeX}
+                      y1={midY}
+                      x2={grandFinalPoint.xLeft}
+                      y2={grandFinalPoint.yLeft}
+                      stroke="#FFD700"
+                      strokeWidth="5"
                       strokeLinecap="round"
                     />
                   </g>
-                )}
-              </>
-            );
-          })()}
-        </svg>
+                  
+                  {/* Line from Grand Final to Reset Final if it exists */}
+                  {resetFinalPoint && (
+                    <g key="grand-to-reset-line">
+                      <line
+                        x1={grandFinalPoint.x}
+                        y1={grandFinalPoint.y}
+                        x2={resetFinalPoint.xLeft}
+                        y2={resetFinalPoint.yLeft}
+                        stroke="#FF6B35"
+                        strokeWidth="4"
+                        strokeDasharray="8,4"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  )}
+                </>
+              );
+            })()}
+          </svg>
 
-        <div className="double-main-bracket-container">
-          <div className="double-left-brackets">
-            {winnerMatches.length > 0 && renderBracketSection(winnerRounds, winnerMatches, 'winner', "Winner's Bracket")}
-            {loserMatches.length > 0 && renderBracketSection(loserRounds, loserMatches, 'loser', "Loser's Bracket")}
+          <div className="double-main-bracket-container">
+            <div className="double-left-brackets">
+              {winnerMatches.length > 0 && renderBracketSection(winnerRounds, winnerMatches, 'winner', "Winner's Bracket")}
+              {loserMatches.length > 0 && renderBracketSection(loserRounds, loserMatches, 'loser', "Loser's Bracket")}
+            </div>
+
+            {championshipMatches.length > 0 && (
+              <div className="double-right-championship">
+                <div className={`bracket-section championship-bracket-section ${hasResetFinal ? 'has-reset' : ''}`} data-bracket-type="championship">
+                  <h3 className="double-bracket-title championship-title">
+                    Championship
+                    {hasResetFinal && <span className="reset-final-info">Reset Format</span>}
+                  </h3>
+                  
+                  <div className="championship-rounds-wrapper">
+                    {grandFinalMatch && (
+                      <div className="championship-match-container" data-round="0">
+                        <div className="championship-label grand-final-label">Grand Final</div>
+                        <div className="matches">
+                          {renderMatch(grandFinalMatch, 0, 'championship')}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {resetFinalMatch && resetFinalMatch.status !== 'hidden' && (
+                      <div className="championship-match-container" data-round="1">
+                        <div className="championship-label reset-final-label">Reset Final</div>
+                        <div className="matches">
+                          {renderMatch(resetFinalMatch, 0, 'championship')}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {championshipMatches.length > 0 && (
-            <div className="double-right-championship">
-              <div className={`bracket-section championship-bracket-section ${hasResetFinal ? 'has-reset' : ''}`} data-bracket-type="championship">
-                <h3 className="double-bracket-title championship-title">
-                  Championship
-                  {hasResetFinal && <span className="reset-final-info">Reset Format</span>}
-                </h3>
-                
-                <div className="championship-rounds-wrapper">
-                  {grandFinalMatch && (
-                    <div className="championship-match-container" data-round="0">
-                      <div className="championship-label grand-final-label">Grand Final</div>
-                      <div className="matches">
-                        {renderMatch(grandFinalMatch, 0, 'championship')}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {resetFinalMatch && resetFinalMatch.status !== 'hidden' && (
-                    <div className="championship-match-container" data-round="1">
-                      <div className="championship-label reset-final-label">Reset Final</div>
-                      <div className="matches">
-                        {renderMatch(resetFinalMatch, 0, 'championship')}
-                      </div>
-                    </div>
-                  )}
-                </div>
+          {(winnerRounds.length === 0 && loserRounds.length === 0) && (
+            <div className="no-rounds">
+              <div className="no-rounds-content">
+                <div className="warning-icon">⚠️</div>
+                <p>No tournament rounds found. Please check if matches were generated properly.</p>
+              </div>
+            </div>
+          )}
+          
+          {hasResetFinal && resetFinalMatch && resetFinalMatch.status !== 'hidden' && (
+            <div className="bracket-reset-explanation">
+              <div className="reset-explanation-content">
+                <h4>🔄 Bracket Reset Active</h4>
+                <p>
+                  The Loser's Bracket winner defeated the Winner's Bracket winner in the Grand Final!
+                  Since the Winner's Bracket team had not lost before, a Reset Final is now required.
+                  Both teams start the Reset Final with a clean slate.
+                </p>
               </div>
             </div>
           )}
         </div>
-
-        {(winnerRounds.length === 0 && loserRounds.length === 0) && (
-          <div className="no-rounds">
-            <div className="no-rounds-content">
-              <div className="warning-icon">⚠️</div>
-              <p>No tournament rounds found. Please check if matches were generated properly.</p>
-            </div>
-          </div>
-        )}
-        
-        {hasResetFinal && resetFinalMatch && resetFinalMatch.status !== 'hidden' && (
-          <div className="bracket-reset-explanation">
-            <div className="reset-explanation-content">
-              <h4>🔄 Bracket Reset Active</h4>
-              <p>
-                The Loser's Bracket winner defeated the Winner's Bracket winner in the Grand Final!
-                Since the Winner's Bracket team had not lost before, a Reset Final is now required.
-                Both teams start the Reset Final with a clean slate.
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

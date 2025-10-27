@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import "../style/CustomBrackets.css";
 
-
 const CustomBracket = ({ matches, eliminationType = 'single' }) => {
   const bracketRef = useRef(null);
   const [connectionPoints, setConnectionPoints] = useState([]);
@@ -208,164 +207,238 @@ const CustomBracket = ({ matches, eliminationType = 'single' }) => {
 
   return (
     <div className="enhanced-bracket-wrapper">
-      <div className="enhanced-bracket" ref={bracketRef}>
-        {/* Connection Lines */}
-        <svg className="connection-lines" xmlns="http://www.w3.org/2000/svg">
-          {connectionPoints.map((fromPoint, i) => {
-            // For double elimination, we need different connection logic
-            if (eliminationType === 'double') {
-              // Connect within the same bracket type
-              const toPoint = connectionPoints.find(
-                (p) =>
-                  p.bracketType === fromPoint.bracketType &&
-                  p.roundIndex === fromPoint.roundIndex + 1 &&
-                  Math.floor(fromPoint.matchIndex / 2) === p.matchIndex
-              );
+      {/* Header Section */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '8px', color: 'white' }}>
+          Single Elimination Tournament
+        </h1>
+        <div style={{ 
+          height: '4px', 
+          width: '64px', 
+          background: '#f97316',
+          marginBottom: '24px'
+        }}></div>
 
-              if (!toPoint) return null;
+        {/* Tournament Info */}
+        <div style={{ 
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderRadius: '16px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '2px solid rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '32px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Teams:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f97316' }}>
+              {new Set([...matches.map(m => m.team1_name), ...matches.map(m => m.team2_name)].filter(Boolean)).size}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Format:</span>
+            <span style={{ fontSize: '1rem', color: '#a5b4fc' }}>Single Elimination</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Total Rounds:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>{winnerRounds.length}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Total Matches:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#3b82f6' }}>{matches.length}</span>
+          </div>
+        </div>
 
-              const midX = (fromPoint.x + toPoint.xLeft) / 2;
+        {/* Info Banner */}
+        <div style={{ 
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderLeft: '4px solid #f97316',
+          padding: '16px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px',
+          borderRadius: '8px',
+          border: '2px solid rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(8px)'
+        }}>
+          <span style={{ fontSize: '1.25rem', color: '#f97316' }}>ℹ️</span>
+          <span style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+            Single elimination format. Lose once and you're out. Winner advances to the next round.
+          </span>
+        </div>
+      </div>
 
-              return (
-                <g key={i} className="bracket-connection">
-                  <line
-                    x1={fromPoint.x}
-                    y1={fromPoint.y}
-                    x2={midX}
-                    y2={fromPoint.y}
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1={midX}
-                    y1={fromPoint.y}
-                    x2={midX}
-                    y2={toPoint.yLeft}
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1={midX}
-                    y1={toPoint.yLeft}
-                    x2={toPoint.xLeft}
-                    y2={toPoint.yLeft}
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                </g>
-              );
-            } else {
-              // Single elimination connection logic (original)
-              const toPoint = connectionPoints.find(
-                (p) =>
-                  p.roundIndex === fromPoint.roundIndex + 1 &&
-                  Math.floor(fromPoint.matchIndex / 2) === p.matchIndex
-              );
+      {/* Bracket Container */}
+      <div style={{ 
+        padding: '32px',
+        background: 'rgba(15, 23, 42, 0.6)',
+        borderRadius: '16px',
+        border: '2px solid rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(8px)'
+      }}>
+        <div className="enhanced-bracket" ref={bracketRef}>
+          {/* Connection Lines */}
+          <svg className="connection-lines" xmlns="http://www.w3.org/2000/svg">
+            {connectionPoints.map((fromPoint, i) => {
+              // For double elimination, we need different connection logic
+              if (eliminationType === 'double') {
+                // Connect within the same bracket type
+                const toPoint = connectionPoints.find(
+                  (p) =>
+                    p.bracketType === fromPoint.bracketType &&
+                    p.roundIndex === fromPoint.roundIndex + 1 &&
+                    Math.floor(fromPoint.matchIndex / 2) === p.matchIndex
+                );
 
-              if (!toPoint) return null;
+                if (!toPoint) return null;
 
-              const midX = (fromPoint.x + toPoint.xLeft) / 2;
+                const midX = (fromPoint.x + toPoint.xLeft) / 2;
 
-              return (
-                <g key={i} className="bracket-connection">
-                  <line
-                    x1={fromPoint.x}
-                    y1={fromPoint.y}
-                    x2={midX}
-                    y2={fromPoint.y}
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1={midX}
-                    y1={fromPoint.y}
-                    x2={midX}
-                    y2={toPoint.yLeft}
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1={midX}
-                    y1={toPoint.yLeft}
-                    x2={toPoint.xLeft}
-                    y2={toPoint.yLeft}
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                </g>
-              );
-            }
-          })}
-        </svg>
+                return (
+                  <g key={i} className="bracket-connection">
+                    <line
+                      x1={fromPoint.x}
+                      y1={fromPoint.y}
+                      x2={midX}
+                      y2={fromPoint.y}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                    <line
+                      x1={midX}
+                      y1={fromPoint.y}
+                      x2={midX}
+                      y2={toPoint.yLeft}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                    <line
+                      x1={midX}
+                      y1={toPoint.yLeft}
+                      x2={toPoint.xLeft}
+                      y2={toPoint.yLeft}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                  </g>
+                );
+              } else {
+                // Single elimination connection logic (original)
+                const toPoint = connectionPoints.find(
+                  (p) =>
+                    p.roundIndex === fromPoint.roundIndex + 1 &&
+                    Math.floor(fromPoint.matchIndex / 2) === p.matchIndex
+                );
 
-        {/* Bracket Container */}
-        <div className="bracket-container">
-          {eliminationType === 'double' ? (
-            <div className="double-elimination-bracket">
-              {/* Winner's Bracket */}
-              <div className="bracket-section winner-bracket" data-bracket-type="winner">
-                <h3 className="bracket-title">Winner's Bracket</h3>
-                <div className="rounds-container">
-                  {winnerRounds.map(roundNumber => 
-                    renderRoundSection(roundNumber, winnerMatches, 'winner')
-                  )}
-                </div>
-              </div>
+                if (!toPoint) return null;
 
-              {/* Loser's Bracket */}
-              {loserMatches.length > 0 && (
-                <div className="bracket-section loser-bracket" data-bracket-type="loser">
-                  <h3 className="bracket-title">Loser's Bracket</h3>
+                const midX = (fromPoint.x + toPoint.xLeft) / 2;
+
+                return (
+                  <g key={i} className="bracket-connection">
+                    <line
+                      x1={fromPoint.x}
+                      y1={fromPoint.y}
+                      x2={midX}
+                      y2={fromPoint.y}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                    <line
+                      x1={midX}
+                      y1={fromPoint.y}
+                      x2={midX}
+                      y2={toPoint.yLeft}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                    <line
+                      x1={midX}
+                      y1={toPoint.yLeft}
+                      x2={toPoint.xLeft}
+                      y2={toPoint.yLeft}
+                      stroke="white"
+                      strokeWidth="2"
+                    />
+                  </g>
+                );
+              }
+            })}
+          </svg>
+
+          {/* Bracket Container */}
+          <div className="bracket-container">
+            {eliminationType === 'double' ? (
+              <div className="double-elimination-bracket">
+                {/* Winner's Bracket */}
+                <div className="bracket-section winner-bracket" data-bracket-type="winner">
+                  <h3 className="bracket-title">Winner's Bracket</h3>
                   <div className="rounds-container">
-                    {loserRounds.map(roundNumber => 
-                      renderRoundSection(roundNumber, loserMatches, 'loser')
+                    {winnerRounds.map(roundNumber => 
+                      renderRoundSection(roundNumber, winnerMatches, 'winner')
                     )}
                   </div>
                 </div>
-              )}
 
-              {/* Championship Match */}
-              {championshipMatches.length > 0 && (
-                <div className="bracket-section championship-bracket" data-bracket-type="championship">
-                  <h3 className="bracket-title">Championship</h3>
-                  <div className="rounds-container">
-                    {renderRoundSection(200, championshipMatches, 'championship')}
+                {/* Loser's Bracket */}
+                {loserMatches.length > 0 && (
+                  <div className="bracket-section loser-bracket" data-bracket-type="loser">
+                    <h3 className="bracket-title">Loser's Bracket</h3>
+                    <div className="rounds-container">
+                      {loserRounds.map(roundNumber => 
+                        renderRoundSection(roundNumber, loserMatches, 'loser')
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            // Single Elimination Bracket (original layout)
-            winnerRounds.map((roundNumber, roundIndex) => (
-              <div key={roundNumber} className="round" data-round={roundIndex}>
-                <div className="round-header">
-                  <div className="round-number">Round {roundNumber}</div>
-                  <div className="round-subtitle">
-                    {roundNumber === '1' ? 'First Round' :
-                     roundNumber === winnerRounds[winnerRounds.length - 1] ? 'Final' :
-                     roundNumber === winnerRounds[winnerRounds.length - 2] ? 'Semi-Final' :
-                     `Round ${roundNumber}`}
+                )}
+
+                {/* Championship Match */}
+                {championshipMatches.length > 0 && (
+                  <div className="bracket-section championship-bracket" data-bracket-type="championship">
+                    <h3 className="bracket-title">Championship</h3>
+                    <div className="rounds-container">
+                      {renderRoundSection(200, championshipMatches, 'championship')}
+                    </div>
                   </div>
-                </div>
-                <div className="matches">
-                  {winnerMatches
-                    .filter(m => m.round_number == roundNumber)
-                    .map((match, matchIndex) => renderMatch(match, matchIndex))
-                  }
-                </div>
+                )}
               </div>
-            ))
+            ) : (
+              // Single Elimination Bracket (original layout)
+              winnerRounds.map((roundNumber, roundIndex) => (
+                <div key={roundNumber} className="round" data-round={roundIndex}>
+                  <div className="round-header">
+                    <div className="round-number">Round {roundNumber}</div>
+                    <div className="round-subtitle">
+                      {roundNumber === '1' ? 'First Round' :
+                       roundNumber === winnerRounds[winnerRounds.length - 1] ? 'Final' :
+                       roundNumber === winnerRounds[winnerRounds.length - 2] ? 'Semi-Final' :
+                       `Round ${roundNumber}`}
+                    </div>
+                  </div>
+                  <div className="matches">
+                    {winnerMatches
+                      .filter(m => m.round_number == roundNumber)
+                      .map((match, matchIndex) => renderMatch(match, matchIndex))
+                    }
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {winnerRounds.length === 0 && (
+            <div className="no-rounds">
+              <div className="no-rounds-content">
+                <div className="warning-icon">⚠️</div>
+                <p>No tournament rounds found. Please check if matches were generated properly.</p>
+              </div>
+            </div>
           )}
         </div>
-
-        {winnerRounds.length === 0 && (
-          <div className="no-rounds">
-            <div className="no-rounds-content">
-              <div className="warning-icon">⚠️</div>
-              <p>No tournament rounds found. Please check if matches were generated properly.</p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

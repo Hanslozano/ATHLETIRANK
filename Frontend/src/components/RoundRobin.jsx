@@ -44,12 +44,15 @@ export default function RoundRobinBracketDisplay({ matches = [] }) {
 
   return (
     <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%)',
-      padding: '24px',
-      color: 'white'
-    }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+  padding: '32px',
+  background: 'linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%)',
+  borderRadius: '16px',
+  minHeight: '500px',
+  position: 'relative',
+  overflow: 'visible',
+  color: 'white'
+}}>
+      <div style={{ width: '100%' }}>
         {/* Header */}
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '8px' }}>
@@ -126,7 +129,7 @@ export default function RoundRobinBracketDisplay({ matches = [] }) {
               const roundMatches = matchesByRound[roundNum];
               
               return (
-                <div key={roundNum} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                <div key={roundNum} style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                   {/* Round Label */}
                   <div style={{
                     background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -174,6 +177,12 @@ export default function RoundRobinBracketDisplay({ matches = [] }) {
                       const team1Won = match.winner_id === match.team1_id;
                       const team2Won = match.winner_id === match.team2_id;
                       const isDraw = isCompleted && !match.winner_id && match.score_team1 === match.score_team2;
+                      // Calculate cumulative match number across all rounds
+let matchesBeforeThisRound = 0;
+for (let i = 0; i < roundIndex; i++) {
+  matchesBeforeThisRound += matchesByRound[rounds[i]].length;
+}
+const displayMatchNumber = matchesBeforeThisRound + matchIndex + 1;
 
                       return (
                         <div key={match.id} style={{
@@ -196,48 +205,49 @@ export default function RoundRobinBracketDisplay({ matches = [] }) {
                           e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)';
                         }}>
                           {/* Match Header */}
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '16px',
-                            paddingBottom: '12px',
-                            borderBottom: '1px solid rgba(255,255,255,0.1)'
-                          }}>
-                            <span style={{
-                              fontWeight: '600',
-                              color: 'rgba(255, 255, 255, 0.7)',
-                              fontSize: '0.9em'
-                            }}>
-                              Match #{match.id}
-                            </span>
-                            <span style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '4px 12px',
-                              borderRadius: '8px',
-                              fontSize: '0.85em',
-                              fontWeight: '600',
-                              background: isCompleted 
-                                ? 'rgba(16, 185, 129, 0.2)' 
-                                : isOngoing 
-                                  ? 'rgba(59, 130, 246, 0.2)' 
-                                  : 'rgba(92, 107, 192, 0.2)',
-                              color: isCompleted 
-                                ? '#6ee7b7' 
-                                : isOngoing 
-                                  ? '#93c5fd' 
-                                  : '#a5b4fc',
-                              border: `1px solid ${isCompleted 
-                                ? 'rgba(16, 185, 129, 0.3)' 
-                                : isOngoing 
-                                  ? 'rgba(59, 130, 246, 0.3)' 
-                                  : 'rgba(92, 107, 192, 0.3)'}`
-                            }}>
-                              {isCompleted ? '✓ Completed' : isOngoing ? '⏱️ Live' : '📅 Scheduled'}
-                            </span>
-                          </div>
+                         <div style={{
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: '12px',
+  marginBottom: '16px',
+  paddingBottom: '12px',
+  borderBottom: '1px solid rgba(255,255,255,0.1)'
+}}>
+  <span style={{
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: '0.9em'
+  }}>
+    Match #{displayMatchNumber}
+  </span>
+  <span style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 12px',
+    borderRadius: '8px',
+    fontSize: '0.85em',
+    fontWeight: '600',
+    background: isCompleted 
+      ? 'rgba(16, 185, 129, 0.2)' 
+      : isOngoing 
+        ? 'rgba(59, 130, 246, 0.2)' 
+        : 'rgba(92, 107, 192, 0.2)',
+    color: isCompleted 
+      ? '#6ee7b7' 
+      : isOngoing 
+        ? '#93c5fd' 
+        : '#a5b4fc',
+    border: `1px solid ${isCompleted 
+      ? 'rgba(16, 185, 129, 0.3)' 
+      : isOngoing 
+        ? 'rgba(59, 130, 246, 0.3)' 
+        : 'rgba(92, 107, 192, 0.3)'}`
+  }}>
+    {isCompleted ? '✓ Completed' : isOngoing ? '⏱️ Live' : '📅 Scheduled'}
+  </span>
+</div>
                           
                           {/* Teams */}
                           <div style={{ marginBottom: '16px' }}>

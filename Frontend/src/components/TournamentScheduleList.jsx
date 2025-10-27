@@ -18,10 +18,17 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
     date: '',
     startTime: '09:00',
     matchDuration: 60,
-    breakDuration: 15
+    breakDuration: 15,
+    scheduleMode: 'single', // ADD THIS
+    roundDates: {} // ADD THIS
   });
   const [loading, setLoading] = useState(false);
   const [schedules, setSchedules] = useState([]);
+
+  const getUniqueRoundsForScheduling = () => {
+    const rounds = [...new Set(unscheduledMatches.map(m => m.round_number))].sort((a, b) => a - b);
+    return rounds;
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -59,7 +66,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
     const roundNum = match.round_number;
     
     if (match.bracket_type === 'round_robin') {
-      return `Matchday ${roundNum}`;
+      return `Round ${roundNum}`; // Changed from `Matchday ${roundNum}`
     }
     
     if (roundNum === 200) return 'Grand Final';
@@ -177,38 +184,82 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
   const canBulkSchedule = isRoundRobin && unscheduledMatches.length > 0;
 
   const calculateBulkScheduleTimes = () => {
-    if (!bulkScheduleForm.date || !bulkScheduleForm.startTime) return [];
-    
-    const times = [];
-    let currentTime = bulkScheduleForm.startTime;
-    
-    unscheduledMatches.forEach((match, index) => {
-      const [hours, minutes] = currentTime.split(':').map(Number);
-      const startMinutes = hours * 60 + minutes;
-      const endMinutes = startMinutes + parseInt(bulkScheduleForm.matchDuration);
-      const nextStartMinutes = endMinutes + parseInt(bulkScheduleForm.breakDuration);
+    if (bulkScheduleForm.scheduleMode === 'single') {
+      if (!bulkScheduleForm.date || !bulkScheduleForm.startTime) return [];
       
-      const formatTimeFromMinutes = (mins) => {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      };
+      const times = [];
+      let currentTime = bulkScheduleForm.startTime;
       
-      times.push({
-        match,
-        startTime: currentTime,
-        endTime: formatTimeFromMinutes(endMinutes)
+      unscheduledMatches.forEach((match) => {
+        const [hours, minutes] = currentTime.split(':').map(Number);
+        const startMinutes = hours * 60 + minutes;
+        const endMinutes = startMinutes + parseInt(bulkScheduleForm.matchDuration);
+        const nextStartMinutes = endMinutes + parseInt(bulkScheduleForm.breakDuration);
+        
+        const formatTimeFromMinutes = (mins) => {
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        };
+        
+        times.push({
+          match,
+          date: bulkScheduleForm.date,
+          startTime: currentTime,
+          endTime: formatTimeFromMinutes(endMinutes)
+        });
+        
+        currentTime = formatTimeFromMinutes(nextStartMinutes);
       });
       
-      currentTime = formatTimeFromMinutes(nextStartMinutes);
-    });
-    
-    return times;
+      return times;
+    } else {
+      // Per round scheduling
+      const rounds = getUniqueRoundsForScheduling();
+      const allRoundsFilled = rounds.every(r => bulkScheduleForm.roundDates[r]);
+      
+      if (!allRoundsFilled || !bulkScheduleForm.startTime) return [];
+      
+      const times = [];
+      
+      rounds.forEach(roundNum => {
+        const roundMatches = unscheduledMatches.filter(m => m.round_number === roundNum);
+        let currentTime = bulkScheduleForm.startTime;
+        
+        roundMatches.forEach(match => {
+          const [hours, minutes] = currentTime.split(':').map(Number);
+          const startMinutes = hours * 60 + minutes;
+          const endMinutes = startMinutes + parseInt(bulkScheduleForm.matchDuration);
+          const nextStartMinutes = endMinutes + parseInt(bulkScheduleForm.breakDuration);
+          
+          const formatTimeFromMinutes = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          };
+          
+          times.push({
+            match,
+            date: bulkScheduleForm.roundDates[roundNum],
+            startTime: currentTime,
+            endTime: formatTimeFromMinutes(endMinutes)
+          });
+          
+          currentTime = formatTimeFromMinutes(nextStartMinutes);
+        });
+      });
+      
+      return times;
+    }
   };
 
   const handleBulkSchedule = async () => {
-    if (!bulkScheduleForm.date || !bulkScheduleForm.startTime) {
-      alert('Please fill in date and start time');
+    const isValid = bulkScheduleForm.scheduleMode === 'single' 
+      ? (bulkScheduleForm.date && bulkScheduleForm.startTime)
+      : (bulkScheduleForm.startTime && getUniqueRoundsForScheduling().every(r => bulkScheduleForm.roundDates[r]));
+    
+    if (!isValid) {
+      alert('Please fill in all required fields');
       return;
     }
 
@@ -216,7 +267,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
     
     setLoading(true);
     try {
-      const promises = scheduleTimes.map(({ match, startTime, endTime }) => 
+      const promises = scheduleTimes.map(({ match, date, startTime, endTime }) => 
         fetch('http://localhost:5000/api/schedules', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -224,7 +275,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
             eventId: eventId,
             bracketId: bracketId,
             matchId: match.id,
-            date: bulkScheduleForm.date,
+            date: date,
             time: startTime,
             endTime: endTime
           })
@@ -241,7 +292,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
       await fetchSchedules();
       if (onRefresh) await onRefresh();
       setShowBulkScheduleModal(false);
-      setBulkScheduleForm({ date: '', startTime: '09:00', matchDuration: 60, breakDuration: 15 });
+      setBulkScheduleForm({ date: '', startTime: '09:00', matchDuration: 60, breakDuration: 15, scheduleMode: 'single', roundDates: {} });
       alert(`Successfully scheduled ${scheduleTimes.length} matches!`);
     } catch (error) {
       console.error('Error bulk scheduling:', error);
@@ -562,47 +613,169 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                   All matches will be scheduled automatically with time intervals
                 </div>
               </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Date *</label>
-                  <input type="date" value={bulkScheduleForm.date} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, date: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Start Time *</label>
-                  <input type="time" value={bulkScheduleForm.startTime} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, startTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Match Duration (minutes)</label>
-                  <input type="number" value={bulkScheduleForm.matchDuration} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, matchDuration: e.target.value})} disabled={loading} min="15" max="180" style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Break Duration (minutes)</label>
-                  <input type="number" value={bulkScheduleForm.breakDuration} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, breakDuration: e.target.value})} disabled={loading} min="0" max="60" style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+
+              {/* Schedule Mode Selection */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '12px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Schedule Mode</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <button
+                    onClick={() => setBulkScheduleForm({...bulkScheduleForm, scheduleMode: 'single', roundDates: {}})}
+                    disabled={loading}
+                    style={{
+                      padding: '16px',
+                      border: `2px solid ${bulkScheduleForm.scheduleMode === 'single' ? '#667eea' : '#2d3748'}`,
+                      borderRadius: '8px',
+                      background: bulkScheduleForm.scheduleMode === 'single' ? 'rgba(102, 126, 234, 0.1)' : '#1a2332',
+                      color: '#e2e8f0',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'left',
+                      opacity: loading ? 0.6 : 1
+                    }}
+                  >
+                    <div style={{ fontWeight: '600', marginBottom: '4px', color: bulkScheduleForm.scheduleMode === 'single' ? '#667eea' : '#e2e8f0' }}>Single Day</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>All matches on one date</div>
+                  </button>
+                  <button
+                    onClick={() => setBulkScheduleForm({...bulkScheduleForm, scheduleMode: 'perRound', date: ''})}
+                    disabled={loading}
+                    style={{
+                      padding: '16px',
+                      border: `2px solid ${bulkScheduleForm.scheduleMode === 'perRound' ? '#667eea' : '#2d3748'}`,
+                      borderRadius: '8px',
+                      background: bulkScheduleForm.scheduleMode === 'perRound' ? 'rgba(102, 126, 234, 0.1)' : '#1a2332',
+                      color: '#e2e8f0',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'left',
+                      opacity: loading ? 0.6 : 1
+                    }}
+                  >
+                    <div style={{ fontWeight: '600', marginBottom: '4px', color: bulkScheduleForm.scheduleMode === 'perRound' ? '#667eea' : '#e2e8f0' }}>Per Round</div>  {/* Changed from Per Match Day */}
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Different date per round</div>  {/* Changed from Different date per match day */}
+                  </button>
                 </div>
               </div>
 
-              {bulkScheduleForm.date && bulkScheduleForm.startTime && bulkScheduleTimes.length > 0 && (
+              {bulkScheduleForm.scheduleMode === 'single' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Date *</label>
+                    <input type="date" value={bulkScheduleForm.date} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, date: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Start Time *</label>
+                    <input type="time" value={bulkScheduleForm.startTime} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, startTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Match Duration (minutes)</label>
+                    <input type="number" value={bulkScheduleForm.matchDuration} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, matchDuration: e.target.value})} disabled={loading} min="15" max="180" style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Break Duration (minutes)</label>
+                    <input type="number" value={bulkScheduleForm.breakDuration} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, breakDuration: e.target.value})} disabled={loading} min="0" max="60" style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Start Time *</label>
+                      <input type="time" value={bulkScheduleForm.startTime} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, startTime: e.target.value})} disabled={loading} style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Match Duration (min)</label>
+                      <input type="number" value={bulkScheduleForm.matchDuration} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, matchDuration: e.target.value})} disabled={loading} min="15" max="180" style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Break Duration (min)</label>
+                      <input type="number" value={bulkScheduleForm.breakDuration} onChange={(e) => setBulkScheduleForm({...bulkScheduleForm, breakDuration: e.target.value})} disabled={loading} min="0" max="60" style={{ width: '100%', padding: '12px 16px', border: '2px solid #2d3748', borderRadius: '8px', background: '#1a2332', color: '#e2e8f0', fontSize: '14px', outline: 'none', opacity: loading ? 0.6 : 1 }} />
+                    </div>
+                  </div>
+                  
+                  <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid #2d3748' }}>
+                    <label style={{ display: 'block', marginBottom: '12px', color: '#e2e8f0', fontWeight: '600', fontSize: '14px' }}>Round Dates *</label>  {/* Changed from Match Day Dates */}
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      {getUniqueRoundsForScheduling().map(roundNum => {
+                        const roundMatches = unscheduledMatches.filter(m => m.round_number === roundNum);
+                        return (
+                          <div key={roundNum} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px', alignItems: 'center' }}>
+                            <div style={{ 
+                              background: 'rgba(99, 102, 241, 0.3)', 
+                              color: '#a5b4fc', 
+                              padding: '8px 12px', 
+                              borderRadius: '6px', 
+                              fontSize: '13px', 
+                              fontWeight: '600',
+                              textAlign: 'center'
+                            }}>
+                              Round {roundNum}  {/* Changed from Matchday {roundNum} */}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input 
+                                type="date" 
+                                value={bulkScheduleForm.roundDates[roundNum] || ''} 
+                                onChange={(e) => setBulkScheduleForm({
+                                  ...bulkScheduleForm, 
+                                  roundDates: {...bulkScheduleForm.roundDates, [roundNum]: e.target.value}
+                                })} 
+                                disabled={loading} 
+                                style={{ 
+                                  flex: 1,
+                                  padding: '10px 12px', 
+                                  border: '2px solid #2d3748', 
+                                  borderRadius: '6px', 
+                                  background: '#1a2332', 
+                                  color: '#e2e8f0', 
+                                  fontSize: '13px', 
+                                  outline: 'none', 
+                                  opacity: loading ? 0.6 : 1 
+                                }} 
+                              />
+                              <span style={{ color: '#64748b', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                ({roundMatches.length} {roundMatches.length === 1 ? 'match' : 'matches'})
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bulkScheduleForm.startTime && bulkScheduleTimes.length > 0 && (
                 <div style={{ background: 'rgba(72, 187, 120, 0.1)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(72, 187, 120, 0.2)', marginBottom: '20px', maxHeight: '300px', overflowY: 'auto' }}>
                   <div style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '12px', fontWeight: '600' }}>Schedule Preview:</div>
-                  {bulkScheduleTimes.map(({ match, startTime, endTime }, index) => (
-                    <div key={match.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '6px', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                        <span style={{ color: '#667eea', fontWeight: '600', fontSize: '13px', minWidth: '60px' }}>Match {index + 1}</span>
-                        <span style={{ color: '#e2e8f0', fontSize: '13px' }}>{match.team1_name} vs {match.team2_name}</span>
+                  {bulkScheduleTimes.map(({ match, date, startTime, endTime }, index) => {
+                    const displayMatchNumber = index + 1; // Add this counter
+                    const dateObj = new Date(date + 'T00:00:00');
+                    const dateDisplay = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    return (
+                      <div key={match.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '6px', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                          <span style={{ color: '#667eea', fontWeight: '600', fontSize: '13px', minWidth: '90px' }}>
+                            Match {displayMatchNumber}  {/* Changed from Matchday {match.round_number} */}
+                          </span>
+                          <span style={{ color: '#e2e8f0', fontSize: '13px' }}>{match.team1_name} vs {match.team2_name}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '600' }}>{dateDisplay}</span>
+                          <div style={{ color: '#48bb78', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock style={{ width: '14px', height: '14px' }} />
+                            {startTime} - {endTime}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ color: '#48bb78', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock style={{ width: '14px', height: '14px' }} />
-                        {startTime} - {endTime}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '20px', borderTop: '1px solid #2d3748' }}>
                 <button onClick={() => setShowBulkScheduleModal(false)} disabled={loading} style={{ padding: '12px 24px', background: '#1a2332', color: '#e2e8f0', border: '2px solid #2d3748', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1 }}>Cancel</button>
-                <button onClick={handleBulkSchedule} disabled={loading || !bulkScheduleForm.date || !bulkScheduleForm.startTime} style={{ padding: '12px 24px', background: loading ? '#64748b' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: (loading || !bulkScheduleForm.date || !bulkScheduleForm.startTime) ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: (loading || !bulkScheduleForm.date || !bulkScheduleForm.startTime) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button onClick={handleBulkSchedule} disabled={loading || (bulkScheduleForm.scheduleMode === 'single' ? (!bulkScheduleForm.date || !bulkScheduleForm.startTime) : (!bulkScheduleForm.startTime || !getUniqueRoundsForScheduling().every(r => bulkScheduleForm.roundDates[r])))} style={{ padding: '12px 24px', background: loading ? '#64748b' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: (loading || (bulkScheduleForm.scheduleMode === 'single' ? (!bulkScheduleForm.date || !bulkScheduleForm.startTime) : (!bulkScheduleForm.startTime || !getUniqueRoundsForScheduling().every(r => bulkScheduleForm.roundDates[r])))) ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease', opacity: (loading || (bulkScheduleForm.scheduleMode === 'single' ? (!bulkScheduleForm.date || !bulkScheduleForm.startTime) : (!bulkScheduleForm.startTime || !getUniqueRoundsForScheduling().every(r => bulkScheduleForm.roundDates[r])))) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {loading ? 'Scheduling...' : `Schedule All (${unscheduledMatches.length})`}
                 </button>
               </div>
