@@ -42,8 +42,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     avg_rpg: 0,
     avg_apg: 0,
     avg_bpg: 0,
-    avg_kpg: 0,
-    avg_dpg: 0,
+    avg_kills: 0,
+    avg_digs: 0,
     avg_total_errors: 0
   });
 
@@ -184,8 +184,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         avg_rpg: 0,
         avg_apg: 0,
         avg_bpg: 0,
-        avg_kpg: 0,
-        avg_dpg: 0,
+        avg_kills: 0,
+        avg_digs: 0,
         avg_total_errors: 0
       });
     }
@@ -228,8 +228,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         avg_rpg: 0,
         avg_apg: 0,
         avg_bpg: 0,
-        avg_kpg: 0,
-        avg_dpg: 0,
+        avg_kills: 0,
+        avg_digs: 0,
         avg_total_errors: 0
       });
       setAllPlayersData([]);
@@ -313,8 +313,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         avg_rpg: 0,
         avg_apg: 0,
         avg_bpg: 0,
-        avg_kpg: 0,
-        avg_dpg: 0,
+        avg_kills: 0,
+        avg_digs: 0,
         avg_total_errors: 0
       });
     } finally {
@@ -486,7 +486,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         ppg: { high: 20, low: 10 },
         rpg: { high: 10, low: 5 },
         apg: { high: 8, low: 4 },
-        fg: { high: 50, low: 40 },
         overall_score: { high: 30, low: 15 }
       };
       
@@ -497,16 +496,16 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       if (value <= threshold.low) return 'stats-low-value';
       return 'stats-medium-value';
     } else {
-      // Volleyball thresholds - UPDATED for total errors (lower is better)
+      // Volleyball thresholds - UPDATED for total counts
       const thresholds = {
-        kpg: { high: 15, low: 8 },
-        apg: { high: 10, low: 5 },
-        dpg: { high: 12, low: 6 },
-        bpg: { high: 3, low: 1 },
-        sapg: { high: 2, low: 0.5 },
-        total_errors: { high: 5, low: 2 }, // Lower errors are better
-        eff: { high: 20, low: 10 },
-        overall_score: { high: 25, low: 12 }
+        kills: { high: 50, low: 20 },           // Total kills across all games
+        assists: { high: 40, low: 15 },         // Total assists across all games
+        digs: { high: 60, low: 25 },            // Total digs across all games
+        blocks: { high: 15, low: 5 },           // Total blocks across all games
+        service_aces: { high: 10, low: 3 },     // Total aces across all games
+        total_errors: { high: 20, low: 8 },     // Total errors across all games (lower is better)
+        eff: { high: 80, low: 30 },             // Efficiency per game
+        overall_score: { high: 25, low: 12 }    // Overall score per game
       };
       
       const threshold = thresholds[stat];
@@ -533,7 +532,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     let headers, rows;
     
     if (sportType === 'basketball') {
-      headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 'PPG', 'RPG', 'APG', 'BPG', 'FG%', 'Total Points', 'Total Assists', 'Total Rebounds'];
+      headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 'PPG', 'RPG', 'APG', 'BPG', 'Total Points', 'Total Assists', 'Total Rebounds'];
       rows = filteredPlayers.map((player, index) => [
         index + 1,
         player.name,
@@ -545,14 +544,13 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.rpg,
         player.apg,
         player.bpg,
-        player.fg,
         player.total_points,
         player.total_assists,
         player.total_rebounds
       ]);
     } else {
-      // Volleyball - UPDATED with total errors instead of hitting percentage
-      headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 'KPG', 'APG', 'DPG', 'BPG', 'SAPG', 'Total Errors', 'Eff', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Service Aces'];
+      // Volleyball - UPDATED with total counts
+      headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Aces', 'Total Errors', 'Efficiency'];
       rows = filteredPlayers.map((player, index) => [
         index + 1,
         player.name,
@@ -560,18 +558,13 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.jersey_number,
         player.games_played,
         player.overall_score || 0,
-        player.kpg,
-        player.apg,
-        player.dpg,
-        player.bpg,
-        player.sapg,
-        player.total_errors, // Replaced hitting_percentage with total_errors
-        player.eff,
-        player.total_kills,
-        player.total_volleyball_assists,
-        player.total_digs,
-        player.total_volleyball_blocks,
-        player.total_service_aces
+        player.kills || 0,
+        player.assists || 0,
+        player.digs || 0,
+        player.blocks || 0,
+        player.service_aces || 0,
+        player.total_errors || 0,
+        player.eff || 0
       ]);
     }
     
@@ -593,7 +586,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     let headers, rows;
     
     if (sportType === 'basketball') {
-      headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'PPG', 'RPG', 'APG', 'BPG', 'FG%', 'Total Points', 'Total Assists', 'Total Rebounds'];
+      headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'PPG', 'RPG', 'APG', 'BPG', 'Total Points', 'Total Assists', 'Total Rebounds'];
       rows = filteredTeams.map((team, index) => [
         index + 1,
         team.team_name,
@@ -603,31 +596,25 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         team.rpg,
         team.apg,
         team.bpg,
-        team.fg,
         team.total_points,
         team.total_assists,
         team.total_rebounds
       ]);
     } else {
-      // Volleyball - UPDATED with total errors instead of hitting percentage
-      headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'KPG', 'APG', 'DPG', 'BPG', 'SAPG', 'Total Errors', 'Eff', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Service Aces'];
+      // Volleyball - UPDATED with total counts
+      headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Aces', 'Total Errors', 'Efficiency'];
       rows = filteredTeams.map((team, index) => [
         index + 1,
         team.team_name,
         team.games_played,
         team.overall_score || 0,
-        team.kpg,
-        team.apg,
-        team.dpg,
-        team.bpg,
-        team.sapg,
-        team.total_errors, // Replaced hitting_percentage with total_errors
-        team.eff,
-        team.total_kills,
-        team.total_volleyball_assists,
-        team.total_digs,
-        team.total_volleyball_blocks,
-        team.total_service_aces
+        team.kills || 0,
+        team.assists || 0,
+        team.digs || 0,
+        team.blocks || 0,
+        team.service_aces || 0,
+        team.total_errors || 0,
+        team.eff || 0
       ]);
     }
     
@@ -727,49 +714,43 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         >
           BPG {sortConfig.key === 'bpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
-        <th 
-          className="stats-sortable-header"
-          onClick={() => handleSort('fg')}
-        >
-          FG% {sortConfig.key === 'fg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
-        </th>
       </>
     );
   };
 
-  // Render Volleyball Players Table Headers - UPDATED with Total Errors instead of Hit%
+  // Render Volleyball Players Table Headers - UPDATED for total counts
   const renderVolleyballPlayerHeaders = () => {
     return (
       <>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('kpg')}
+          onClick={() => handleSort('kills')}
         >
-          KPG {sortConfig.key === 'kpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Kills {sortConfig.key === 'kills' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('apg')}
+          onClick={() => handleSort('assists')}
         >
-          APG {sortConfig.key === 'apg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Assists {sortConfig.key === 'assists' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('dpg')}
+          onClick={() => handleSort('digs')}
         >
-          DPG {sortConfig.key === 'dpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Digs {sortConfig.key === 'digs' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('bpg')}
+          onClick={() => handleSort('blocks')}
         >
-          BPG {sortConfig.key === 'bpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Blocks {sortConfig.key === 'blocks' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('sapg')}
+          onClick={() => handleSort('service_aces')}
         >
-          SAPG {sortConfig.key === 'sapg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Aces {sortConfig.key === 'service_aces' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
@@ -781,7 +762,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
           className="stats-sortable-header"
           onClick={() => handleSort('eff')}
         >
-          Eff {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Efficiency {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
       </>
     );
@@ -811,12 +792,11 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(player.rpg, 'rpg')}>{player.rpg}</td>
         <td className={getPerformanceColor(player.apg, 'apg')}>{player.apg}</td>
         <td className="stats-bpg">{player.bpg}</td>
-        <td className={getPerformanceColor(player.fg, 'fg')}>{player.fg}%</td>
       </tr>
     ));
   };
 
-  // Render Volleyball Players Table Rows - UPDATED with Total Errors instead of Hit%
+  // Render Volleyball Players Table Rows - UPDATED for total counts
   const renderVolleyballPlayerRows = () => {
     return currentPlayers.map((player, index) => (
       <tr key={player.id} className="stats-player-row">
@@ -836,16 +816,16 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
           {player.overall_score || 0}
         </td>
-        <td className={getPerformanceColor(player.kpg, 'kpg')}>{player.kpg}</td>
-        <td className={getPerformanceColor(player.apg, 'apg')}>{player.apg}</td>
-        <td className={getPerformanceColor(player.dpg, 'dpg')}>{player.dpg}</td>
-        <td className="stats-bpg">{player.bpg}</td>
-        <td className="stats-sapg">{player.sapg}</td>
+        <td className={getPerformanceColor(player.kills, 'kills')}>{player.kills || 0}</td>
+        <td className={getPerformanceColor(player.assists, 'assists')}>{player.assists || 0}</td>
+        <td className={getPerformanceColor(player.digs, 'digs')}>{player.digs || 0}</td>
+        <td className="stats-blocks">{player.blocks || 0}</td>
+        <td className="stats-service-aces">{player.service_aces || 0}</td>
         <td className={getPerformanceColor(player.total_errors, 'total_errors')}>
-          {player.total_errors}
+          {player.total_errors || 0}
         </td>
         <td className={getPerformanceColor(player.eff, 'eff')}>
-          {player.eff}
+          {player.eff || 0}
         </td>
       </tr>
     ));
@@ -879,49 +859,43 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         >
           BPG {sortConfig.key === 'bpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
-        <th 
-          className="stats-sortable-header"
-          onClick={() => handleSort('fg')}
-        >
-          FG% {sortConfig.key === 'fg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
-        </th>
       </>
     );
   };
 
-  // Render Volleyball Teams Table Headers - UPDATED with Total Errors instead of Hit%
+  // Render Volleyball Teams Table Headers - UPDATED for total counts
   const renderVolleyballTeamHeaders = () => {
     return (
       <>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('kpg')}
+          onClick={() => handleSort('kills')}
         >
-          KPG {sortConfig.key === 'kpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Kills {sortConfig.key === 'kills' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('apg')}
+          onClick={() => handleSort('assists')}
         >
-          APG {sortConfig.key === 'apg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Assists {sortConfig.key === 'assists' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('dpg')}
+          onClick={() => handleSort('digs')}
         >
-          DPG {sortConfig.key === 'dpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Digs {sortConfig.key === 'digs' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('bpg')}
+          onClick={() => handleSort('blocks')}
         >
-          BPG {sortConfig.key === 'bpg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Blocks {sortConfig.key === 'blocks' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
-          onClick={() => handleSort('sapg')}
+          onClick={() => handleSort('service_aces')}
         >
-          SAPG {sortConfig.key === 'sapg' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Total Aces {sortConfig.key === 'service_aces' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
         <th 
           className="stats-sortable-header"
@@ -933,7 +907,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
           className="stats-sortable-header"
           onClick={() => handleSort('eff')}
         >
-          Eff {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+          Efficiency {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
       </>
     );
@@ -961,12 +935,11 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(team.rpg, 'rpg')}>{team.rpg}</td>
         <td className={getPerformanceColor(team.apg, 'apg')}>{team.apg}</td>
         <td className="stats-bpg">{team.bpg}</td>
-        <td className={getPerformanceColor(team.fg, 'fg')}>{team.fg}%</td>
       </tr>
     ));
   };
 
-  // Render Volleyball Teams Table Rows - UPDATED with Total Errors instead of Hit%
+  // Render Volleyball Teams Table Rows - UPDATED for total counts
   const renderVolleyballTeamRows = () => {
     return currentTeams.map((team, index) => (
       <tr key={team.team_id} className="stats-player-row">
@@ -984,16 +957,16 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(team.overall_score, 'overall_score')}>
           {team.overall_score || 0}
         </td>
-        <td className={getPerformanceColor(team.kpg, 'kpg')}>{team.kpg}</td>
-        <td className={getPerformanceColor(team.apg, 'apg')}>{team.apg}</td>
-        <td className={getPerformanceColor(team.dpg, 'dpg')}>{team.dpg}</td>
-        <td className="stats-bpg">{team.bpg}</td>
-        <td className="stats-sapg">{team.sapg}</td>
+        <td className={getPerformanceColor(team.kills, 'kills')}>{team.kills || 0}</td>
+        <td className={getPerformanceColor(team.assists, 'assists')}>{team.assists || 0}</td>
+        <td className={getPerformanceColor(team.digs, 'digs')}>{team.digs || 0}</td>
+        <td className="stats-blocks">{team.blocks || 0}</td>
+        <td className="stats-service-aces">{team.service_aces || 0}</td>
         <td className={getPerformanceColor(team.total_errors, 'total_errors')}>
-          {team.total_errors}
+          {team.total_errors || 0}
         </td>
         <td className={getPerformanceColor(team.eff, 'eff')}>
-          {team.eff}
+          {team.eff || 0}
         </td>
       </tr>
     ));
@@ -1326,6 +1299,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                     <th>Digs</th>
                     <th>Blocks</th>
                     <th>Aces</th>
+                    <th>Receptions</th>
                     <th>Total Errors</th>
                     <th>Eff</th>
                   </>
@@ -1364,6 +1338,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                         <td>{player.digs || 0}</td>
                         <td>{player.volleyball_blocks || 0}</td>
                         <td>{player.service_aces || 0}</td>
+                        <td>{player.receptions || 0}</td>
                         <td>{totalErrors}</td>
                         <td className={getPerformanceColor(efficiency, 'eff')}>{efficiency}</td>
                       </>
@@ -1388,7 +1363,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     if (isBasketball) {
       csvContent += "Player,Team,Jersey,PTS,AST,REB,STL,BLK,3PM,Fouls,TO\n";
     } else {
-      csvContent += "Player,Team,Jersey,Kills,Assists,Digs,Blocks,Aces,Total Errors,Eff\n";
+      csvContent += "Player,Team,Jersey,Kills,Assists,Digs,Blocks,Aces,Receptions,Total Errors,Eff\n";
     }
     
     playerStats.forEach(player => {
@@ -1398,7 +1373,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       } else {
         const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0);
         const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
-        csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.kills || 0},${player.volleyball_assists || 0},${player.digs || 0},${player.volleyball_blocks || 0},${player.service_aces || 0},${totalErrors},${efficiency}\n`;
+        csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.kills || 0},${player.volleyball_assists || 0},${player.digs || 0},${player.volleyball_blocks || 0},${player.service_aces || 0},${player.receptions || 0},${totalErrors},${efficiency}\n`;
       }
     });
     
@@ -1454,12 +1429,12 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <div className="stats-card stats-card-success">
           <div className="stats-card-header">
             <span className="stats-card-label">
-              {sportType === 'basketball' ? 'Avg PPG' : 'Avg KPG'}
+              {sportType === 'basketball' ? 'Avg PPG' : 'Avg Kills'}
             </span>
             <FaChartBar className="stats-card-icon" />
           </div>
           <div className="stats-card-value">
-            {sportType === 'basketball' ? eventStatistics.avg_ppg : eventStatistics.avg_kpg}
+            {sportType === 'basketball' ? eventStatistics.avg_ppg : eventStatistics.avg_kills}
           </div>
           <div className="stats-card-subtext">
             {sportType === 'basketball' ? 'Points Per Game' : 'Kills Per Game'}
