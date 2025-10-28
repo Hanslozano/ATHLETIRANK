@@ -1457,10 +1457,10 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-  return (
-    <div className="stats-admin-dashboard">
-      <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
-        {!embedded && (
+return (
+  <div className={`stats-admin-dashboard ${embedded ? 'stats-embedded' : ''}`}>
+    <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
+      {!embedded && (
           <div className="dashboard-header">
             <div>
               <h1>Admin Statistics</h1>

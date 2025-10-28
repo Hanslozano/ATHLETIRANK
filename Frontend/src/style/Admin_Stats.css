@@ -57,11 +57,58 @@
 .dashboard-main{
   background: #0a0f1c; /* Match Events page */
 }
+
+/* ============================================
+   SIDEBAR FIX - EMBEDDED VS STANDALONE
+   ============================================ */
+
 /* Main Layout */
 .stats-admin-dashboard {
-  background-color: var(--stats-bg) !important;
+  width: 100%;
   min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+  background-color: var(--stats-bg) !important;
   color: var(--stats-text-primary);
+}
+
+/* EMBEDDED MODE - No margin adjustments (inside AdminEvents) */
+.stats-admin-dashboard.stats-embedded .dashboard-content {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  transition: none !important;
+  overflow-x: hidden;
+}
+
+.stats-admin-dashboard.stats-embedded .dashboard-content.sidebar-open {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+/* STANDALONE MODE - Normal sidebar adjustments */
+.stats-admin-dashboard:not(.stats-embedded) .dashboard-content {
+  margin-left: 70px;
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 70px);
+  max-width: calc(100vw - 70px);
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.stats-admin-dashboard:not(.stats-embedded) .dashboard-content.sidebar-open {
+  margin-left: 280px;
+  width: calc(100% - 280px);
+  max-width: calc(100vw - 280px);
+}
+
+/* Ensure all content respects the embedded mode */
+.stats-admin-dashboard.stats-embedded .stats-dashboard-main,
+.stats-admin-dashboard.stats-embedded .stats-content-area {
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  overflow-x: hidden;
 }
 
 /* Force override the shared "dashboard-main" class */
@@ -205,19 +252,31 @@
 /* Main Content */
 .stats-dashboard-main {
   padding: 24px;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.stats-admin-dashboard .bracket-content {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .stats-content-area {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
+  overflow-x: hidden;
 }
 
 /* Stats Cards Grid */
 .stats-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
+  max-width: 100%;
+  padding: 0;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .stats-card {
@@ -252,7 +311,6 @@
   opacity: 1;
 }
 
-
 /* Enhanced Color Coding for Stats Cards */
 .stats-card-primary {
   border-color: rgba(59, 130, 246, 0.4);
@@ -262,7 +320,6 @@
 .stats-card-primary::before {
   background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
-
 
 .stats-card-success {
   border-color: rgba(16, 185, 129, 0.4);
@@ -290,6 +347,7 @@
 .stats-card-info::before {
   background: linear-gradient(90deg, #8b5cf6, #7c3aed);
 }
+
 .stats-card-header {
   display: flex;
   justify-content: space-between;
@@ -326,6 +384,7 @@
   color: #3b82f6;
   text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
 }
+
 .stats-card-success .stats-card-value { 
   color: #10b981;
   text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
@@ -349,6 +408,7 @@
   position: relative;
   z-index: 1;
 }
+
 .stats-view-mode-select {
   width: 100%;
   padding: 14px 16px;
@@ -406,15 +466,17 @@
   background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
   pointer-events: none;
 }
+
 /* Tabs Navigation */
 .stats-tabs-navigation {
   display: flex;
   border-bottom: 2px solid var(--stats-border-color);
   margin-bottom: 32px;
-  background: #1a2332; /* Match Events page tabs */
+  background: #1a2332;
   border-radius: var(--stats-radius) var(--stats-radius) 0 0;
+  overflow-x: auto;
+  max-width: 100%;
 }
-
 
 .stats-tab-btn {
   background: transparent !important; /* Match Events page */
@@ -442,9 +504,11 @@
 
 /* Tab Content */
 .stats-tab-content {
-  background: #0f172a !important; /* All Players Statistics background */
+  background: #0f172a !important;
   border-radius: 0 var(--stats-radius) var(--stats-radius) var(--stats-radius);
   padding: 32px;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Match-by-Match View - Special Background */
@@ -462,6 +526,7 @@
 .stats-brackets-section .stats-match-card {
   background: #151e31 !important;
 }
+
 .stats-section-title {
   font-size: 1.8rem;
   font-weight: 700;
@@ -627,6 +692,10 @@
   border: 1px solid var(--stats-border-color);
   border-radius: var(--stats-radius-lg);
   padding: 24px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 32px;
+  max-width: 100%;
 }
 
 .stats-bracket-header {
@@ -663,6 +732,8 @@
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
   margin-bottom: 24px;
+  max-width: 100%;
+  padding: 0;
 }
 
 .stats-match-card {
@@ -672,6 +743,7 @@
   padding: 20px;
   transition: var(--stats-transition);
   cursor: pointer;
+  margin: 0 0 20px 0;
 }
 
 .stats-match-card:hover {
@@ -908,6 +980,7 @@
   border-radius: var(--stats-radius-lg);
   border: 1px solid var(--stats-border-color);
   background: var(--stats-background-secondary);
+  max-width: 100%;
 }
 
 .stats-table {
@@ -1020,6 +1093,21 @@
 }
 
 @media (max-width: 768px) {
+  /* Force embedded behavior on mobile */
+  .stats-admin-dashboard .dashboard-content,
+  .stats-admin-dashboard.stats-embedded .dashboard-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0;
+  }
+  
+  .stats-admin-dashboard .dashboard-content.sidebar-open,
+  .stats-admin-dashboard.stats-embedded .dashboard-content.sidebar-open {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
   .stats-cards-grid {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -1115,6 +1203,17 @@
     padding: 8px 16px;
     font-size: 13px;
   }
+
+  /* Remove all horizontal margins on mobile */
+  .stats-bracket-section {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .stats-card-info {
+    margin-right: 0;
+    margin-bottom: 15px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1142,6 +1241,18 @@
     width: 28px;
     height: 28px;
     font-size: 0.75rem;
+  }
+
+  .stats-dashboard-main {
+    padding: 12px;
+  }
+
+  .stats-tab-content {
+    padding: 16px;
+  }
+
+  .stats-cards-grid {
+    gap: 12px;
   }
 }
 
@@ -1385,59 +1496,18 @@
   white-space: nowrap;
 }
 
-/* Bracket section margins */
-.stats-bracket-section {
-  margin-left: 20px;
-  margin-right: 20px;
-  margin-bottom: 32px;
-}
-
-/* Total games card margin */
-.stats-card-info {
-  margin-right: 15px;
-}
-
-/* Adjust the cards grid to account for margins */
-.stats-cards-grid {
-  margin-left: 10px;
-  margin-right: 10px;
-}
-
-/* If you want specific margins for each card type */
-.stats-card-primary {
-  margin-left: 5px;
-}
-
-.stats-card-success {
-  margin-left: 5px;
-}
-
-.stats-card-warning {
-  margin-left: 5px;
-}
-
-/* For match cards within brackets */
-.stats-match-card {
-  margin: 0 5px 20px 5px;
-}
-
-/* Responsive adjustments for margins */
-@media (max-width: 768px) {
-  .stats-bracket-section {
-    margin-left: 10px;
-    margin-right: 10px;
+/* Tablet - 768px to 1024px */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .stats-admin-dashboard:not(.stats-embedded) .dashboard-content {
+    margin-left: 70px;
+    width: calc(100% - 70px);
   }
   
-  .stats-card-info {
-    margin-right: 0;
-    margin-bottom: 15px;
+  .stats-admin-dashboard:not(.stats-embedded) .dashboard-content.sidebar-open {
+    margin-left: 250px;
+    width: calc(100% - 250px);
   }
-  
-  .stats-cards-grid {
-    margin-left: 5px;
-    margin-right: 5px;
-  }
-  
+
   .stats-results-info {
     flex-direction: column;
     align-items: stretch;
@@ -1456,4 +1526,18 @@
     flex-wrap: wrap;
     justify-content: center;
   }
+}
+
+/* Extra safety - Prevent any element from exceeding viewport */
+.stats-admin-dashboard * {
+  box-sizing: border-box;
+}
+
+.stats-admin-dashboard .bracket-content,
+.stats-admin-dashboard .stats-cards-section,
+.stats-admin-dashboard .all-players-section,
+.stats-admin-dashboard .bracket-visualization-section,
+.stats-admin-dashboard .stats-players-section {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
 }
