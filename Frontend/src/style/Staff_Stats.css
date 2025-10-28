@@ -1960,3 +1960,90 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+.connection-status-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.connection-notification {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
+}
+
+.connection-notification.offline {
+  background: #f56565;
+  color: white;
+}
+
+.connection-notification.online {
+  background: #48bb78;
+  color: white;
+}
+
+.connection-notification.syncing {
+  background: #4299e1;
+  color: white;
+}
+
+.pending-syncs-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: #ed8936;
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sync-now-button {
+  background: white;
+  color: #ed8936;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.sync-now-button:hover {
+  background: #f7fafc;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

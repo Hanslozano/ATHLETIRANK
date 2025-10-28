@@ -16,7 +16,14 @@ import {
   FaEyeSlash,
   FaClock,
   FaTimes,
-  FaUsers
+  FaUsers,
+  // ============================================
+  // 1. ADDED OFFLINE ICONS
+  // ============================================
+  FaWifi, 
+  FaExclamationTriangle, 
+  FaCheckCircle, 
+  FaCloudUploadAlt
 } from "react-icons/fa";
 import "../../style/Staff_Stats.css";
 
@@ -52,15 +59,29 @@ const StaffStats = ({ sidebarOpen }) => {
   });
   const [activeTeamView, setActiveTeamView] = useState('team1');
   const [showBothTeams, setShowBothTeams] = useState(false);
-const [showBenchPlayers, setShowBenchPlayers] = useState({
-  team1: true,
-  team2: true
-});
+  const [showBenchPlayers, setShowBenchPlayers] = useState({
+    team1: true,
+    team2: true
+  });
+
+  // ============================================
+  // 2. ADDED OFFLINE STATES
+  // ============================================
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showConnectionNotif, setShowConnectionNotif] = useState(false);
+  const [pendingSyncs, setPendingSyncs] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const STORAGE_KEYS = {
+    PENDING_SYNCS: 'staff_stats_pending_syncs',
+    OFFLINE_DATA: 'staff_stats_offline_data',
+    LAST_SYNC: 'staff_stats_last_sync'
+  };
 
   // QuickScore States
   const [isQuickScoreExpanded, setIsQuickScoreExpanded] = useState(true);
   const [selectedQuickScorePlayer, setSelectedQuickScorePlayer] = useState(null);
- const [hideButtons, setHideButtons] = useState(true);
+  const [hideButtons, setHideButtons] = useState(true);
 
   const basketballStatsTemplate = {
     points: [0, 0, 0, 0],
@@ -115,6 +136,195 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
     { key: 'attack_errors', label: 'ATK ERR', color: 'bg-orange-600 hover:bg-orange-700', points: 0 },
     { key: 'serve_errors', label: 'SRV ERR', color: 'bg-pink-600 hover:bg-pink-700', points: 0 }
   ];
+
+  // ============================================
+  // 3. ADDED OFFLINE HELPER FUNCTIONS
+  // ============================================
+
+  // Load pending syncs from localStorage
+  const loadPendingSyncs = () => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PENDING_SYNCS);
+      if (stored) {
+        const syncs = JSON.parse(stored);
+        setPendingSyncs(syncs);
+        console.log(`Loaded ${syncs.length} pending syncs`);
+      }
+    } catch (err) {
+      console.error('Error loading pending syncs:', err);
+    }
+  };
+
+  // Save data to localStorage when offline
+  const saveToLocalStorage = (matchId, data, action = 'save_stats') => {
+    try {
+      const syncItem = {
+        id: `${action}_${matchId}_${Date.now()}`,
+        matchId,
+        action,
+        data,
+        timestamp: new Date().toISOString(),
+        attempts: 0
+      };
+
+      const currentSyncs = JSON.parse(localStorage.getItem(STORAGE_KEYS.PENDING_SYNCS) || '[]');
+      currentSyncs.push(syncItem);
+      localStorage.setItem(STORAGE_KEYS.PENDING_SYNCS, JSON.stringify(currentSyncs));
+      setPendingSyncs(currentSyncs);
+
+      console.log('Data saved to localStorage for later sync:', syncItem);
+      return true;
+    } catch (err) {
+      console.error('Error saving to localStorage:', err);
+      alert('Failed to save data offline. Storage might be full.');
+      return false;
+    }
+  };
+
+  // Sync pending data when connection is restored
+  const syncPendingData = async () => {
+    const syncs = JSON.parse(localStorage.getItem(STORAGE_KEYS.PENDING_SYNCS) || '[]');
+    
+    if (syncs.length === 0) {
+      console.log('No pending syncs');
+      return;
+    }
+
+    setIsSyncing(true);
+    console.log(`Starting sync of ${syncs.length} items...`);
+
+    const failedSyncs = [];
+    let successCount = 0;
+
+    for (const sync of syncs) {
+      try {
+        if (sync.action === 'save_stats') {
+          const response = await fetch(
+            `http://localhost:5000/api/stats/matches/${sync.matchId}/stats`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(sync.data),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Sync failed: ${response.status}`);
+          }
+
+          // Complete the match
+          await fetch(
+            `http://localhost:5000/api/brackets/matches/${sync.matchId}/complete`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(sync.data.bracketData),
+            }
+          );
+
+          successCount++;
+          console.log(`Synced item ${sync.id}`);
+        }
+      } catch (err) {
+        console.error(`Failed to sync item ${sync.id}:`, err);
+        sync.attempts = (sync.attempts || 0) + 1;
+        if (sync.attempts < 3) {
+          failedSyncs.push(sync);
+        }
+      }
+    }
+
+    // Update localStorage with only failed syncs
+    localStorage.setItem(STORAGE_KEYS.PENDING_SYNCS, JSON.stringify(failedSyncs));
+    setPendingSyncs(failedSyncs);
+    localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+
+    setIsSyncing(false);
+
+    if (successCount > 0) {
+      alert(`✅ Successfully synced ${successCount} saved statistics!`);
+    }
+    if (failedSyncs.length > 0) {
+      alert(`⚠️ ${failedSyncs.length} items failed to sync. Will retry later.`);
+    }
+  };
+
+  // ============================================
+  // 4. ADDED CONNECTION STATUS COMPONENT
+  // ============================================
+  const ConnectionStatus = () => {
+    if (!showConnectionNotif && isOnline && pendingSyncs.length === 0) return null;
+
+    return (
+      <div className="connection-status-container">
+        {/* Offline Warning */}
+        {!isOnline && (
+          <div className="connection-notification offline">
+            <FaExclamationTriangle />
+            <span>No Internet Connection - Working Offline</span>
+          </div>
+        )}
+
+        {/* Online Notification */}
+        {showConnectionNotif && isOnline && (
+          <div className="connection-notification online">
+            <FaCheckCircle />
+            <span>Connection Restored</span>
+          </div>
+        )}
+
+        {/* Syncing Status */}
+        {isSyncing && (
+          <div className="connection-notification syncing">
+            <FaCloudUploadAlt className="spinning" />
+            <span>Syncing data...</span>
+          </div>
+        )}
+
+        {/* Pending Syncs Badge */}
+        {pendingSyncs.length > 0 && !isSyncing && (
+          <div className="pending-syncs-badge">
+            <FaCloudUploadAlt />
+            <span>{pendingSyncs.length} pending sync{pendingSyncs.length > 1 ? 's' : ''}</span>
+            {isOnline && (
+              <button onClick={syncPendingData} className="sync-now-button">
+                Sync Now
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ============================================
+  // 5. ADDED CONNECTION MONITORING useEffect
+  // ============================================
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Connection restored');
+      setIsOnline(true);
+      setShowConnectionNotif(true);
+      setTimeout(() => setShowConnectionNotif(false), 5000);
+      syncPendingData();
+    };
+
+    const handleOffline = () => {
+      console.log('Connection lost');
+      setIsOnline(false);
+      setShowConnectionNotif(true);
+      setTimeout(() => setShowConnectionNotif(false), 5000);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    loadPendingSyncs();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Function to calculate current score for QuickScore
   const calculateQuickScoreCurrentScore = (player) => {
@@ -478,7 +688,6 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
     return takenPositions;
   };
 
-  
   const initializeStartingPlayers = (stats, team1Id, team2Id, sportType) => {
     const maxStarters = getMaxStartingPlayers(sportType);
     
@@ -640,7 +849,6 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
       setPlayerStats(updatedStats);
     }
   };
-
 
   const handleStartingPlayerToggle = (playerId, teamId) => {
     const sportType = selectedGame?.sport_type;
@@ -1678,97 +1886,15 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
     setLoading(false);
   };
 
-  // FIXED: Save statistics function to properly handle volleyball per-period stats
+  // ============================================
+  // 6. UPDATED saveStatistics FUNCTION WITH OFFLINE SUPPORT
+  // ============================================
   const saveStatistics = async () => {
     if (!selectedGame) return;
     setLoading(true);
+
     try {
-      const statsRes = await fetch(
-        `http://localhost:5000/api/stats/matches/${selectedGame.id}/stats`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            team1_id: selectedGame.team1_id,
-            team2_id: selectedGame.team2_id,
-            players: playerStats.map((p) => {
-              // Calculate totals including overtime
-              const totalTwoPoints = (p.two_points_made ? p.two_points_made.reduce((a, b) => a + b, 0) : 0) +
-                                   (p.overtime_two_points_made ? p.overtime_two_points_made.reduce((a, b) => a + b, 0) : 0);
-              
-              const totalThreePoints = (p.three_points_made ? p.three_points_made.reduce((a, b) => a + b, 0) : 0) +
-                                     (p.overtime_three_points_made ? p.overtime_three_points_made.reduce((a, b) => a + b, 0) : 0);
-              
-              const totalFreeThrows = (p.free_throws_made ? p.free_throws_made.reduce((a, b) => a + b, 0) : 0) +
-                                    (p.overtime_free_throws_made ? p.overtime_free_throws_made.reduce((a, b) => a + b, 0) : 0);
-
-              // FIXED: For volleyball, save both totals AND per-period stats
-              const playerData = {
-                player_id: p.player_id,
-                team_id: p.team_id,
-                points: calculateTotalPoints(p),
-                assists: (p.assists ? p.assists.reduce((a, b) => a + b, 0) : 0) +
-                        (p.overtime_assists ? p.overtime_assists.reduce((a, b) => a + b, 0) : 0),
-                rebounds: (p.rebounds ? p.rebounds.reduce((a, b) => a + b, 0) : 0) +
-                         (p.overtime_rebounds ? p.overtime_rebounds.reduce((a, b) => a + b, 0) : 0),
-                two_points_made: totalTwoPoints,
-                three_points_made: totalThreePoints,
-                free_throws_made: totalFreeThrows,
-                steals: (p.steals ? p.steals.reduce((a, b) => a + b, 0) : 0) +
-                       (p.overtime_steals ? p.overtime_steals.reduce((a, b) => a + b, 0) : 0),
-                blocks: (p.blocks ? p.blocks.reduce((a, b) => a + b, 0) : 0) +
-                       (p.overtime_blocks ? p.overtime_blocks.reduce((a, b) => a + b, 0) : 0),
-                fouls: (p.fouls ? p.fouls.reduce((a, b) => a + b, 0) : 0) +
-                      (p.overtime_fouls ? p.overtime_fouls.reduce((a, b) => a + b, 0) : 0),
-                turnovers: (p.turnovers ? p.turnovers.reduce((a, b) => a + b, 0) : 0) +
-                          (p.overtime_turnovers ? p.overtime_turnovers.reduce((a, b) => a + b, 0) : 0),
-                // Include overtime data for detailed tracking
-                overtime_periods: overtimePeriods,
-                overtime_two_points_made: p.overtime_two_points_made || [],
-                overtime_three_points_made: p.overtime_three_points_made || [],
-                overtime_free_throws_made: p.overtime_free_throws_made || [],
-                overtime_assists: p.overtime_assists || [],
-                overtime_rebounds: p.overtime_rebounds || [],
-                overtime_steals: p.overtime_steals || [],
-                overtime_blocks: p.overtime_blocks || [],
-                overtime_fouls: p.overtime_fouls || [],
-                overtime_turnovers: p.overtime_turnovers || [],
-                // Volleyball stats - FIXED: Save both totals AND per-period arrays
-                kills: p.kills ? p.kills.reduce((a, b) => a + b, 0) : 0,
-                kills_per_set: p.kills || [0, 0, 0, 0, 0],
-                attack_attempts: p.attack_attempts ? p.attack_attempts.reduce((a, b) => a + b, 0) : 0,
-                attack_attempts_per_set: p.attack_attempts || [0, 0, 0, 0, 0],
-                attack_errors: p.attack_errors ? p.attack_errors.reduce((a, b) => a + b, 0) : 0,
-                attack_errors_per_set: p.attack_errors || [0, 0, 0, 0, 0],
-                serves: p.serves ? p.serves.reduce((a, b) => a + b, 0) : 0,
-                serves_per_set: p.serves || [0, 0, 0, 0, 0],
-                service_aces: p.service_aces ? p.service_aces.reduce((a, b) => a + b, 0) : 0,
-                service_aces_per_set: p.service_aces || [0, 0, 0, 0, 0],
-                serve_errors: p.serve_errors ? p.serve_errors.reduce((a, b) => a + b, 0) : 0,
-                serve_errors_per_set: p.serve_errors || [0, 0, 0, 0, 0],
-                receptions: p.receptions ? p.receptions.reduce((a, b) => a + b, 0) : 0,
-                receptions_per_set: p.receptions || [0, 0, 0, 0, 0],
-                reception_errors: p.reception_errors ? p.reception_errors.reduce((a, b) => a + b, 0) : 0,
-                reception_errors_per_set: p.reception_errors || [0, 0, 0, 0, 0],
-                digs: p.digs ? p.digs.reduce((a, b) => a + b, 0) : 0,
-                digs_per_set: p.digs || [0, 0, 0, 0, 0],
-                volleyball_assists: p.volleyball_assists ? p.volleyball_assists.reduce((a, b) => a + b, 0) : 0,
-                volleyball_assists_per_set: p.volleyball_assists || [0, 0, 0, 0, 0],
-                volleyball_blocks: p.volleyball_blocks ? p.volleyball_blocks.reduce((a, b) => a + b, 0) : 0,
-                volleyball_blocks_per_set: p.volleyball_blocks || [0, 0, 0, 0, 0],
-              };
-              
-              return playerData;
-            }),
-          }),
-        }
-      );
-      
-      if (!statsRes.ok) {
-        throw new Error(`Failed to save stats: ${statsRes.status}`);
-      }
-
-      // Calculate total scores including overtime
+      // Calculate totals (keep your existing calculation code)
       const regulationTeam1Total = teamScores.team1.reduce((a, b) => a + b, 0);
       const regulationTeam2Total = teamScores.team2.reduce((a, b) => a + b, 0);
       const overtimeTeam1Total = overtimeScores.team1.reduce((a, b) => a + b, 0);
@@ -1783,9 +1909,8 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
       } else if (team2TotalScore > team1TotalScore) {
         winner_id = selectedGame.team2_id;
       } else {
-        // Game is still tied after overtime - prompt for more overtime
         const addMoreOvertime = window.confirm(
-          "The game is still tied after overtime! Would you like to add another overtime period?"
+          "The game is still tied! Would you like to add another overtime period?"
         );
         if (addMoreOvertime) {
           addOvertimePeriod();
@@ -1798,27 +1923,112 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
         }
       }
 
+      const statsData = {
+        team1_id: selectedGame.team1_id,
+        team2_id: selectedGame.team2_id,
+        players: playerStats.map((p) => ({
+          player_id: p.player_id,
+          team_id: p.team_id,
+          points: calculateTotalPoints(p),
+          assists: (p.assists?.reduce((a, b) => a + b, 0) || 0) + 
+                  (p.overtime_assists?.reduce((a, b) => a + b, 0) || 0),
+          rebounds: (p.rebounds?.reduce((a, b) => a + b, 0) || 0) + 
+                   (p.overtime_rebounds?.reduce((a, b) => a + b, 0) || 0),
+          two_points_made: (p.two_points_made?.reduce((a, b) => a + b, 0) || 0) + 
+                          (p.overtime_two_points_made?.reduce((a, b) => a + b, 0) || 0),
+          three_points_made: (p.three_points_made?.reduce((a, b) => a + b, 0) || 0) + 
+                            (p.overtime_three_points_made?.reduce((a, b) => a + b, 0) || 0),
+          free_throws_made: (p.free_throws_made?.reduce((a, b) => a + b, 0) || 0) + 
+                           (p.overtime_free_throws_made?.reduce((a, b) => a + b, 0) || 0),
+          steals: (p.steals?.reduce((a, b) => a + b, 0) || 0) + 
+                 (p.overtime_steals?.reduce((a, b) => a + b, 0) || 0),
+          blocks: (p.blocks?.reduce((a, b) => a + b, 0) || 0) + 
+                 (p.overtime_blocks?.reduce((a, b) => a + b, 0) || 0),
+          fouls: (p.fouls?.reduce((a, b) => a + b, 0) || 0) + 
+                (p.overtime_fouls?.reduce((a, b) => a + b, 0) || 0),
+          turnovers: (p.turnovers?.reduce((a, b) => a + b, 0) || 0) + 
+                    (p.overtime_turnovers?.reduce((a, b) => a + b, 0) || 0),
+          overtime_periods: overtimePeriods,
+          overtime_two_points_made: p.overtime_two_points_made || [],
+          overtime_three_points_made: p.overtime_three_points_made || [],
+          overtime_free_throws_made: p.overtime_free_throws_made || [],
+          overtime_assists: p.overtime_assists || [],
+          overtime_rebounds: p.overtime_rebounds || [],
+          overtime_steals: p.overtime_steals || [],
+          overtime_blocks: p.overtime_blocks || [],
+          overtime_fouls: p.overtime_fouls || [],
+          overtime_turnovers: p.overtime_turnovers || [],
+          kills: p.kills?.reduce((a, b) => a + b, 0) || 0,
+          kills_per_set: p.kills || [0, 0, 0, 0, 0],
+          attack_attempts: p.attack_attempts?.reduce((a, b) => a + b, 0) || 0,
+          attack_attempts_per_set: p.attack_attempts || [0, 0, 0, 0, 0],
+          attack_errors: p.attack_errors?.reduce((a, b) => a + b, 0) || 0,
+          attack_errors_per_set: p.attack_errors || [0, 0, 0, 0, 0],
+          serves: p.serves?.reduce((a, b) => a + b, 0) || 0,
+          serves_per_set: p.serves || [0, 0, 0, 0, 0],
+          service_aces: p.service_aces?.reduce((a, b) => a + b, 0) || 0,
+          service_aces_per_set: p.service_aces || [0, 0, 0, 0, 0],
+          serve_errors: p.serve_errors?.reduce((a, b) => a + b, 0) || 0,
+          serve_errors_per_set: p.serve_errors || [0, 0, 0, 0, 0],
+          receptions: p.receptions?.reduce((a, b) => a + b, 0) || 0,
+          receptions_per_set: p.receptions || [0, 0, 0, 0, 0],
+          reception_errors: p.reception_errors?.reduce((a, b) => a + b, 0) || 0,
+          reception_errors_per_set: p.reception_errors || [0, 0, 0, 0, 0],
+          digs: p.digs?.reduce((a, b) => a + b, 0) || 0,
+          digs_per_set: p.digs || [0, 0, 0, 0, 0],
+          volleyball_assists: p.volleyball_assists?.reduce((a, b) => a + b, 0) || 0,
+          volleyball_assists_per_set: p.volleyball_assists || [0, 0, 0, 0, 0],
+          volleyball_blocks: p.volleyball_blocks?.reduce((a, b) => a + b, 0) || 0,
+          volleyball_blocks_per_set: p.volleyball_blocks || [0, 0, 0, 0, 0],
+        })),
+        bracketData: {
+          winner_id: winner_id,
+          scores: {
+            team1: team1TotalScore,
+            team2: team2TotalScore,
+            regulation: {
+              team1: regulationTeam1Total,
+              team2: regulationTeam2Total
+            },
+            overtime: {
+              team1: overtimeTeam1Total,
+              team2: overtimeTeam2Total,
+              periods: overtimePeriods
+            }
+          }
+        }
+      };
+
+      // IF OFFLINE: Save to localStorage
+      if (!isOnline) {
+        const saved = saveToLocalStorage(selectedGame.id, statsData, 'save_stats');
+        if (saved) {
+          alert(`📱 No connection detected.\n\nStatistics saved locally and will sync automatically when connection is restored.\n\nPending syncs: ${pendingSyncs.length + 1}`);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // IF ONLINE: Save to server
+      const statsRes = await fetch(
+        `http://localhost:5000/api/stats/matches/${selectedGame.id}/stats`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(statsData),
+        }
+      );
+      
+      if (!statsRes.ok) {
+        throw new Error(`Failed to save stats: ${statsRes.status}`);
+      }
+
       const bracketRes = await fetch(
         `http://localhost:5000/api/brackets/matches/${selectedGame.id}/complete`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            winner_id: winner_id,
-            scores: {
-              team1: team1TotalScore,
-              team2: team2TotalScore,
-              regulation: {
-                team1: regulationTeam1Total,
-                team2: regulationTeam2Total
-              },
-              overtime: {
-                team1: overtimeTeam1Total,
-                team2: overtimeTeam2Total,
-                periods: overtimePeriods
-              }
-            }
-          }),
+          body: JSON.stringify(statsData.bracketData),
         }
       );
       
@@ -1828,7 +2038,7 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
       
       const bracketData = await bracketRes.json();
       
-      let message = "Statistics saved successfully!";
+      let message = "✅ Statistics saved successfully!";
       if (overtimePeriods > 0) {
         message += ` Game went to ${overtimePeriods} overtime period${overtimePeriods > 1 ? 's' : ''}.`;
       }
@@ -1851,7 +2061,7 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
       
       alert(message);
       
-      // Store context and navigate to StaffEvents
+      // Navigate back (keep your existing navigation code)
       sessionStorage.setItem('staffEventsContext', JSON.stringify({
         selectedEvent: selectedEvent,
         selectedBracket: selectedBracket
@@ -1861,7 +2071,11 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
       navigate('/StaffDashboard/events');
       
     } catch (err) {
-      alert("Failed to save stats: " + err.message);
+      // If save fails, offer to save offline
+      if (confirm(`Failed to save: ${err.message}\n\nWould you like to save offline and sync later?`)) {
+        saveToLocalStorage(selectedGame.id, statsData, 'save_stats');
+        alert('📱 Statistics saved offline. Will sync when connection is restored.');
+      }
     } finally {
       setLoading(false);
     }
@@ -2863,6 +3077,11 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
 
   return (
     <div className="admin-dashboard">
+      {/* ============================================ */}
+      {/* 7. ADDED ConnectionStatus COMPONENT */}
+      {/* ============================================ */}
+      <ConnectionStatus />
+      
       <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="dashboard-header">
           <h1>Match Scoring</h1>
@@ -3059,24 +3278,24 @@ const [showBenchPlayers, setShowBenchPlayers] = useState({
               {renderScores()}
 
               {/* Action Buttons */}
- {/* Action Buttons */}
-{selectedGame.status !== 'completed' && (
-  <div className="stats-actions">
-    <button 
-      onClick={resetStatistics}
-      className="stats-action-button stats-action-reset"
-    >
-      <FaRedo /> Reset All
-    </button>
-    <button
-      onClick={saveStatistics}
-      disabled={loading}
-      className="stats-action-button stats-action-save"
-    >
-      <FaSave /> {loading ? "Saving..." : "Save Statistics"}
-    </button>
-  </div>
-)}
+              {selectedGame.status !== 'completed' && (
+                <div className="stats-actions">
+                  <button 
+                    onClick={resetStatistics}
+                    className="stats-action-button stats-action-reset"
+                  >
+                    <FaRedo /> Reset All
+                  </button>
+                  <button
+                    onClick={saveStatistics}
+                    disabled={loading}
+                    className="stats-action-button stats-action-save"
+                  >
+                    <FaSave /> {loading ? "Saving..." : "Save Statistics"}
+                  </button>
+                </div>
+              )}
+
               {/* Control Bar */}
               <ControlBar />
 
