@@ -185,8 +185,7 @@ const AdminUsers = ({ sidebarOpen }) => {
   };
 
   const filteredUsers = users.filter(user => {
-    if (filter === 'pending') return !user.is_approved;
-    if (filter === 'approved') return user.is_approved;
+    // Remove pending and approved filters, keep role filters
     if (filter === 'staff') return user.role === 'staff';
     if (filter === 'admin') return user.role === 'admin';
     return true;
@@ -197,8 +196,6 @@ const AdminUsers = ({ sidebarOpen }) => {
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
-
-  const pendingUsersCount = users.filter(user => !user.is_approved).length;
 
   return (
     <div className="admin-dashboard">
@@ -235,8 +232,6 @@ const AdminUsers = ({ sidebarOpen }) => {
                     className="bracket-form-group select-filter"
                   >
                     <option value="all">All Users</option>
-                    <option value="pending">Pending Approval ({pendingUsersCount})</option>
-                    <option value="approved">Approved</option>
                     <option value="staff">Staff Only</option>
                     <option value="admin">Admins Only</option>
                   </select>
@@ -307,11 +302,6 @@ const AdminUsers = ({ sidebarOpen }) => {
                             </div>
                             <div className="bracket-card-info">
                               <div className="user-email">{user.email}</div>
-                              <div className="user-status">
-                                <span className={`status-badge ${user.is_approved ? 'approved' : 'pending'}`}>
-                                  {user.is_approved ? 'Approved' : 'Pending'}
-                                </span>
-                              </div>
                             </div>
                             <div className="bracket-card-actions">
                               <button 
@@ -337,7 +327,6 @@ const AdminUsers = ({ sidebarOpen }) => {
                           <th>Name</th>
                           <th>Email</th>
                           <th>Role</th>
-                          <th>Status</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -350,11 +339,6 @@ const AdminUsers = ({ sidebarOpen }) => {
                               <td>
                                 <span className={`bracket-sport-badge ${user.role}`}>
                                   {user.role}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={`status-badge ${user.is_approved ? 'approved' : 'pending'}`}>
-                                  {user.is_approved ? 'Approved' : 'Pending'}
                                 </span>
                               </td>
                               <td>
@@ -372,7 +356,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="5" className="bracket-no-brackets">
+                            <td colSpan="4" className="bracket-no-brackets">
                               No users found matching your criteria
                             </td>
                           </tr>
@@ -391,138 +375,436 @@ const AdminUsers = ({ sidebarOpen }) => {
       {showCreateUser && (
         <div className="modal-overlay" onClick={() => setShowCreateUser(false)}>
           <div className="modal-content create-user-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title-section">
-                <h2>Create New User</h2>
-                <p className="modal-subtitle">Add a new staff or admin account to the system</p>
+            {/* Modal Header */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              padding: '24px', 
+              borderBottom: '1px solid var(--border-color)' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <FaUserPlus style={{ width: '24px', height: '24px', color: 'var(--primary-color)' }} />
+                <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '24px', fontWeight: '600' }}>
+                  Create New User
+                </h2>
               </div>
               <button 
-                className="modal-close-btn"
                 onClick={() => setShowCreateUser(false)}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--text-muted)', 
+                  cursor: 'pointer', 
+                  padding: '8px',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px', 
+                  transition: 'all 0.2s ease',
+                  fontSize: '24px'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'var(--background-secondary)';
+                  e.target.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'none';
+                  e.target.style.color = 'var(--text-muted)';
+                }}
               >
-                &times;
+                ×
               </button>
             </div>
             
-            <form onSubmit={handleCreateUser} className="auth-form create-user-form">
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input
-                  type="text"
-                  name="username"
-                  className="form-input"
-                  placeholder="Enter full name"
-                  value={createUserData.username}
-                  onChange={handleCreateUserChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  name="email"
-                  className="form-input"
-                  placeholder="Enter email address"
-                  value={createUserData.email}
-                  onChange={handleCreateUserChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  className="form-input"
-                  placeholder="Create password"
-                  value={createUserData.password}
-                  onChange={handleCreateUserChange}
-                  required
-                />
-                {createUserData.password && (
-                  <div className="password-requirements">
-                    <p className="requirements-title">Password must contain:</p>
-                    <ul className="requirements-list">
-                      <li className={passwordStrength.hasMinLength ? 'valid' : 'invalid'}>
-                        {passwordStrength.hasMinLength ? '✓' : '✗'} At least 8 characters
-                      </li>
-                      <li className={passwordStrength.hasUppercase ? 'valid' : 'invalid'}>
-                        {passwordStrength.hasUppercase ? '✓' : '✗'} One uppercase letter
-                      </li>
-                      <li className={passwordStrength.hasLowercase ? 'valid' : 'invalid'}>
-                        {passwordStrength.hasLowercase ? '✓' : '✗'} One lowercase letter
-                      </li>
-                      <li className={passwordStrength.hasNumber ? 'valid' : 'invalid'}>
-                        {passwordStrength.hasNumber ? '✓' : '✗'} One number
-                      </li>
-                      <li className={passwordStrength.hasSpecialChar ? 'valid' : 'invalid'}>
-                        {passwordStrength.hasSpecialChar ? '✓' : '✗'} One special character
-                      </li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Confirm Password</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  className="form-input"
-                  placeholder="Confirm password"
-                  value={createUserData.confirmPassword}
-                  onChange={handleCreateUserChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Select Role</label>
-                <div className="role-selector">
-                  <button
-                    type="button"
-                    className={`role-btn ${createUserData.role === 'admin' ? 'active' : ''}`}
-                    onClick={() => handleRoleSelect('admin')}
-                  >
-                    Admin
-                  </button>
-                  <button
-                    type="button"
-                    className={`role-btn ${createUserData.role === 'staff' ? 'active' : ''}`}
-                    onClick={() => handleRoleSelect('staff')}
-                  >
-                    Staff
-                  </button>
+            {/* Modal Body */}
+            <div style={{ padding: '24px' }}>
+              {/* Info Card */}
+              <div style={{ 
+                background: 'rgba(59, 130, 246, 0.1)', 
+                padding: '16px', 
+                borderRadius: '8px', 
+                marginBottom: '24px', 
+                border: '1px solid rgba(59, 130, 246, 0.2)' 
+              }}>
+                <div style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: '600' }}>
+                  Add a new staff or admin account to the system
                 </div>
               </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="cancel-btn"
-                  onClick={() => setShowCreateUser(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="submit-btn create-submit-btn"
-                  disabled={createUserLoading}
-                >
-                  {createUserLoading ? (
-                    <>
-                      <div className="spinner-small"></div>
-                      Creating User...
-                    </>
-                  ) : (
-                    'Create User'
+              <form onSubmit={handleCreateUser}>
+                {/* Full Name */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label 
+                    htmlFor="username"
+                    style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      color: 'var(--text-primary)', 
+                      fontWeight: '600', 
+                      fontSize: '14px' 
+                    }}
+                  >
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Enter full name"
+                    value={createUserData.username}
+                    onChange={handleCreateUserChange}
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      border: '2px solid var(--border-color)', 
+                      borderRadius: '8px', 
+                      background: 'var(--background-secondary)', 
+                      color: 'var(--text-primary)', 
+                      fontSize: '14px', 
+                      outline: 'none',
+                      transition: 'var(--transition)',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--primary-color)';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--border-color)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+
+                {/* Email Address */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label 
+                    htmlFor="email"
+                    style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      color: 'var(--text-primary)', 
+                      fontWeight: '600', 
+                      fontSize: '14px' 
+                    }}
+                  >
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="Enter email address"
+                    value={createUserData.email}
+                    onChange={handleCreateUserChange}
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      border: '2px solid var(--border-color)', 
+                      borderRadius: '8px', 
+                      background: 'var(--background-secondary)', 
+                      color: 'var(--text-primary)', 
+                      fontSize: '14px', 
+                      outline: 'none',
+                      transition: 'var(--transition)',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--primary-color)';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--border-color)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+
+                {/* Password */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label 
+                    htmlFor="password"
+                    style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      color: 'var(--text-primary)', 
+                      fontWeight: '600', 
+                      fontSize: '14px' 
+                    }}
+                  >
+                    Password *
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Create password"
+                    value={createUserData.password}
+                    onChange={handleCreateUserChange}
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      border: '2px solid var(--border-color)', 
+                      borderRadius: '8px', 
+                      background: 'var(--background-secondary)', 
+                      color: 'var(--text-primary)', 
+                      fontSize: '14px', 
+                      outline: 'none',
+                      transition: 'var(--transition)',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--primary-color)';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--border-color)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                  {createUserData.password && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '16px',
+                      background: 'var(--background-secondary)',
+                      borderRadius: '8px',
+                      borderLeft: '4px solid var(--primary-color)'
+                    }}>
+                      <p style={{
+                        margin: '0 0 12px 0',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: 'var(--text-primary)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Password must contain:
+                      </p>
+                      <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                        <li style={{
+                          marginBottom: '6px',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          color: passwordStrength.hasMinLength ? '#10b981' : 'var(--text-muted)'
+                        }}>
+                          {passwordStrength.hasMinLength ? '✓' : '✗'} At least 8 characters
+                        </li>
+                        <li style={{
+                          marginBottom: '6px',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          color: passwordStrength.hasUppercase ? '#10b981' : 'var(--text-muted)'
+                        }}>
+                          {passwordStrength.hasUppercase ? '✓' : '✗'} One uppercase letter
+                        </li>
+                        <li style={{
+                          marginBottom: '6px',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          color: passwordStrength.hasLowercase ? '#10b981' : 'var(--text-muted)'
+                        }}>
+                          {passwordStrength.hasLowercase ? '✓' : '✗'} One lowercase letter
+                        </li>
+                        <li style={{
+                          marginBottom: '6px',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          color: passwordStrength.hasNumber ? '#10b981' : 'var(--text-muted)'
+                        }}>
+                          {passwordStrength.hasNumber ? '✓' : '✗'} One number
+                        </li>
+                        <li style={{
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          color: passwordStrength.hasSpecialChar ? '#10b981' : 'var(--text-muted)'
+                        }}>
+                          {passwordStrength.hasSpecialChar ? '✓' : '✗'} One special character
+                        </li>
+                      </ul>
+                    </div>
                   )}
-                </button>
-              </div>
-            </form>
+                </div>
+
+                {/* Confirm Password */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label 
+                    htmlFor="confirmPassword"
+                    style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      color: 'var(--text-primary)', 
+                      fontWeight: '600', 
+                      fontSize: '14px' 
+                    }}
+                  >
+                    Confirm Password *
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    placeholder="Confirm password"
+                    value={createUserData.confirmPassword}
+                    onChange={handleCreateUserChange}
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      border: '2px solid var(--border-color)', 
+                      borderRadius: '8px', 
+                      background: 'var(--background-secondary)', 
+                      color: 'var(--text-primary)', 
+                      fontSize: '14px', 
+                      outline: 'none',
+                      transition: 'var(--transition)',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--primary-color)';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--border-color)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+
+                {/* Select Role */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    color: 'var(--text-primary)', 
+                    fontWeight: '600', 
+                    fontSize: '14px' 
+                  }}>
+                    Select Role *
+                  </label>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleRoleSelect('admin')}
+                      style={{
+                        flex: 1,
+                        padding: '16px',
+                        border: `2px solid ${createUserData.role === 'admin' ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                        background: createUserData.role === 'admin' ? 'rgba(59, 130, 246, 0.1)' : 'var(--background-secondary)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        transition: 'var(--transition)',
+                        color: createUserData.role === 'admin' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Admin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRoleSelect('staff')}
+                      style={{
+                        flex: 1,
+                        padding: '16px',
+                        border: `2px solid ${createUserData.role === 'staff' ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                        background: createUserData.role === 'staff' ? 'rgba(59, 130, 246, 0.1)' : 'var(--background-secondary)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        transition: 'var(--transition)',
+                        color: createUserData.role === 'staff' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Staff
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Actions */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '12px', 
+                  marginTop: '30px', 
+                  paddingTop: '20px', 
+                  borderTop: '1px solid var(--border-color)' 
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateUser(false)}
+                    style={{ 
+                      flex: 1,
+                      padding: '12px 24px', 
+                      background: 'var(--background-secondary)', 
+                      color: 'var(--text-primary)', 
+                      border: '2px solid var(--border-color)', 
+                      borderRadius: '8px', 
+                      fontSize: '14px', 
+                      fontWeight: '600', 
+                      cursor: 'pointer', 
+                      transition: 'all 0.2s ease' 
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createUserLoading}
+                    style={{ 
+                      flex: 1,
+                      padding: '12px 24px', 
+                      background: createUserLoading ? 'var(--text-muted)' : 'var(--primary-color)', 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      fontSize: '14px', 
+                      fontWeight: '600', 
+                      cursor: createUserLoading ? 'not-allowed' : 'pointer', 
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: createUserLoading ? 0.7 : 1
+                    }}
+                  >
+                    {createUserLoading ? (
+                      <>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          border: '2px solid transparent',
+                          borderTop: '2px solid white',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }}></div>
+                        Creating User...
+                      </>
+                    ) : (
+                      <>
+                        <FaUserPlus /> Create User
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
