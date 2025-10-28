@@ -28,7 +28,7 @@ const TeamsPage = ({ sidebarOpen }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // NEW: Check for stored sport filter on component mount
+  // Check for stored sport filter on component mount
   useEffect(() => {
     const storedSportFilter = sessionStorage.getItem('teamSportFilter');
     if (storedSportFilter) {
@@ -42,6 +42,75 @@ const TeamsPage = ({ sidebarOpen }) => {
   const positions = {
     Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
     Volleyball: ["Setter", "Outside Hitter", "Middle Blocker", "Opposite Hitter", "Libero", "Defensive Specialist"],
+  };
+
+  // Position limits - Maximum 3 per position
+  const getPositionLimits = (teamSize, sport) => {
+    const limits = {};
+    if (sport === "Basketball") {
+      positions.Basketball.forEach(position => {
+        limits[position] = 3;
+      });
+    } else if (sport === "Volleyball") {
+      positions.Volleyball.forEach(position => {
+        limits[position] = 3;
+      });
+    }
+    return limits;
+  };
+
+  // Get available positions for a player based on current team composition
+  const getAvailablePositions = (currentIndex) => {
+    if (!formData.sport) return [];
+
+    const positionLimits = getPositionLimits(formData.players.length, formData.sport);
+    const positionCounts = {};
+    
+    // Count current assignments (excluding the current player being edited)
+    formData.players.forEach((player, index) => {
+      if (index !== currentIndex && player.position) {
+        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+      }
+    });
+
+    // Filter positions that haven't reached their limit
+    return positions[formData.sport].filter(position => {
+      const currentCount = positionCounts[position] || 0;
+      const maxAllowed = positionLimits[position] || 0;
+      return currentCount < maxAllowed;
+    });
+  };
+
+  // Check if a position is available
+  const isPositionAvailable = (position, currentIndex) => {
+    if (!formData.sport || !position) return true;
+    
+    const availablePositions = getAvailablePositions(currentIndex);
+    return availablePositions.includes(position);
+  };
+
+  // Get position count display
+  const getPositionCounts = () => {
+    if (!formData.sport) return {};
+    
+    const positionLimits = getPositionLimits(formData.players.length, formData.sport);
+    const positionCounts = {};
+    
+    formData.players.forEach(player => {
+      if (player.position) {
+        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+      }
+    });
+
+    const result = {};
+    positions[formData.sport].forEach(position => {
+      result[position] = {
+        current: positionCounts[position] || 0,
+        max: positionLimits[position] || 0
+      };
+    });
+    
+    return result;
   };
 
   // Fetch teams with brackets
@@ -118,11 +187,15 @@ const TeamsPage = ({ sidebarOpen }) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
 
-    // Reset players when sport changes
-    if (name === "sport") {
+    // When sport is selected, create exactly 12 empty player slots
+    if (name === "sport" && value) {
       setFormData(prev => ({
         ...prev,
-        players: value ? [{ name: "", position: "", jerseyNumber: "" }] : [],
+        players: Array.from({ length: 12 }, () => ({ 
+          name: "", 
+          position: "", 
+          jerseyNumber: "" 
+        }))
       }));
     }
     
@@ -149,21 +222,56 @@ const TeamsPage = ({ sidebarOpen }) => {
   };
 
   const removePlayer = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      players: prev.players.filter((_, i) => i !== index),
-    }));
-    
-    if (validationError) {
-      setValidationError("");
-      setShowValidationMessage(false);
+    if (formData.players.length > 12) {
+      setFormData(prev => ({
+        ...prev,
+        players: prev.players.filter((_, i) => i !== index),
+      }));
+      
+      if (validationError) {
+        setValidationError("");
+        setShowValidationMessage(false);
+      }
     }
   };
 
   const handlePlayerChange = (index, field, value) => {
+    let finalValue = value;
+    
+    // For player names: remove any non-letter, non-space, non-hyphen characters
+    if (field === "name") {
+      finalValue = value.replace(/[^a-zA-Z\s-]/g, '');
+    }
+    
+    // For jersey numbers: remove any non-digit characters
+    if (field === "jerseyNumber") {
+      finalValue = value.replace(/[^0-9]/g, '');
+    }
+    
+    // Trim whitespace from name and jersey number
+    if (field === "name" || field === "jerseyNumber") {
+      finalValue = finalValue.trim();
+    }
+    
     const newPlayers = [...formData.players];
-    newPlayers[index][field] = value;
+    
+    // If changing position, validate it's available
+    if (field === "position") {
+      if (!isPositionAvailable(finalValue, index)) {
+        setValidationError(`Cannot assign more than ${getPositionLimits(formData.players.length, formData.sport)[finalValue]} players to ${finalValue}`);
+        setShowValidationMessage(true);
+        return;
+      }
+    }
+    
+    newPlayers[index][field] = finalValue;
     setFormData(prev => ({ ...prev, players: newPlayers }));
+    
+    // Clear validation error if it was about position limits
+    if (field === "position" && validationError && validationError.includes("Cannot assign more than")) {
+      setValidationError("");
+      setShowValidationMessage(false);
+    }
     
     if (validationError) {
       setValidationError("");
@@ -193,10 +301,47 @@ const TeamsPage = ({ sidebarOpen }) => {
       return "Team cannot have more than 15 players";
     }
     
+    // Check for invalid player names (must be letters only)
+    const invalidNames = validPlayers.filter(p => {
+      return !/^[a-zA-Z\s-]+$/.test(p.name.trim());
+    });
+    if (invalidNames.length > 0) {
+      return "Player names must contain only letters and spaces. Please check all player names.";
+    }
+    
+    // Check for invalid jersey numbers (must be numbers only)
+    const invalidJerseys = validPlayers.filter(p => {
+      return !/^\d+$/.test(p.jerseyNumber.trim());
+    });
+    if (invalidJerseys.length > 0) {
+      return "Jersey numbers must contain only numbers. Please check all jersey numbers.";
+    }
+    
     const jerseyNumbers = validPlayers.map(p => p.jerseyNumber);
     const uniqueJerseyNumbers = new Set(jerseyNumbers);
     if (jerseyNumbers.length !== uniqueJerseyNumbers.size) {
       return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
+    }
+    
+    // Check for duplicate player names
+    const playerNames = validPlayers.map(p => p.name.trim().toLowerCase());
+    const uniquePlayerNames = new Set(playerNames);
+    if (playerNames.length !== uniquePlayerNames.size) {
+      return "Duplicate player names found. Each player must have a unique name.";
+    }
+    
+    // Check position limits (maximum 3 per position)
+    const positionCounts = {};
+    validPlayers.forEach(player => {
+      positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+    });
+    
+    const positionLimits = getPositionLimits(formData.players.length, formData.sport);
+    for (const [position, count] of Object.entries(positionCounts)) {
+      const maxAllowed = positionLimits[position];
+      if (maxAllowed && count > maxAllowed) {
+        return `Too many players assigned to ${position}. Maximum allowed is ${maxAllowed} per position.`;
+      }
     }
     
     return null;
@@ -220,14 +365,21 @@ const TeamsPage = ({ sidebarOpen }) => {
       p.name.trim() && p.position && p.jerseyNumber
     );
 
+    // Trim all player data before submitting
+    const trimmedPlayers = validPlayers.map(player => ({
+      name: player.name.trim(),
+      position: player.position,
+      jerseyNumber: player.jerseyNumber.trim()
+    }));
+
     try {
       const res = await fetch("http://localhost:5000/api/teams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.teamName,
+          name: formData.teamName.trim(),
           sport: formData.sport,
-          players: validPlayers,
+          players: trimmedPlayers,
         }),
       });
       
@@ -865,32 +1017,39 @@ const TeamsPage = ({ sidebarOpen }) => {
                     {formData.sport && (
                       <div className="admin-teams-players-section">
                         <div className="admin-teams-players-header">
-                          <h3>Players</h3>
+                          <h3>Players ({formData.players.length}/15)</h3>
                           <div className="admin-teams-player-count">
                             {validPlayerCount} / 12-15 players
                             {validPlayerCount < 12 && (
                               <span className="admin-teams-count-warning"> (Minimum 12 required)</span>
                             )}
+                            {validPlayerCount >= 12 && validPlayerCount <= 15 && (
+                              <span className="admin-teams-count-success"> ✓ Valid team size</span>
+                            )}
                           </div>
-                          <button
-                            type="button"
-                            className="admin-teams-submit-btn"
-                            onClick={addPlayer}
-                            disabled={formData.players.length >= 15}
-                          >
-                            Add Player
-                          </button>
                         </div>
 
-                        {formData.players.length >= 15 && (
-                          <div className="admin-teams-max-players-message">
-                            Maximum of 15 players reached
+                        {/* Position Limits Display */}
+                        <div className="position-limits-display">
+                          <h4>Position Limits (Maximum 3 per position)</h4>
+                          <div className="position-limits-grid">
+                            {Object.entries(getPositionCounts()).map(([position, counts]) => (
+                              <div key={position} className="position-limit-item">
+                                <span className="position-name">{position}</span>
+                                <span className={`position-count ${counts.current >= counts.max ? 'limit-reached' : ''}`}>
+                                  {counts.current}/{counts.max}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        )}
+                        </div>
 
                         {formData.players.map((player, index) => (
                           <div key={index} className="admin-teams-player-card">
                             <div className="admin-teams-player-input-row">
+                              <div className="player-number-badge">
+                                {index + 1}
+                              </div>
                               <input
                                 type="text"
                                 placeholder="Player name"
@@ -912,30 +1071,63 @@ const TeamsPage = ({ sidebarOpen }) => {
                                 value={player.position}
                                 onChange={(e) => handlePlayerChange(index, "position", e.target.value)}
                                 required
-                                className="admin-teams-position-select"
+                                className={`admin-teams-position-select ${
+                                  !isPositionAvailable(player.position, index) ? 'position-unavailable' : ''
+                                }`}
                               >
                                 <option value="">Select position</option>
-                                {positions[formData.sport].map(pos => (
+                                {getAvailablePositions(index).map(pos => (
                                   <option key={pos} value={pos}>{pos}</option>
                                 ))}
                               </select>
-                              <button
-                                type="button"
-                                className="admin-teams-delete-btn"
-                                onClick={() => removePlayer(index)}
-                                disabled={formData.players.length === 1}
-                              >
-                                Remove
-                              </button>
+                              {formData.players.length > 12 && (
+                                <button
+                                  type="button"
+                                  className="remove-player-btn"
+                                  onClick={() => removePlayer(index)}
+                                  title="Remove player"
+                                >
+                                  ×
+                                </button>
+                              )}
                             </div>
+                            {/* Position availability warning */}
+                            {player.position && !isPositionAvailable(player.position, index) && (
+                              <div className="position-warning">
+                                Maximum {getPositionLimits(formData.players.length, formData.sport)[player.position]} {player.position} players allowed
+                              </div>
+                            )}
                           </div>
                         ))}
 
-                        {formData.players.length === 0 && (
-                          <div className="admin-teams-no-players-message">
-                            Please add at least 12 players to create a team
+                        {/* Add More Players Button */}
+                        {formData.players.length < 15 && (
+                          <div className="add-players-section">
+                            <button
+                              type="button"
+                              className="add-player-btn"
+                              onClick={addPlayer}
+                            >
+                              <FaPlus style={{ marginRight: '8px' }} />
+                              Add More Players ({15 - formData.players.length} slots available)
+                            </button>
                           </div>
                         )}
+
+                        {/* Information message */}
+                        <div style={{
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          borderRadius: '6px',
+                          padding: '12px',
+                          marginTop: '15px',
+                          fontSize: '14px',
+                          color: '#93c5fd'
+                        }}>
+                          <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
+                          <br />
+                          <strong>Position Limits:</strong> Maximum 3 players per position. Not all positions need to be filled.
+                        </div>
                       </div>
                     )}
 

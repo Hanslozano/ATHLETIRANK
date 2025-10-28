@@ -185,6 +185,147 @@
   margin: 0;
 }
 
+/* Position Limits Display */
+.position-limits-display {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.position-limits-display h4 {
+  margin: 0 0 10px 0;
+  color: #e2e8f0;
+  font-size: 16px;
+}
+
+.position-limits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.position-limit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.position-name {
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+.position-count {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.position-count.limit-reached {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.position-unavailable {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.position-warning {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 5px;
+  padding: 4px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid #ef4444;
+}
+
+.player-number-badge {
+  width: 30px;
+  height: 30px;
+  background: #2196f3;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.remove-player-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.remove-player-btn:hover {
+  background: #b91c1c;
+  transform: scale(1.1);
+}
+
+.remove-player-btn:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.add-players-section {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.add-player-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.add-player-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.admin-teams-count-success {
+  color: #10b981;
+  font-weight: 600;
+}
+
 /* Player Card - Horizontal Layout */
 .admin-teams-player-card {
   margin-bottom: 16px;
@@ -383,15 +524,10 @@
 
 /* Player Count Badge */
 .admin-teams-player-count {
-  background: var(--admin-teams-primary-color);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.8em;
+  color: var(--admin-teams-text-secondary);
+  font-size: 14px;
   font-weight: 600;
-  margin-left: 8px;
 }
-
 
 /* Simple Bracket Badge - Match text color with other sections */
 .admin-teams-bracket-badge {
