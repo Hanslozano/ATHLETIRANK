@@ -130,7 +130,7 @@ router.get("/teams/:teamId/players", async (req, res) => {
   }
 });
 
-// Get existing stats for a match
+// Get existing stats for a match - UPDATED for individual error breakdown
 router.get("/matches/:matchId/stats", async (req, res) => {
   try {
     const query = `
@@ -526,19 +526,18 @@ router.get("/events/:eventId/statistics", async (req, res) => {
 });
 
 // FIXED: Get comprehensive player statistics for an event - WITH BRACKET FILTERING AND CORRECTED EFFICIENCY
-// FIXED: Get comprehensive player statistics for an event - WITH TOTAL COUNTS FOR VOLLEYBALL
+// UPDATED: Added individual error columns for volleyball
+// FIXED: Get comprehensive player statistics for an event - WITH RECEPTIONS ADDED
 router.get("/events/:eventId/players-statistics", async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { bracketId } = req.query; // Optional bracket filter
+    const { bracketId } = req.query;
     
     console.log(`Fetching player statistics for event ${eventId}, bracket: ${bracketId || 'all'}`);
     
-    // Build WHERE clause based on whether bracketId is provided
     const bracketFilter = bracketId ? 'AND b.id = ?' : '';
     const queryParams = bracketId ? [eventId, bracketId] : [eventId];
     
-    // First get the sport type to determine which stats to calculate
     let sportTypeQuery = `
       SELECT DISTINCT b.sport_type 
       FROM brackets b 
@@ -577,14 +576,12 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
           SUM(ps.three_points_made) as total_three_points,
           SUM(ps.turnovers) as total_turnovers,
           SUM(ps.fouls) as total_fouls,
-          -- Calculate per-game averages (PPG, APG, RPG, etc.)
           ROUND(SUM(ps.points) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
           ROUND(SUM(ps.rebounds) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
           ROUND(SUM(ps.assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
           ROUND(SUM(ps.steals) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as spg,
           ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
           ROUND(SUM(ps.turnovers) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as tpg,
-          -- Field Goal Percentage (simplified - using points as proxy)
           ROUND(
             CASE 
               WHEN COUNT(DISTINCT ps.match_id) > 0 
@@ -592,7 +589,6 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
               ELSE 0 
             END, 1
           ) as fg,
-          -- Overall Score (matching MVP calculation: PTS + REB + AST + STL + BLK - TO per game)
           ROUND(
             (SUM(ps.points) + SUM(ps.rebounds) + SUM(ps.assists) + 
              SUM(ps.steals) + SUM(ps.blocks) - SUM(ps.turnovers)) / 
@@ -611,7 +607,7 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
         ORDER BY overall_score DESC, ppg DESC, rpg DESC, apg DESC
       `;
     } else {
-      // Volleyball - SHOW TOTAL COUNTS INSTEAD OF AVERAGES
+      // Volleyball - FIXED: Added receptions to the query
       query = `
         SELECT 
           p.id,
@@ -622,19 +618,24 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
           b.name as bracket_name,
           '${sportType}' as sport_type,
           COUNT(DISTINCT ps.match_id) as games_played,
-          -- TOTAL COUNTS (not averages)
+          -- TOTAL COUNTS including RECEPTIONS
           SUM(ps.kills) as kills,
           SUM(ps.volleyball_assists) as assists,
           SUM(ps.digs) as digs,
           SUM(ps.volleyball_blocks) as blocks,
           SUM(ps.service_aces) as service_aces,
-          SUM(ps.serve_errors + ps.attack_errors + ps.reception_errors) as total_errors,
+          SUM(ps.receptions) as receptions,
+          -- INDIVIDUAL ERROR COLUMNS
+          SUM(ps.serve_errors) as serve_errors,
+          SUM(ps.attack_errors) as attack_errors,
+          SUM(ps.reception_errors) as reception_errors,
           -- Total counts for export
           SUM(ps.kills) as total_kills,
           SUM(ps.volleyball_assists) as total_volleyball_assists,
           SUM(ps.digs) as total_digs,
           SUM(ps.volleyball_blocks) as total_volleyball_blocks,
           SUM(ps.service_aces) as total_service_aces,
+          SUM(ps.receptions) as total_receptions,
           -- Hitting Percentage
           ROUND(
             CASE 
@@ -643,18 +644,18 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
               ELSE 0 
             END, 1
           ) as hitting_percentage,
-          -- Efficiency calculation: (Kills + Blocks + Aces + Assists + Digs) - Errors
+          -- Efficiency calculation
           ROUND(
             (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
              SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             SUM(ps.serve_errors + ps.attack_errors + ps.reception_errors)) / 
+             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors))) / 
             NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
           ) as eff,
-          -- Overall Score (same as efficiency for volleyball)
+          -- Overall Score
           ROUND(
             (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
              SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             SUM(ps.serve_errors + ps.attack_errors + ps.reception_errors)) / 
+             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors))) / 
             NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
           ) as overall_score
         FROM player_stats ps
@@ -680,19 +681,18 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
   }
 });
 
-// FIXED: Get comprehensive team statistics for an event - WITH TOTAL COUNTS FOR VOLLEYBALL
+// FIXED: Get comprehensive team statistics for an event - WITH INDIVIDUAL ERROR COLUMNS FOR VOLLEYBALL
+// FIXED: Get comprehensive team statistics for an event - WITH RECEPTIONS ADDED
 router.get("/events/:eventId/teams-statistics", async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { bracketId } = req.query; // Optional bracket filter
+    const { bracketId } = req.query;
     
     console.log(`Fetching team statistics for event ${eventId}, bracket: ${bracketId || 'all'}`);
     
-    // Build WHERE clause based on whether bracketId is provided
     const bracketFilter = bracketId ? 'AND b.id = ?' : '';
     const queryParams = bracketId ? [eventId, bracketId] : [eventId];
     
-    // First get the sport type to determine which stats to calculate
     let sportTypeQuery = `
       SELECT DISTINCT b.sport_type 
       FROM brackets b 
@@ -721,7 +721,6 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
           b.name as bracket_name,
           '${sportType}' as sport_type,
           COUNT(DISTINCT ps.match_id) as games_played,
-          -- Team totals
           SUM(ps.points) as total_points,
           SUM(ps.assists) as total_assists,
           SUM(ps.rebounds) as total_rebounds,
@@ -730,30 +729,26 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
           SUM(ps.three_points_made) as total_three_points,
           SUM(ps.turnovers) as total_turnovers,
           SUM(ps.fouls) as total_fouls,
-          -- Calculate per-game averages (PPG, APG, RPG, etc.)
           ROUND(SUM(ps.points) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
           ROUND(SUM(ps.rebounds) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
           ROUND(SUM(ps.assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
           ROUND(SUM(ps.steals) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as spg,
           ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
           ROUND(SUM(ps.turnovers) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as tpg,
-          -- Field Goal Percentage (team average)
           ROUND(
             AVG(
               CASE 
                 WHEN ps.points > 0 
-                THEN ps.points / 2.5  -- Simplified FG calculation
+                THEN ps.points / 2.5
                 ELSE 0 
               END
             ), 1
           ) as fg,
-          -- Overall Score (team performance metric)
           ROUND(
             (SUM(ps.points) + SUM(ps.rebounds) + SUM(ps.assists) + 
              SUM(ps.steals) + SUM(ps.blocks) - SUM(ps.turnovers)) / 
             NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
           ) as overall_score,
-          -- Win/Loss record
           (SELECT COUNT(*) FROM matches m 
            WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
            AND m.winner_id = t.id 
@@ -775,7 +770,7 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
         ORDER BY overall_score DESC, ppg DESC, rpg DESC, apg DESC
       `;
     } else {
-      // Volleyball team statistics - SHOW TOTAL COUNTS INSTEAD OF AVERAGES
+      // Volleyball - FIXED: Added receptions to the query
       query = `
         SELECT 
           t.id as team_id,
@@ -784,20 +779,25 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
           b.name as bracket_name,
           '${sportType}' as sport_type,
           COUNT(DISTINCT ps.match_id) as games_played,
-          -- TOTAL COUNTS (not averages)
+          -- TOTAL COUNTS including RECEPTIONS
           SUM(ps.kills) as kills,
           SUM(ps.volleyball_assists) as assists,
           SUM(ps.digs) as digs,
           SUM(ps.volleyball_blocks) as blocks,
           SUM(ps.service_aces) as service_aces,
-          SUM(ps.serve_errors + ps.attack_errors + ps.reception_errors) as total_errors,
+          SUM(ps.receptions) as receptions,
+          -- INDIVIDUAL ERROR COLUMNS
+          SUM(ps.serve_errors) as serve_errors,
+          SUM(ps.attack_errors) as attack_errors,
+          SUM(ps.reception_errors) as reception_errors,
           -- Total counts for export
           SUM(ps.kills) as total_kills,
           SUM(ps.volleyball_assists) as total_volleyball_assists,
           SUM(ps.digs) as total_digs,
           SUM(ps.volleyball_blocks) as total_volleyball_blocks,
           SUM(ps.service_aces) as total_service_aces,
-          -- Hitting Percentage (team average)
+          SUM(ps.receptions) as total_receptions,
+          -- Hitting Percentage
           ROUND(
             CASE 
               WHEN SUM(ps.attack_attempts) > 0 
@@ -805,18 +805,18 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
               ELSE 0 
             END, 1
           ) as hitting_percentage,
-          -- Efficiency calculation: (Kills + Blocks + Aces + Assists + Digs) - Errors per game
+          -- Efficiency calculation
           ROUND(
             (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
              SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             SUM(ps.serve_errors + ps.attack_errors + ps.reception_errors)) / 
+             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors))) / 
             NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
           ) as eff,
-          -- Overall Score (same as efficiency for volleyball)
+          -- Overall Score
           ROUND(
             (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
              SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             SUM(ps.serve_errors + ps.attack_errors + ps.reception_errors)) / 
+             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors))) / 
             NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
           ) as overall_score,
           -- Win/Loss record
@@ -850,5 +850,4 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch team statistics" });
   }
 });
-
 module.exports = router;

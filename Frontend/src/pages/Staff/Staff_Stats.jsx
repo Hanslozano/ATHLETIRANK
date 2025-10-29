@@ -99,20 +99,20 @@ const StaffStats = ({ sidebarOpen }) => {
   };
 
   const volleyballStatsTemplate = {
-    kills: [0, 0, 0, 0, 0],
-    attack_attempts: [0, 0, 0, 0, 0],
-    attack_errors: [0, 0, 0, 0, 0],
-    serves: [0, 0, 0, 0, 0],
-    service_aces: [0, 0, 0, 0, 0],
-    serve_errors: [0, 0, 0, 0, 0],
-    receptions: [0, 0, 0, 0, 0],
-    reception_errors: [0, 0, 0, 0, 0],
-    digs: [0, 0, 0, 0, 0],
-    volleyball_assists: [0, 0, 0, 0, 0],
-    volleyball_blocks: [0, 0, 0, 0, 0],
-    isStarting: false,
-    isOnCourt: false
-  };
+  kills: [0, 0, 0, 0, 0],
+  attack_attempts: [0, 0, 0, 0, 0],
+  attack_errors: [0, 0, 0, 0, 0],
+  serves: [0, 0, 0, 0, 0],
+  service_aces: [0, 0, 0, 0, 0],
+  serve_errors: [0, 0, 0, 0, 0],
+  receptions: [0, 0, 0, 0, 0], // RECEPTIONS ADDED
+  reception_errors: [0, 0, 0, 0, 0],
+  digs: [0, 0, 0, 0, 0],
+  volleyball_assists: [0, 0, 0, 0, 0],
+  volleyball_blocks: [0, 0, 0, 0, 0],
+  isStarting: false,
+  isOnCourt: false
+};
 
   // QuickScore Configuration
   const basketballStatButtons = [
@@ -128,14 +128,18 @@ const StaffStats = ({ sidebarOpen }) => {
   ];
 
   const volleyballStatButtons = [
-    { key: 'kills', label: 'KILL', color: 'bg-red-600 hover:bg-red-700', points: 1 },
-    { key: 'service_aces', label: 'ACE', color: 'bg-yellow-600 hover:bg-yellow-700', points: 1 },
-    { key: 'volleyball_blocks', label: 'BLOCK', color: 'bg-purple-600 hover:bg-purple-700', points: 1 },
-    { key: 'volleyball_assists', label: 'ASSIST', color: 'bg-blue-600 hover:bg-blue-700', points: 0 },
-    { key: 'digs', label: 'DIG', color: 'bg-green-600 hover:bg-green-700', points: 0 },
-    { key: 'attack_errors', label: 'ATK ERR', color: 'bg-orange-600 hover:bg-orange-700', points: 0 },
-    { key: 'serve_errors', label: 'SRV ERR', color: 'bg-pink-600 hover:bg-pink-700', points: 0 }
-  ];
+  { key: 'kills', label: 'KILL', color: 'bg-red-600 hover:bg-red-700', points: 1 },
+  { key: 'service_aces', label: 'ACE', color: 'bg-yellow-600 hover:bg-yellow-700', points: 1 },
+  { key: 'volleyball_blocks', label: 'BLOCK', color: 'bg-purple-600 hover:bg-purple-700', points: 1 },
+  { key: 'volleyball_assists', label: 'ASSIST', color: 'bg-blue-600 hover:bg-blue-700', points: 0 },
+  { key: 'digs', label: 'DIG', color: 'bg-green-600 hover:bg-green-700', points: 0 },
+  // ADDED: Reception buttons
+  { key: 'receptions', label: 'REC', color: 'bg-teal-600 hover:bg-teal-700', points: 0 },
+  // ADDED: Error buttons
+  { key: 'serve_errors', label: 'SRV ERR', color: 'bg-pink-600 hover:bg-pink-700', points: 0 },
+  { key: 'attack_errors', label: 'ATK ERR', color: 'bg-orange-600 hover:bg-orange-700', points: 0 },
+  { key: 'reception_errors', label: 'REC ERR', color: 'bg-red-800 hover:bg-red-900', points: 0 }
+];
 
   // ============================================
   // 3. ADDED OFFLINE HELPER FUNCTIONS
@@ -537,10 +541,10 @@ const StaffStats = ({ sidebarOpen }) => {
                       'bg-teal-600': '#0d9488',
                       'bg-yellow-600': '#ca8a04',
                       'bg-red-600': '#dc2626',
+                      'bg-red-800': '#991b1b',  // ADDED for reception errors
                       'bg-gray-600': '#4b5563',
                       'bg-pink-600': '#db2777'
                     };
-                    
                     const bgColor = colorMap[stat.color.split(' ')[0]] || '#4b5563';
                     
                     return (
