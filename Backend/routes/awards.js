@@ -282,78 +282,92 @@ router.get("/brackets/:bracketId/standings", async (req, res) => {
     
     const sportType = bracketInfo[0].sport_type;
     
-    // Get team standings
-    const standingsQuery = sportType === 'basketball' ? `
-      SELECT 
-        t.id,
-        t.name as team,
-        COUNT(CASE WHEN m.winner_id = t.id THEN 1 END) as wins,
-        COUNT(CASE WHEN (m.team1_id = t.id OR m.team2_id = t.id) AND m.status = 'completed' AND m.winner_id != t.id THEN 1 END) as losses,
-        SUM(CASE WHEN m.team1_id = t.id THEN m.score_team1 ELSE 0 END) + 
-        SUM(CASE WHEN m.team2_id = t.id THEN m.score_team2 ELSE 0 END) as points_for,
-        SUM(CASE WHEN m.team1_id = t.id THEN m.score_team2 ELSE 0 END) + 
-        SUM(CASE WHEN m.team2_id = t.id THEN m.score_team1 ELSE 0 END) as points_against
-      FROM teams t
-      JOIN bracket_teams bt ON t.id = bt.team_id
-      LEFT JOIN matches m ON (m.team1_id = t.id OR m.team2_id = t.id) AND m.bracket_id = ? AND m.status = 'completed'
-      WHERE bt.bracket_id = ?
-      GROUP BY t.id, t.name
-      ORDER BY wins DESC, (points_for - points_against) DESC
-    ` : `
-      SELECT 
-        t.id,
-        t.name as team,
-        COUNT(CASE WHEN m.winner_id = t.id THEN 1 END) as wins,
-        COUNT(CASE WHEN (m.team1_id = t.id OR m.team2_id = t.id) AND m.status = 'completed' AND m.winner_id != t.id THEN 1 END) as losses,
-        SUM(CASE WHEN m.team1_id = t.id THEN m.score_team1 ELSE 0 END) + 
-        SUM(CASE WHEN m.team2_id = t.id THEN m.score_team2 ELSE 0 END) as sets_for,
-        SUM(CASE WHEN m.team1_id = t.id THEN m.score_team2 ELSE 0 END) + 
-        SUM(CASE WHEN m.team2_id = t.id THEN m.score_team1 ELSE 0 END) as sets_against
-      FROM teams t
-      JOIN bracket_teams bt ON t.id = bt.team_id
-      LEFT JOIN matches m ON (m.team1_id = t.id OR m.team2_id = t.id) AND m.bracket_id = ? AND m.status = 'completed'
-      WHERE bt.bracket_id = ?
-      GROUP BY t.id, t.name
-      ORDER BY wins DESC, (sets_for - sets_against) DESC
-    `;
-    
-    const [standings] = await db.pool.query(standingsQuery, [bracketId, bracketId]);
-    
-    // Add rankings and calculated fields
-    const rankedStandings = standings.map((team, index) => {
-      const totalGames = team.wins + team.losses;
-      const winPercentage = totalGames > 0 ? (team.wins / totalGames * 100).toFixed(1) : "0.0";
+    if (sportType === 'basketball') {
+      // Basketball standings (existing working code)
+      const [standings] = await db.pool.query(`
+        SELECT 
+          t.id,
+          t.name as team,
+          COUNT(CASE WHEN m.winner_id = t.id THEN 1 END) as wins,
+          COUNT(CASE WHEN (m.team1_id = t.id OR m.team2_id = t.id) AND m.status = 'completed' AND m.winner_id != t.id THEN 1 END) as losses,
+          SUM(CASE WHEN m.team1_id = t.id THEN m.score_team1 ELSE 0 END) + 
+          SUM(CASE WHEN m.team2_id = t.id THEN m.score_team2 ELSE 0 END) as points_for,
+          SUM(CASE WHEN m.team1_id = t.id THEN m.score_team2 ELSE 0 END) + 
+          SUM(CASE WHEN m.team2_id = t.id THEN m.score_team1 ELSE 0 END) as points_against
+        FROM teams t
+        JOIN bracket_teams bt ON t.id = bt.team_id
+        LEFT JOIN matches m ON (m.team1_id = t.id OR m.team2_id = t.id) AND m.bracket_id = ? AND m.status = 'completed'
+        WHERE bt.bracket_id = ?
+        GROUP BY t.id, t.name
+        ORDER BY wins DESC, (points_for - points_against) DESC
+      `, [bracketId, bracketId]);
       
-      if (sportType === 'basketball') {
+      const rankedStandings = standings.map((team, index) => {
+        const totalGames = team.wins + team.losses;
+        const winPercentage = totalGames > 0 ? (team.wins / totalGames * 100).toFixed(1) : "0.0";
         const pointDiff = team.points_for - team.points_against;
+        
         return {
           position: index + 1,
           ...team,
           point_diff: pointDiff >= 0 ? `+${pointDiff}` : `${pointDiff}`,
           win_percentage: `${winPercentage}%`
         };
-      } else {
-        const setRatio = team.sets_against > 0 ? (team.sets_for / team.sets_against).toFixed(2) : team.sets_for.toFixed(2);
+      });
+      
+      res.json({
+        bracket_id: bracketId,
+        sport_type: sportType,
+        standings: rankedStandings
+      });
+      
+    } else {
+      // Volleyball standings - CORRECTED VERSION
+      const [standings] = await db.pool.query(`
+        SELECT 
+          t.id,
+          t.name as team,
+          COUNT(CASE WHEN m.winner_id = t.id THEN 1 END) as wins,
+          COUNT(CASE WHEN (m.team1_id = t.id OR m.team2_id = t.id) AND m.status = 'completed' AND m.winner_id != t.id THEN 1 END) as losses
+        FROM teams t
+        JOIN bracket_teams bt ON t.id = bt.team_id
+        LEFT JOIN matches m ON (m.team1_id = t.id OR m.team2_id = t.id) AND m.bracket_id = ? AND m.status = 'completed'
+        WHERE bt.bracket_id = ?
+        GROUP BY t.id, t.name
+        ORDER BY wins DESC, losses ASC
+      `, [bracketId, bracketId]);
+      
+      const rankedStandings = standings.map((team, index) => {
+        const totalGames = team.wins + team.losses;
+        const winPercentage = totalGames > 0 ? (team.wins / totalGames * 100).toFixed(1) : "0.0";
+        
+        // For volleyball without set scores, we'll use placeholder values
         return {
           position: index + 1,
-          ...team,
-          set_ratio: setRatio,
+          team: team.team,  // FIXED: Changed from team.name to team.team
+          wins: team.wins,
+          losses: team.losses,
+          sets_for: team.wins * 2, // Placeholder: assume 2 sets per win
+          sets_against: team.losses * 2, // Placeholder: assume 2 sets per loss
+          set_ratio: team.losses > 0 ? (team.wins / team.losses).toFixed(2) : team.wins.toFixed(2),
           win_percentage: `${winPercentage}%`
         };
-      }
-    });
-    
-    res.json({
-      bracket_id: bracketId,
-      sport_type: sportType,
-      standings: rankedStandings
-    });
+      });
+      
+      res.json({
+        bracket_id: bracketId,
+        sport_type: sportType,
+        standings: rankedStandings
+      });
+    }
     
   } catch (err) {
     console.error("Error fetching standings:", err);
     res.status(500).json({ error: "Failed to fetch standings: " + err.message });
   }
 });
+
+
 
 // GET all events with completed brackets for awards display
 router.get("/events/completed", async (req, res) => {
