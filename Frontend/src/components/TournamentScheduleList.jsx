@@ -1036,18 +1036,13 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                       gap: '12px',
                       marginBottom: '16px',
                       padding: '16px 20px',
-                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                      background: '#0a0f1c', 
                       borderRadius: '10px',
-                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                     border: '1px solid #2d3748',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)';
-                    }}
+                    
                   >
                     {isCollapsed ? (
                       <ChevronDown style={{ width: '20px', height: '20px', color: '#a5b4fc' }} />
@@ -1055,8 +1050,8 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                       <ChevronUp style={{ width: '20px', height: '20px', color: '#a5b4fc' }} />
                     )}
                     <div style={{ 
-                      background: 'rgba(99, 102, 241, 0.3)',
-                      color: '#c7d2fe',
+                      background: '#1a2332',  
+                      color: '#e2e8f0',  
                       padding: '8px 20px',
                       borderRadius: '8px',
                       fontWeight: '800',
