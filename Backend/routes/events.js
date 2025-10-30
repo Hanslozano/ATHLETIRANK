@@ -29,7 +29,9 @@ async function updateEventStatus(eventId) {
       if (matches.length > 0) {
         hasMatches = true;
         // Check if any match is not completed
-        const hasIncompleteMatch = matches.some(match => match.status !== 'completed');
+        const hasIncompleteMatch = matches.some(match => 
+  match.status !== 'completed' && match.status !== 'bye'
+);
         if (hasIncompleteMatch) {
           allMatchesCompleted = false;
           break;
