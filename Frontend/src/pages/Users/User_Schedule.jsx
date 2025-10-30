@@ -841,64 +841,68 @@ const UserSchedulePage = () => {
             )
           )}
 
-          {/* "Match Schedules" Text Outside the Matches Container */}
-          <div className="match-schedules-title">
-            <h2>Match Schedules</h2>
-          </div>
-
-          {/* All Scheduled Games Section - Now under Recent Matches */}
-          <div className="schedule-section-under-recent">
-            <div className="schedule-controls">
-              <div className="search-section">
-                <input
-                  type="text"
-                  placeholder="Search teams, events, or venues..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
-                />
-              </div>
-              <div className="filter-section">
-                <select
-                  value={selectedSport}
-                  onChange={(e) => setSelectedSport(e.target.value)}
-                  className="sport-filter"
-                >
-                  <option value="">All Sports</option>
-                  {sports.map(sport => (
-                    <option key={sport} value={sport}>{sport}</option>
-                  ))}
-                </select>
-              </div>
+          {/* Match Schedules Section with Container */}
+          <div className="match-schedules-container">
+            <div className="match-schedules-header">
+              <h2>Match Schedules</h2>
             </div>
-
-            <div className="schedule-content">
-              {loading ? (
-                <div className="loading-state">
-                  <div className="loading-spinner"></div>
-                  <p>Loading schedules...</p>
-                </div>
-              ) : filteredSchedules.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-icon">📅</div>
-                  <h3>No schedules found</h3>
-                  <p>
-                    {searchTerm || selectedSport
-                      ? "Try adjusting your search or filter criteria" 
-                      : "No matches have been scheduled yet"
-                    }
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="schedule-stats">
-                    <span className="stats-text">
-                      Showing {filteredSchedules.length} of {schedules.length} matches
-                    </span>
+            
+            <div className="match-schedules-content">
+              {/* All Scheduled Games Section - Now under Recent Matches */}
+              <div className="schedule-section-under-recent">
+                <div className="schedule-controls">
+                  <div className="search-section">
+                    <input
+                      type="text"
+                      placeholder="Search teams, events, or venues..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="search-input"
+                    />
                   </div>
-                  {renderScheduleCards()}
-                </>
-              )}
+                  <div className="filter-section">
+                    <select
+                      value={selectedSport}
+                      onChange={(e) => setSelectedSport(e.target.value)}
+                      className="sport-filter"
+                    >
+                      <option value="">All Sports</option>
+                      {sports.map(sport => (
+                        <option key={sport} value={sport}>{sport}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="schedule-content">
+                  {loading ? (
+                    <div className="loading-state">
+                      <div className="loading-spinner"></div>
+                      <p>Loading schedules...</p>
+                    </div>
+                  ) : filteredSchedules.length === 0 ? (
+                    <div className="empty-state">
+                      <div className="empty-icon">📅</div>
+                      <h3>No schedules found</h3>
+                      <p>
+                        {searchTerm || selectedSport
+                          ? "Try adjusting your search or filter criteria" 
+                          : "No matches have been scheduled yet"
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="schedule-stats">
+                        <span className="stats-text">
+                          Showing {filteredSchedules.length} of {schedules.length} matches
+                        </span>
+                      </div>
+                      {renderScheduleCards()}
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

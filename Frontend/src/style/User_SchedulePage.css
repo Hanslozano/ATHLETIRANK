@@ -1873,3 +1873,61 @@
 .section-toggle {
   display: none;
 }
+
+/* Match Schedules Container */
+.match-schedules-container {
+  margin-top: 3rem;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+.match-schedules-header {
+  padding: 1.5rem 1.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.match-schedules-header h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  text-align: left;
+  padding-bottom: 1rem;
+}
+
+.match-schedules-content {
+  padding: 1.5rem;
+}
+
+/* Schedule Section Under Recent */
+.schedule-section-under-recent {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.schedule-section-under-recent .schedule-controls {
+  margin-bottom: 1.5rem;
+}
+
+/* Remove event filter from schedule controls */
+.schedule-section-under-recent .event-filter {
+  display: none;
+}
+
+/* Ensure the schedule content looks good in the nested layout */
+.schedule-section-under-recent .schedule-content {
+  margin-top: 1rem;
+}
+
+/* Adjust spacing for the nested schedule section */
+.schedule-section-under-recent .schedule-stats {
+  margin-bottom: 1rem;
+}
+
+/* Remove the old match schedules title styles */
+.match-schedules-title {
+  display: none;
+}
