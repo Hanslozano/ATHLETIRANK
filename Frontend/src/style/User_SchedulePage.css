@@ -1,3 +1,22 @@
+/* CSS Variables */
+:root {
+  --background-primary: #0f172a;
+  --background-secondary: #1e293b;
+  --background-card: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --border-color: #475569;
+  --border-focus: #60a5fa;
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --transition: all 0.2s ease-in-out;
+  --shadow-medium: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-heavy: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
 /* User Schedule Page Styles */
 .user-schedule-page {
   min-height: 100vh;
@@ -373,33 +392,309 @@
   font-weight: 500;
 }
 
-.schedule-card-footer-new {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--border-color);
-  background: rgba(0, 0, 0, 0.02);
+/* Recent Matches Section */
+.recent-matches-section {
+  margin-bottom: 3rem;
 }
 
-.view-schedule-btn-new {
-  width: 100%;
-  padding: 0.75rem 1.5rem;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius);
-  font-size: 0.95rem;
+/* Container 1: Filters */
+.recent-container-1 {
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.recent-filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.9rem;
   font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.recent-select {
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 0.95rem;
   cursor: pointer;
   transition: var(--transition);
 }
 
-.view-schedule-btn-new:hover {
-  background: var(--primary-hover);
+.recent-select:hover {
+  border-color: var(--primary-color);
+}
+
+.recent-select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.recent-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Match-by-Match View */
+.match-by-match-view {
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+}
+
+/* Matches Grid - Simple 2-column layout */
+.recent-matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Match Card */
+.recent-match-card {
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+}
+
+.recent-match-card:hover {
   transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+  border-color: var(--primary-color);
+}
+
+.recent-match-card.upcoming {
+  border-left: 4px solid var(--primary-color);
+}
+
+.recent-match-card.past {
+  border-left: 4px solid var(--text-muted);
+  opacity: 0.9;
+}
+
+/* ADDED: Date and Time Info Styles */
+.match-date-time-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.match-date {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.match-time {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.match-status-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.match-status-badge.upcoming {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.match-status-badge.past {
+  background: rgba(100, 116, 139, 0.2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.match-teams-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex: 1;
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.team-info:first-child {
+  text-align: left;
+}
+
+.team-info:last-child {
+  text-align: right;
+}
+
+.team-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.team-record {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.match-vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+}
+
+.vs-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius);
+}
+
+.match-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* NEW: Match card footer for positioning the small button */
+.match-card-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* UPDATED: Small View Stats button styles */
+.view-stats-btn-small {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 100px;
+}
+
+.view-stats-btn-small:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-medium);
 }
 
-.view-schedule-btn-new:active {
+.view-stats-btn-small:active {
   transform: translateY(0);
+}
+
+/* Pagination */
+.recent-matches-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.recent-matches-info {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Loading and Empty States */
+.recent-loading,
+.recent-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+}
+
+.recent-loading p,
+.recent-empty p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-top: 1rem;
 }
 
 /* Modal Styles */
@@ -628,6 +923,91 @@
   line-height: 1.5;
 }
 
+/* Stats Modal Styles */
+.stats-modal-content {
+  max-width: 90%;
+  width: 1200px;
+  max-height: 90vh;
+}
+
+.stats-modal-body {
+  padding: 0;
+  max-height: calc(90vh - 120px);
+  overflow-y: auto;
+}
+
+.match-title {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+/* ADDED: Match date and time in stats modal */
+.match-date-time-modal {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+.stats-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+/* Stats Table Styles */
+.stats-table-container {
+  width: 100%;
+}
+
+.stats-table-wrapper {
+  overflow-x: auto;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.stats-table th {
+  background: var(--background-secondary);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.stats-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.stats-table tr:hover {
+  background: var(--background-secondary);
+}
+
+.stats-player-name {
+  font-weight: 600;
+}
+
+.stats-jersey-number {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.stats-highlight {
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
 /* Scrollbar Styles */
 .modal-content::-webkit-scrollbar {
   width: 8px;
@@ -733,6 +1113,71 @@
   .modal-title h2 {
     font-size: 1.5rem;
   }
+
+  /* Recent Matches Responsive */
+  .recent-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .recent-matches-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-teams-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .team-info:first-child,
+  .team-info:last-child {
+    text-align: center;
+  }
+
+  .match-vs {
+    order: -1;
+    width: 100%;
+  }
+
+  .vs-text {
+    width: 100%;
+    text-align: center;
+  }
+
+  .team-name {
+    font-size: 1.1rem;
+  }
+
+  .match-score {
+    font-size: 1.25rem;
+  }
+
+  .recent-matches-pagination {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .stats-modal-content {
+    max-width: 95%;
+    width: 95%;
+  }
+
+  /* Date Time Info Responsive */
+  .match-date-time-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .match-date,
+  .match-time {
+    font-size: 0.85rem;
+  }
+
+  /* Small button responsive */
+  .view-stats-btn-small {
+    width: 100%;
+    min-width: auto;
+  }
 }
 
 @media (max-width: 480px) {
@@ -750,8 +1195,7 @@
   }
 
   .schedule-card-header-new,
-  .schedule-card-body-new,
-  .schedule-card-footer-new {
+  .schedule-card-body-new {
     padding: 1rem;
   }
 
@@ -763,4 +1207,669 @@
   .team-side h3 {
     font-size: 1.25rem;
   }
+
+  .recent-container-1 {
+    padding: 1rem;
+  }
+
+  .match-by-match-view {
+    padding: 1rem;
+  }
+
+  .recent-match-card {
+    padding: 1rem;
+    min-height: 250px;
+  }
+
+  .team-name {
+    font-size: 1rem;
+  }
+
+  .match-score {
+    font-size: 1.1rem;
+  }
+
+  .stats-table {
+    font-size: 0.8rem;
+  }
+
+  .stats-table th,
+  .stats-table td {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .view-stats-btn-small {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+/* Section Toggle Styles */
+.section-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 0.5rem;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.toggle-btn:hover {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+.toggle-btn.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-medium);
+}
+
+/* All Tournaments Section */
+.all-tournaments-section {
+  margin-bottom: 3rem;
+}
+
+/* Ensure both sections have consistent styling */
+.recent-matches-section,
+.all-tournaments-section {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design for Toggle */
+@media (max-width: 768px) {
+  .section-toggle {
+    flex-direction: column;
+  }
+  
+  .toggle-btn {
+    text-align: center;
+  }
+}
+
+/* Section Toggle Styles */
+.section-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 0.5rem;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.toggle-btn:hover {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+.toggle-btn.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-medium);
+}
+
+/* All Tournaments Section */
+.all-tournaments-section {
+  margin-bottom: 3rem;
+}
+
+/* Schedule Section */
+.schedule-section {
+  margin-bottom: 3rem;
+}
+
+/* View Details Button */
+.view-details-btn {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-top: 1rem;
+}
+
+.view-details-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+/* Ensure both sections have consistent styling */
+.recent-matches-section,
+.all-tournaments-section,
+.schedule-section {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Event Filter */
+.event-filter {
+  padding: 0.875rem 1rem;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 150px;
+}
+
+.event-filter:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.event-filter:hover {
+  border-color: var(--primary-color);
+}
+
+/* Filter Section Layout */
+.filter-section {
+  display: flex;
+  gap: 1rem;
+}
+
+/* Match Details in Schedule Cards */
+.match-details-new {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 1rem;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.detail-icon {
+  font-size: 0.9rem;
+  min-width: 1.2rem;
+  text-align: center;
+}
+
+.detail-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Responsive Design for Toggle */
+@media (max-width: 768px) {
+  .section-toggle {
+    flex-direction: column;
+  }
+  
+  .toggle-btn {
+    text-align: center;
+  }
+
+  .filter-section {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .event-filter,
+  .sport-filter {
+    width: 100%;
+  }
+}
+
+.recent-matches-pagination,
+.schedule-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 600;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+
+
+
+
+/* NEW: Rectangle Match Card Styles */
+.recent-matches-grid-single {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.recent-match-card-rectangle {
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.recent-match-card-rectangle:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+  border-color: var(--primary-color);
+}
+
+.recent-match-card-rectangle.upcoming {
+  border-left: 4px solid var(--primary-color);
+}
+
+.recent-match-card-rectangle.past {
+  border-left: 4px solid var(--text-muted);
+  opacity: 0.9;
+}
+
+/* Rectangle Card Header */
+.match-card-header-rectangle {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.match-sport-info-rectangle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sport-type-rectangle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.match-status-badge-rectangle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.match-status-badge-rectangle.upcoming {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.match-status-badge-rectangle.past {
+  background: rgba(100, 116, 139, 0.2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.match-date-time-rectangle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.match-date-rectangle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.match-time-rectangle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* Rectangle Teams Row */
+.match-teams-row-rectangle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.team-info-rectangle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.team-info-rectangle:first-child {
+  text-align: left;
+}
+
+.team-info-rectangle:last-child {
+  text-align: right;
+}
+
+.team-name-rectangle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.team-record-rectangle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.match-vs-rectangle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+}
+
+.vs-text-rectangle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius);
+}
+
+.match-score-rectangle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Rectangle Card Footer */
+.match-card-footer-rectangle {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.view-stats-btn-rectangle {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 100px;
+}
+
+.view-stats-btn-rectangle:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-medium);
+}
+
+.view-stats-btn-rectangle:active {
+  transform: translateY(0);
+}
+
+/* Remove the old match grid styles */
+.recent-matches-grid {
+  display: none;
+}
+
+.recent-match-card {
+  display: none;
+}
+
+/* Responsive Design for Rectangle Cards */
+@media (max-width: 768px) {
+  .match-card-header-rectangle {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .match-date-time-rectangle {
+    align-items: flex-start;
+    text-align: left;
+  }
+  
+  .match-teams-row-rectangle {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .team-info-rectangle:first-child,
+  .team-info-rectangle:last-child {
+    text-align: center;
+  }
+  
+  .match-vs-rectangle {
+    order: -1;
+    width: 100%;
+  }
+  
+  .vs-text-rectangle {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .team-name-rectangle {
+    font-size: 1.1rem;
+  }
+  
+  .match-score-rectangle {
+    font-size: 1.25rem;
+  }
+  
+  .view-stats-btn-rectangle {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .recent-match-card-rectangle {
+    padding: 1rem;
+  }
+  
+  .team-name-rectangle {
+    font-size: 1rem;
+  }
+  
+  .match-score-rectangle {
+    font-size: 1.1rem;
+  }
+  
+  .view-stats-btn-rectangle {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+/* Remove View Details Button from Schedule Cards */
+.view-details-btn {
+  display: none;
+}
+
+/* Ensure schedule cards look good without the button */
+.schedule-card-body-new {
+  padding-bottom: 1.5rem;
+}
+
+.match-details-new {
+  margin-bottom: 0;
+}
+
+/* Add this to your existing CSS file */
+
+/* Schedule Section Under Recent */
+.schedule-section-under-recent {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.schedule-section-under-recent .schedule-controls {
+  margin-bottom: 1.5rem;
+}
+
+/* Remove event filter from schedule controls */
+.schedule-section-under-recent .event-filter {
+  display: none;
+}
+
+/* Ensure the schedule content looks good in the nested layout */
+.schedule-section-under-recent .schedule-content {
+  margin-top: 1rem;
+}
+
+/* Adjust spacing for the nested schedule section */
+.schedule-section-under-recent .schedule-stats {
+  margin-bottom: 1rem;
+}
+
+/* Add this to your existing CSS file */
+
+/* Schedule Section Under Recent */
+.schedule-section-under-recent {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.schedule-section-under-recent .schedule-controls {
+  margin-bottom: 1.5rem;
+}
+
+/* Remove event filter from schedule controls */
+.schedule-section-under-recent .event-filter {
+  display: none;
+}
+
+/* Ensure the schedule content looks good in the nested layout */
+.schedule-section-under-recent .schedule-content {
+  margin-top: 1rem;
+}
+
+/* Adjust spacing for the nested schedule section */
+.schedule-section-under-recent .schedule-stats {
+  margin-bottom: 1rem;
+}
+
+/* Match Schedules Title */
+.match-schedules-title {
+  margin: 3rem 0 1.5rem 0;
+  text-align: center;
+}
+
+.match-schedules-title h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  padding: 1rem 0;
+  border-bottom: 2px solid var(--primary-color);
+  display: inline-block;
+}
+
+/* Remove section toggle styles since we don't need tabs anymore */
+.section-toggle {
+  display: none;
 }
