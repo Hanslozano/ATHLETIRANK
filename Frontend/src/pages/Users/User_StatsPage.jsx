@@ -685,7 +685,7 @@ const UserStatsPage = () => {
     if (!recentTournament) {
       return (
         <div className="recent-tournament-section">
-          <h2>Recent Tournament</h2>
+   
           <div className="empty-state">
             <p>No recent tournaments available.</p>
           </div>
@@ -695,42 +695,77 @@ const UserStatsPage = () => {
 
     return (
       <div className="recent-tournament-section">
-        <h2>Recent Tournament</h2>
+       
         
         {/* Container 1: Tournament Name and Bracket Selector */}
-        <div className="recent-container container-1">
-          <div className="container-header">
-            <h3>Tournament Overview</h3>
-          </div>
-          <div className="container-content">
-            <div className="tournament-info">
-              <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="info-label">Tournament Name:</span>
-                  <span className="info-value">{recentTournament.name}</span>
+           <div className="recent-container container-1">
+          <div className="container-content" style={{ padding: '1.5rem' }}>
+            <div className="tournament-selectors">
+              <div className="selector-group">
+                <div className="selector-header">
+                  <span className="selector-icon">🏆</span>
+                  <span className="selector-label">Tournament</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="info-label">Select Bracket:</span>
-                  <select 
-                    value={selectedRecentBracket?.id || ''}
-                    onChange={(e) => {
-                      const bracketId = parseInt(e.target.value);
-                      const bracket = recentBrackets.find(b => b.id === bracketId);
-                      if (bracket) {
-                        setSelectedRecentBracket(bracket);
-                        loadRecentBracketData(recentTournament, bracket);
-                      }
-                    }}
-                    className="bracket-select"
-                    style={{ margin: 0 }}
-                  >
-                    {recentBrackets.map(bracket => (
-                      <option key={bracket.id} value={bracket.id}>
-                        {bracket.name} ({bracket.sport_type})
-                      </option>
-                    ))}
-                  </select>
+                <select 
+                  value={recentTournament.id}
+                  className="tournament-dropdown"
+                  onChange={(e) => {
+                    const tournamentId = parseInt(e.target.value);
+                    const tournament = events.find(ev => ev.id === tournamentId);
+                    if (tournament) {
+                      setRecentTournament(tournament);
+                      // Fetch brackets for the selected tournament
+                      const fetchBrackets = async () => {
+                        try {
+                          let bracketsRes;
+                          try {
+                            bracketsRes = await fetch(`http://localhost:5000/api/events/${tournament.id}/brackets`);
+                          } catch (err) {
+                            bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${tournament.id}/completed-brackets`);
+                          }
+                          const brackets = await bracketsRes.json();
+                          setRecentBrackets(brackets || []);
+                          if (brackets && brackets.length > 0) {
+                            setSelectedRecentBracket(brackets[0]);
+                            await loadRecentBracketData(tournament, brackets[0]);
+                          }
+                        } catch (err) {
+                          console.error("Error fetching brackets:", err);
+                        }
+                      };
+                      fetchBrackets();
+                    }
+                  }}
+                >
+                  {events.map(event => (
+                    <option key={event.id} value={event.id}>{event.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="selector-group">
+                <div className="selector-header">
+                  <span className="selector-icon">🏀</span>
+                  <span className="selector-label">Bracket</span>
                 </div>
+                <select 
+                  value={selectedRecentBracket?.id || ''}
+                  onChange={(e) => {
+                    const bracketId = parseInt(e.target.value);
+                    const bracket = recentBrackets.find(b => b.id === bracketId);
+                    if (bracket) {
+                      setSelectedRecentBracket(bracket);
+                      loadRecentBracketData(recentTournament, bracket);
+                    }
+                  }}
+                  className="tournament-dropdown"
+                >
+                  {recentBrackets.map(bracket => (
+                    <option key={bracket.id} value={bracket.id}>
+                      {bracket.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -1018,303 +1053,7 @@ const UserStatsPage = () => {
           {renderRecentTournamentContainers()}
 
           {/* Event Selection Tab */}
-          {activeTab === "events" && (
-            <div className="bracket-view-section purple-background">
-              {/* Search Container */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
-                  <input
-                    type="text"
-                    placeholder="Search tournaments..."
-                    value={eventSearchTerm}
-                    onChange={(e) => setEventSearchTerm(e.target.value)}
-                    style={{
-                      flex: '1',
-                      padding: '12px 16px',
-                      border: '2px solid var(--border-color)',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      backgroundColor: 'var(--background-secondary)',
-                      color: 'var(--text-primary)',
-                    }}
-                  />
-                  <select
-                    value={sportFilter}
-                    onChange={(e) => setSportFilter(e.target.value)}
-                    style={{
-                      padding: '12px 16px',
-                      border: '2px solid var(--border-color)',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      backgroundColor: 'var(--background-secondary)',
-                      color: 'var(--text-primary)',
-                      minWidth: '150px',
-                    }}
-                  >
-                    <option value="all">All Sports</option>
-                    <option value="basketball">Basketball</option>
-                    <option value="volleyball">Volleyball</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Results Info & Items Per Page */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                  {(eventSearchTerm || sportFilter !== "all") && (
-                    <>
-                      Showing {currentRows.length} of {totalRows} results
-                      {eventSearchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{eventSearchTerm}"</span>}
-                      {sportFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Sport: {sportFilter}</span>}
-                    </>
-                  )}
-                  {!eventSearchTerm && sportFilter === "all" && (
-                    <>Showing {indexOfFirstRow + 1}-{Math.min(indexOfLastRow, totalRows)} of {totalRows} entries</>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Show:</label>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    style={{
-                      padding: '8px 12px',
-                      border: '2px solid var(--border-color)',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      backgroundColor: 'var(--background-secondary)',
-                      color: 'var(--text-primary)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>per page</span>
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="awards_standings_loading">
-                  <div className="awards_standings_spinner"></div>
-                  <p>Loading tournaments...</p>
-                </div>
-              ) : totalRows === 0 ? (
-                <div className="bracket-no-brackets">
-                  {events.length === 0 ? (
-                    <p>No tournaments found.</p>
-                  ) : (
-                    <>
-                      <p>No tournaments match your search criteria.</p>
-                      <button 
-                        className="bracket-view-btn" 
-                        onClick={() => {
-                          setEventSearchTerm("");
-                          setSportFilter("all");
-                        }}
-                      >
-                        Clear Search
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <div className="awards_standings_table_container">
-                    <table className="awards_standings_table">
-                      <thead>
-                        <tr>
-                          <th style={{ fontSize: '15px' }}>Event Name</th>
-                          <th style={{ fontSize: '15px' }}>Status</th>
-                          <th style={{ fontSize: '15px' }}>Dates</th>
-                          <th style={{ fontSize: '15px' }}>Bracket</th>
-                          <th style={{ fontSize: '15px' }}>Sport</th>
-                          <th style={{ fontSize: '15px' }}>Type</th>
-                          <th style={{ fontSize: '15px' }}>Teams</th>
-                          <th style={{ textAlign: 'center', width: '200px', fontSize: '15px' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentRows.map((row, index) => {
-                          const { event, bracket } = row;
-                          const isFirstBracketOfEvent = index === 0 || currentRows[index - 1].event.id !== event.id;
-                          const bracketsInEvent = currentRows.filter(r => r.event.id === event.id).length;
-                          
-                          return bracket ? (
-                            <tr key={`${event.id}-${bracket.id}`}>
-                              {isFirstBracketOfEvent && (
-                                <>
-                                  <td rowSpan={bracketsInEvent} style={{ fontWeight: '600', borderRight: '1px solid var(--border-color)', fontSize: '16px' }}>
-                                    {event.name}
-                                  </td>
-                                  <td rowSpan={bracketsInEvent} style={{ borderRight: '1px solid var(--border-color)' }}>
-                                    <span className={`bracket-sport-badge ${event.status === "ongoing" ? "bracket-sport-basketball" : "bracket-sport-volleyball"}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
-                                      {event.status || 'ongoing'}
-                                    </span>
-                                  </td>
-                                  <td rowSpan={bracketsInEvent} style={{ fontSize: '15px', borderRight: '1px solid var(--border-color)' }}>
-                                    {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
-                                  </td>
-                                </>
-                              )}
-                              <td style={{ fontWeight: '600', fontSize: '15px' }}>{bracket.name}</td>
-                              <td>
-                                <span className={`bracket-sport-badge ${bracket.sport_type === 'volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
-                                  {bracket.sport_type?.toUpperCase() || 'N/A'}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: '15px' }}>
-                                {bracket.elimination_type === 'double' 
-                                  ? 'Double Elim.' 
-                                  : bracket.elimination_type === 'round_robin'
-                                    ? 'Round Robin'
-                                    : 'Single Elim.'}
-                              </td>
-                              <td style={{ fontSize: '15px' }}>{bracket.team_count || 0}</td>
-                              <td>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                  <button
-                                    onClick={() => handleEventSelect(event, bracket)}
-                                    className="bracket-view-btn"
-                                    style={{ fontSize: '13px', padding: '8px 14px', flex: '1 1 auto', minWidth: '120px' }}
-                                    title="View Stats"
-                                  >
-                                    <FaEye /> View Stats
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ) : (
-                            <tr key={event.id}>
-                              <td style={{ fontWeight: '600', fontSize: '16px' }}>{event.name}</td>
-                              <td>
-                                <span className={`bracket-sport-badge ${event.status === "ongoing" ? "bracket-sport-basketball" : "bracket-sport-volleyball"}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
-                                  {event.status || 'ongoing'}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: '15px' }}>
-                                {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
-                              </td>
-                              <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '15px', fontStyle: 'italic' }}>
-                                No brackets available for this event
-                              </td>
-                              <td>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No data</span>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Events Pagination Controls */}
-                  {totalPages > 1 && (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginTop: '30px',
-                      padding: '20px',
-                      background: 'var(--background-secondary)',
-                      borderRadius: '8px',
-                      flexWrap: 'wrap',
-                      gap: '15px'
-                    }}>
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                        Page {currentPage} of {totalPages}
-                      </div>
-                      
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <button
-                          onClick={goToPrevPage}
-                          disabled={currentPage === 1}
-                          style={{
-                            padding: '10px 16px',
-                            background: currentPage === 1 ? 'var(--text-muted)' : 'var(--primary-color)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontSize: '14px',
-                            opacity: currentPage === 1 ? 0.5 : 1,
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          ← Previous
-                        </button>
-
-                        {/* Page Numbers */}
-                        <div style={{ display: 'flex', gap: '5px' }}>
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (currentPage <= 3) {
-                              pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = currentPage - 2 + i;
-                            }
-
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => goToPage(pageNum)}
-                                style={{
-                                  padding: '10px 14px',
-                                  background: currentPage === pageNum ? 'var(--primary-color)' : 'var(--background-card)',
-                                  color: currentPage === pageNum ? 'white' : 'var(--text-primary)',
-                                  border: currentPage === pageNum ? 'none' : '2px solid var(--border-color)',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontSize: '14px',
-                                  fontWeight: currentPage === pageNum ? '600' : '400',
-                                  minWidth: '40px',
-                                  transition: 'all 0.2s ease'
-                                }}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <button
-                          onClick={goToNextPage}
-                          disabled={currentPage === totalPages}
-                          style={{
-                            padding: '10px 16px',
-                            background: currentPage === totalPages ? 'var(--text-muted)' : 'var(--primary-color)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontSize: '14px',
-                            opacity: currentPage === totalPages ? 0.5 : 1,
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          Next →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+        
 
           {/* Results Tab */}
           {activeTab === "results" && selectedEvent && (
