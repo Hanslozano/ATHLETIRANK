@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MdSchedule } from "react-icons/md";
+import { FaArrowLeft, FaSearch, FaTrophy, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaMedal, FaFilter } from "react-icons/fa";
 import '../../style/User_SchedulePage.css';
 
 const UserSchedulePage = () => {
@@ -9,7 +9,7 @@ const UserSchedulePage = () => {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSport, setSelectedSport] = useState("");
+  const [selectedSport, setSelectedSport] = useState("all");
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [events, setEvents] = useState([]);
   
@@ -20,18 +20,9 @@ const UserSchedulePage = () => {
   const [selectedRecentBracket, setSelectedRecentBracket] = useState(null);
   const [recentMatches, setRecentMatches] = useState([]);
 
-  // All tournaments state
-  const [allEvents, setAllEvents] = useState([]);
-  const [allBrackets, setAllBrackets] = useState([]);
-  const [selectedAllBracket, setSelectedAllBracket] = useState(null);
-  const [allMatches, setAllMatches] = useState([]);
-  const [allSportFilter, setAllSportFilter] = useState("all");
-
   // Pagination state
-  const [currentRecentPage, setCurrentRecentPage] = useState(1);
-  const [currentSchedulePage, setCurrentSchedulePage] = useState(1);
-  const [matchesPerPage] = useState(2);
-  const [schedulesPerPage] = useState(6);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [matchesPerPage] = useState(10);
 
   // Stats modal state
   const [showStatsModal, setShowStatsModal] = useState(false);
@@ -39,7 +30,10 @@ const UserSchedulePage = () => {
   const [playerStats, setPlayerStats] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  const sports = ["Basketball", "Volleyball"];
+  // Filter state
+  const [selectedStatus, setSelectedStatus] = useState("all");
+
+  const sports = ["all", "Basketball", "Volleyball"];
 
   const handleBackToHome = () => {
     navigate("/");
@@ -78,22 +72,17 @@ const UserSchedulePage = () => {
     };
     
     try {
-      // Handle different date formats
       let dateObj;
       if (date.includes('-')) {
-        // Format: YYYY-MM-DD
         const [year, month, day] = date.split('-');
         const [hours, minutes] = time.split(':');
         dateObj = new Date(year, month - 1, day, hours, minutes);
       } else if (date.includes('/')) {
-        // Format: MM/DD/YYYY or similar
         dateObj = new Date(`${date} ${time}`);
       } else {
-        // Try direct parsing
         dateObj = new Date(`${date} ${time}`);
       }
       
-      // Check if date is valid
       if (isNaN(dateObj.getTime())) {
         return {
           full: 'Date TBD',
@@ -154,19 +143,14 @@ const UserSchedulePage = () => {
     }
   };
 
-  // Enhanced function to get schedule data for matches
   const getScheduleDataForMatch = (match) => {
     if (!match || !schedules.length) return null;
     
-    // Try multiple matching strategies
-    
-    // 1. Direct match by match ID
     const directMatch = schedules.find(schedule => 
       schedule.matchId === match.id
     );
     if (directMatch) return directMatch;
     
-    // 2. Match by bracket and teams
     const bracketTeamMatch = schedules.find(schedule => 
       schedule.bracketId === match.bracket_id &&
       (
@@ -176,7 +160,6 @@ const UserSchedulePage = () => {
     );
     if (bracketTeamMatch) return bracketTeamMatch;
     
-    // 3. Match by teams only (case insensitive)
     const teamMatch = schedules.find(schedule => 
       schedule.team1_name && schedule.team2_name &&
       match.team1_name && match.team2_name &&
@@ -191,7 +174,6 @@ const UserSchedulePage = () => {
     return teamMatch || null;
   };
 
-  // Fetch all events
   const fetchAllEvents = async () => {
     try {
       const ongoingRes = await fetch("http://localhost:5000/api/events");
@@ -202,7 +184,6 @@ const UserSchedulePage = () => {
       
       const allEventsData = [...ongoingData, ...completedData];
       
-      // Remove duplicates based on event ID
       const uniqueEvents = allEventsData.reduce((acc, current) => {
         const x = acc.find(item => item.id === current.id);
         if (!x) {
@@ -212,14 +193,12 @@ const UserSchedulePage = () => {
         }
       }, []);
       
-      // Sort by creation date (most recent first)
       const sortedEvents = uniqueEvents.sort((a, b) => {
         const dateA = new Date(a.created_at || a.id);
         const dateB = new Date(b.created_at || b.id);
         return dateB - dateA;
       });
 
-      setAllEvents(sortedEvents);
       setRecentEvents(sortedEvents);
       
       if (sortedEvents.length > 0) {
@@ -232,7 +211,6 @@ const UserSchedulePage = () => {
     }
   };
 
-  // Fetch brackets for events
   const fetchBracketsForRecentEvent = async (eventId) => {
     try {
       let bracketsRes;
@@ -258,21 +236,17 @@ const UserSchedulePage = () => {
     }
   };
 
-  // Enhanced function to fetch matches with proper schedule data
   const fetchMatchesForRecentBracket = async (bracketId) => {
     try {
       const matchRes = await fetch(`http://localhost:5000/api/stats/${bracketId}/matches`);
       const matchData = await matchRes.json();
       
-      // Enhance matches with schedule data
       const enhancedMatches = matchData.map(match => {
         const scheduleData = getScheduleDataForMatch(match);
         
-        // Use schedule date/time if available, otherwise check match data
         let finalDate = scheduleData?.date || match.date;
         let finalTime = scheduleData?.time || match.time;
         
-        // If both are still TBD, check scheduled_at field
         if ((!finalDate || finalDate === 'Date TBD') && match.scheduled_at) {
           try {
             const scheduledDate = new Date(match.scheduled_at);
@@ -290,11 +264,10 @@ const UserSchedulePage = () => {
           date: finalDate,
           time: finalTime,
           sport_type: scheduleData?.sport_type || match.sport_type,
-          scheduleData: scheduleData // Keep reference to full schedule data
+          scheduleData: scheduleData
         };
       });
       
-      // Sort matches by date and time (most recent first)
       const sortedMatches = enhancedMatches.sort((a, b) => {
         try {
           const dateA = a.date && a.time ? new Date(`${a.date} ${a.time}`) : new Date(0);
@@ -306,14 +279,13 @@ const UserSchedulePage = () => {
       });
       
       setRecentMatches(sortedMatches || []);
-      setCurrentRecentPage(1);
+      setCurrentPage(1);
     } catch (err) {
       console.error("Error fetching recent matches:", err);
       setRecentMatches([]);
     }
   };
 
-  // Handle recent event change
   const handleRecentEventChange = async (eventId) => {
     const event = recentEvents.find(e => e.id === parseInt(eventId));
     if (event) {
@@ -322,7 +294,6 @@ const UserSchedulePage = () => {
     }
   };
 
-  // Handle recent bracket change
   const handleRecentBracketChange = async (bracketId) => {
     const bracket = recentBrackets.find(b => b.id === parseInt(bracketId));
     if (bracket) {
@@ -331,7 +302,6 @@ const UserSchedulePage = () => {
     }
   };
 
-  // Handle view stats button click
   const handleViewStats = async (match) => {
     setStatsLoading(true);
     setSelectedMatchStats(match);
@@ -357,31 +327,22 @@ const UserSchedulePage = () => {
     }
   };
 
-  // Close stats modal
   const handleCloseStatsModal = () => {
     setShowStatsModal(false);
     setSelectedMatchStats(null);
     setPlayerStats([]);
   };
 
-  // Pagination logic for recent matches
-  const recentIndexOfLastMatch = currentRecentPage * matchesPerPage;
-  const recentIndexOfFirstMatch = recentIndexOfLastMatch - matchesPerPage;
-  const currentRecentMatches = recentMatches.slice(recentIndexOfFirstMatch, recentIndexOfLastMatch);
-  const recentTotalPages = Math.ceil(recentMatches.length / matchesPerPage);
-
-  // Pagination logic for schedules
-  const scheduleIndexOfLastMatch = currentSchedulePage * schedulesPerPage;
-  const scheduleIndexOfFirstMatch = scheduleIndexOfLastMatch - schedulesPerPage;
-
-  const paginateRecent = (pageNumber) => {
-    setCurrentRecentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const paginateSchedule = (pageNumber) => {
-    setCurrentSchedulePage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const getScheduleStatus = (date, time) => {
+    if (!date || !time || date === 'Date TBD' || time === 'Time TBD') return 'scheduled';
+    
+    try {
+      const scheduleDateTime = new Date(`${date} ${time}`);
+      const now = new Date();
+      return scheduleDateTime > now ? 'upcoming' : 'completed';
+    } catch (error) {
+      return 'scheduled';
+    }
   };
 
   useEffect(() => {
@@ -396,7 +357,6 @@ const UserSchedulePage = () => {
         const schedulesData = await schedulesRes.json();
         const eventsData = await eventsRes.json();
         
-        // Sort schedules by creation date (most recent first)
         const sortedSchedules = schedulesData.sort((a, b) => {
           const dateA = new Date(a.created_at || a.id);
           const dateB = new Date(b.created_at || b.id);
@@ -435,246 +395,57 @@ const UserSchedulePage = () => {
     return `(${record.wins} - ${record.losses})`;
   };
 
-  const getScheduleStatus = (date, time) => {
-    if (!date || !time || date === 'Date TBD' || time === 'Time TBD') return 'past';
-    
-    try {
-      const scheduleDateTime = new Date(`${date} ${time}`);
-      const now = new Date();
-      return scheduleDateTime > now ? 'upcoming' : 'past';
-    } catch (error) {
-      return 'past';
-    }
-  };
-
-  // Filter schedules based on search and filters
-  const filteredSchedules = schedules.filter(schedule => {
+  // Filter matches
+  const filteredMatches = recentMatches.filter(match => {
     const matchesSearch = 
-      (schedule.team1_name && schedule.team1_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (schedule.team2_name && schedule.team2_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (schedule.event_name && schedule.event_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (schedule.venue && schedule.venue.toLowerCase().includes(searchTerm.toLowerCase()));
+      (match.team1_name && match.team1_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (match.team2_name && match.team2_name.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesSport = selectedSport === "" || schedule.sport_type === selectedSport.toLowerCase();
+    const matchesSport = selectedSport === "all" || 
+      (match.sport_type && match.sport_type.toLowerCase() === selectedSport.toLowerCase());
     
-    return matchesSearch && matchesSport;
+    const status = getScheduleStatus(match.date, match.time);
+    const matchesStatus = selectedStatus === "all" || status === selectedStatus;
+    
+    return matchesSearch && matchesSport && matchesStatus;
   });
 
-  // Get current schedules for pagination
-  const currentSchedules = filteredSchedules.slice(scheduleIndexOfFirstMatch, scheduleIndexOfLastMatch);
-  const scheduleTotalPages = Math.ceil(filteredSchedules.length / schedulesPerPage);
+  // Group matches by bracket
+  const matchesByBracket = filteredMatches.reduce((acc, match) => {
+    const bracketName = match.bracket_name || selectedRecentBracket?.name || "Unknown Bracket";
+    if (!acc[bracketName]) {
+      acc[bracketName] = [];
+    }
+    acc[bracketName].push(match);
+    return acc;
+  }, {});
+
+  // Pagination
+  const indexOfLastMatch = currentPage * matchesPerPage;
+  const indexOfFirstMatch = indexOfLastMatch - matchesPerPage;
+  const totalPages = Math.ceil(filteredMatches.length / matchesPerPage);
+
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
-  const handleViewSchedule = (schedule) => {
-    setSelectedSchedule(schedule);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedSchedule(null);
-  };
-
-  // Render match cards component - ENHANCED with schedule data
-  const renderMatchCards = (matches, paginateFunction, currentPage, totalPages, indexOfFirstMatch, indexOfLastMatch, totalMatches) => {
+  const getStatusBadge = (status) => {
+    const badges = {
+      upcoming: { className: 'status-upcoming', label: 'Upcoming' },
+      scheduled: { className: 'status-scheduled', label: 'Scheduled' },
+      completed: { className: 'status-completed', label: 'Completed' }
+    };
+    const badge = badges[status] || badges.scheduled;
     return (
-      <div className="match-by-match-view">
-        {/* Matches Grid - Single Column Rectangle Layout */}
-        <div className="recent-matches-grid-single">
-          {matches.map((match) => {
-            const matchDateTime = formatScheduleDateTime(match.date, match.time);
-            const status = getScheduleStatus(match.date, match.time);
-            
-            return (
-              <div key={match.id} className={`recent-match-card-rectangle ${status}`}>
-                {/* Header with Sport, Date, Time and Status */}
-                <div className="match-card-header-rectangle">
-                  <div className="match-sport-info-rectangle">
-                    <span className="sport-type-rectangle">
-                      {match.sport_type ? capitalize(match.sport_type) : "Unknown Sport"}
-                    </span>
-                    <span className={`match-status-badge-rectangle ${status}`}>
-                      {status === 'upcoming' ? 'Upcoming' : 'Completed'}
-                    </span>
-                  </div>
-                  <div className="match-date-time-rectangle">
-                    <div className="date-time-display">
-                      <span className="match-date-rectangle">
-                        📅 {matchDateTime.date}
-                      </span>
-                      <span className="match-time-rectangle">
-                        ⏰ {matchDateTime.time}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Teams and Score Row */}
-                <div className="match-teams-row-rectangle">
-                  <div className="team-info-rectangle">
-                    <span className="team-name-rectangle">{match.team1_name || "TBD"}</span>
-                    <span className="team-record-rectangle">{formatTeamRecord(match.team1_name)}</span>
-                  </div>
-
-                  <div className="match-vs-rectangle">
-                    <span className="vs-text-rectangle">VS</span>
-                    <span className="match-score-rectangle">
-                      {match.score_team1 || 0} - {match.score_team2 || 0}
-                    </span>
-                  </div>
-
-                  <div className="team-info-rectangle">
-                    <span className="team-name-rectangle">{match.team2_name || "TBD"}</span>
-                    <span className="team-record-rectangle">{formatTeamRecord(match.team2_name)}</span>
-                  </div>
-                </div>
-
-                {/* Footer with View Stats Button */}
-                <div className="match-card-footer-rectangle">
-                  <button 
-                    className="view-stats-btn-rectangle"
-                    onClick={() => handleViewStats(match)}
-                  >
-                    View Stats
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="recent-matches-pagination">
-            <button 
-              className="pagination-btn"
-              onClick={() => paginateFunction(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </button>
-            
-            <div className="pagination-info">
-              Page {currentPage} of {totalPages}
-            </div>
-            
-            <button 
-              className="pagination-btn"
-              onClick={() => paginateFunction(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        {/* Results Info */}
-        <div className="recent-matches-info">
-          Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, totalMatches)} of {totalMatches} matches
-        </div>
-      </div>
+      <span className={`match-status-badge ${badge.className}`}>
+        {badge.label}
+      </span>
     );
   };
 
-  // Render schedule cards with pagination
-  const renderScheduleCards = () => {
-    return (
-      <div className="schedule-view">
-        {/* Schedule Grid */}
-        <div className="schedule-grid-new">
-          {currentSchedules.map(schedule => {
-            const dateTime = formatScheduleDateTime(schedule.date, schedule.time);
-            const status = getScheduleStatus(schedule.date, schedule.time);
-            
-            return (
-              <div key={schedule.id} className={`schedule-card-new ${status}`}>
-                <div className="schedule-card-header-new">
-                  <div className="match-sport-info">
-                    <span className="sport-type-new">{schedule.sport_type ? capitalize(schedule.sport_type) : "Unknown"}</span>
-                    <span className={`status-badge-new ${status}`}>
-                      {status === 'upcoming' ? 'Upcoming' : 'Completed'}
-                    </span>
-                  </div>
-                  <div className="match-date-new">
-                    <span className="date-day">{dateTime.dayOfWeek}</span>
-                    <span className="date-full">{dateTime.shortDate} • {dateTime.time}</span>
-                  </div>
-                </div>
-                
-                <div className="schedule-card-body-new">
-                  <div className="teams-container-new">
-                    <div className="team-new">
-                      <div className="team-name-new">{schedule.team1_name || "TBD"}</div>
-                      <div className="team-record">
-                        {formatTeamRecord(schedule.team1_name)}
-                      </div>
-                    </div>
-                    
-                    <div className="vs-section-new">
-                      <span className="vs-text">vs</span>
-                    </div>
-                    
-                    <div className="team-new">
-                      <div className="team-name-new">{schedule.team2_name || "TBD"}</div>
-                      <div className="team-record">
-                        {formatTeamRecord(schedule.team2_name)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="match-details-new">
-                    <div className="detail-row">
-                      <span className="detail-icon">🏆</span>
-                      <span className="detail-text">{schedule.event_name || "Unknown Event"}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-icon">📍</span>
-                      <span className="detail-text">{schedule.venue || "Venue TBD"}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-icon">📋</span>
-                      <span className="detail-text">{formatRoundDisplay(schedule)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Pagination Controls for Schedules */}
-        {scheduleTotalPages > 1 && (
-          <div className="schedule-pagination">
-            <button 
-              className="pagination-btn"
-              onClick={() => paginateSchedule(currentSchedulePage - 1)}
-              disabled={currentSchedulePage === 1}
-            >
-              Previous
-            </button>
-            
-            <div className="pagination-info">
-              Page {currentSchedulePage} of {scheduleTotalPages}
-            </div>
-            
-            <button 
-              className="pagination-btn"
-              onClick={() => paginateSchedule(currentSchedulePage + 1)}
-              disabled={currentSchedulePage === scheduleTotalPages}
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        {/* Results Info for Schedules */}
-        <div className="schedule-info">
-          Showing {scheduleIndexOfFirstMatch + 1}-{Math.min(scheduleIndexOfLastMatch, filteredSchedules.length)} of {filteredSchedules.length} scheduled matches
-        </div>
-      </div>
-    );
-  };
-
-  // Render match stats table
   const renderMatchStatsTable = () => {
     if (playerStats.length === 0) return <p>No statistics available for this match.</p>;
     
@@ -765,225 +536,305 @@ const UserSchedulePage = () => {
 
   return (
     <div className="user-schedule-page">
+      {/* Header */}
       <div className="schedule-header">
         <div className="header-content">
           <div className="header-top">
             <button className="back-btn" onClick={handleBackToHome}>
-              <span className="back-arrow">←</span>
+              <FaArrowLeft className="back-arrow" />
               Back to Home
             </button>
           </div>
-          
-          <div className="header-title-section">
-            <h1><MdSchedule className="header-icon"/>Match Schedule</h1>
+          <div className="header-center">
+            <h1><FaCalendarAlt className="header-icon" /> Match Schedule</h1>
             <p>View all upcoming and past tournament matches</p>
           </div>
         </div>
       </div>
 
       <div className="schedule-container">
-        {/* Recent Matches Section - Now with tournament dropdown */}
-        <div className="recent-matches-section">
-          <div className="recent-container-1">
-            <div className="recent-filter-row">
-              <div className="filter-group">
-                <label>Tournament</label>
-                <select
-                  value={selectedRecentEvent?.id || ""}
-                  onChange={(e) => handleRecentEventChange(e.target.value)}
-                  className="recent-select"
-                >
-                  {recentEvents.map(event => (
-                    <option key={event.id} value={event.id}>
-                      {event.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="filter-group">
-                <label>Bracket</label>
-                <select
-                  value={selectedRecentBracket?.id || ""}
-                  onChange={(e) => handleRecentBracketChange(e.target.value)}
-                  className="recent-select"
-                  disabled={recentBrackets.length === 0}
-                >
-                  {recentBrackets.map(bracket => (
-                    <option key={bracket.id} value={bracket.id}>
-                      {bracket.name} ({bracket.sport_type})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Match-by-Match View with Pagination */}
-          {loading ? (
-            <div className="recent-loading">
-              <div className="loading-spinner"></div>
-              <p>Loading recent matches...</p>
-            </div>
-          ) : recentMatches.length === 0 ? (
-            <div className="recent-empty">
-              <p>No matches found for the selected bracket</p>
-            </div>
-          ) : (
-            renderMatchCards(
-              currentRecentMatches, 
-              paginateRecent, 
-              currentRecentPage, 
-              recentTotalPages, 
-              recentIndexOfFirstMatch, 
-              recentIndexOfLastMatch, 
-              recentMatches.length
-            )
-          )}
-
-          {/* Match Schedules Section with Container */}
-          <div className="match-schedules-container">
-            <div className="match-schedules-header">
-              <h2>Match Schedules</h2>
-            </div>
-            
-            <div className="match-schedules-content">
-              {/* All Scheduled Games Section - Now under Recent Matches */}
-              <div className="schedule-section-under-recent">
-                <div className="schedule-controls">
-                  <div className="search-section">
-                    <input
-                      type="text"
-                      placeholder="Search teams, events, or venues..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="search-input"
-                    />
-                  </div>
-                  <div className="filter-section">
-                    <select
-                      value={selectedSport}
-                      onChange={(e) => setSelectedSport(e.target.value)}
-                      className="sport-filter"
-                    >
-                      <option value="">All Sports</option>
-                      {sports.map(sport => (
-                        <option key={sport} value={sport}>{sport}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="schedule-content">
-                  {loading ? (
-                    <div className="loading-state">
-                      <div className="loading-spinner"></div>
-                      <p>Loading schedules...</p>
-                    </div>
-                  ) : filteredSchedules.length === 0 ? (
-                    <div className="empty-state">
-                      <div className="empty-icon">📅</div>
-                      <h3>No schedules found</h3>
-                      <p>
-                        {searchTerm || selectedSport
-                          ? "Try adjusting your search or filter criteria" 
-                          : "No matches have been scheduled yet"
-                        }
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="schedule-stats">
-                        <span className="stats-text">
-                          Showing {filteredSchedules.length} of {schedules.length} matches
-                        </span>
-                      </div>
-                      {renderScheduleCards()}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Filter Container */}
+        <div className="filter-matches-container">
+  <div className="filter-matches-header">
+    <FaFilter className="filter-matches-icon" />
+    <span className="filter-matches-title">FILTER MATCHES</span>
+  </div>
+  
+  <div className="filter-matches-content">
+    {/* Tournament and Bracket Row */}
+    <div className="filter-matches-row">
+      <div className="filter-matches-group">
+        <div className="filter-matches-label">
+          <FaTrophy className="filter-matches-label-icon" />
+          <span>TOURNAMENT</span>
         </div>
+        <select
+          value={selectedRecentEvent?.id || ""}
+          onChange={(e) => handleRecentEventChange(e.target.value)}
+          className="filter-matches-select"
+        >
+          {recentEvents.map(event => (
+            <option key={event.id} value={event.id}>
+              {event.name}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Schedule Detail Modal */}
-      {selectedSchedule && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">
-                <h2>Match Details</h2>
-                <span className={`sport-badge sport-${selectedSchedule.sport_type || "default"}`}>
-                  {selectedSchedule.sport_type ? capitalize(selectedSchedule.sport_type) : "Unknown"}
-                </span>
-              </div>
-              <button className="close-btn" onClick={handleCloseModal}>
-                ×
-              </button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="match-details">
-                <div className="teams-display">
-                  <div className="team-side">
-                    <h3>{selectedSchedule.team1_name || "TBD"}</h3>
-                    <div className="team-record-modal">
-                      {formatTeamRecord(selectedSchedule.team1_name)}
-                    </div>
-                    <span className="team-label">Team 1</span>
-                  </div>
-                  <div className="vs-divider">VS</div>
-                  <div className="team-side">
-                    <h3>{selectedSchedule.team2_name || "TBD"}</h3>
-                    <div className="team-record-modal">
-                      {formatTeamRecord(selectedSchedule.team2_name)}
-                    </div>
-                    <span className="team-label">Team 2</span>
-                  </div>
-                </div>
-                
-                <div className="details-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">Event</span>
-                    <span className="detail-value">{selectedSchedule.event_name || "Unknown"}</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Bracket</span>
-                    <span className="detail-value">{selectedSchedule.bracket_name || "Unknown"}</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Round</span>
-                    <span className="detail-value">{formatRoundDisplay(selectedSchedule)}</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Date & Time</span>
-                    <span className="detail-value">
-                      {formatScheduleDateTime(selectedSchedule.date, selectedSchedule.time).full}
+      <div className="filter-matches-group">
+        <div className="filter-matches-label">
+          <FaMedal className="filter-matches-label-icon" />
+          <span>BRACKET</span>
+        </div>
+        <select
+          value={selectedRecentBracket?.id || ""}
+          onChange={(e) => handleRecentBracketChange(e.target.value)}
+          className="filter-matches-select"
+          disabled={recentBrackets.length === 0}
+        >
+          {recentBrackets.map(bracket => (
+            <option key={bracket.id} value={bracket.id}>
+              {bracket.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+
+    {/* Sport Selection Row */}
+ 
+
+    {/* Status Buttons Row */}
+    <div className="filter-matches-row">
+      <div className="filter-matches-group full-width">
+        <div className="filter-matches-label">
+          <FaClock className="filter-matches-label-icon" />
+          <span>STATUS</span>
+        </div>
+        <div className="filter-status-buttons">
+          <button
+            onClick={() => setSelectedStatus('all')}
+            className={`filter-status-btn ${selectedStatus === 'all' ? 'active' : ''}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setSelectedStatus('upcoming')}
+            className={`filter-status-btn ${selectedStatus === 'upcoming' ? 'active' : ''}`}
+          >
+            Upcoming
+          </button>
+          <button
+            onClick={() => setSelectedStatus('completed')}
+            className={`filter-status-btn ${selectedStatus === 'completed' ? 'active' : ''}`}
+          >
+            Completed
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* Search Row */}
+
+  </div>
+</div>
+
+        {/* Matches Section */}
+        {loading ? (
+          <div className="loading-state">
+            <div className="loading-spinner"></div>
+            <p>Loading matches...</p>
+          </div>
+        ) : Object.keys(matchesByBracket).length > 0 ? (
+          <div className="matches-section">
+            {Object.entries(matchesByBracket).map(([bracket, bracketMatches]) => {
+              // Paginate within each bracket
+              const startIdx = (currentPage - 1) * matchesPerPage;
+              const endIdx = startIdx + matchesPerPage;
+              const paginatedMatches = bracketMatches.slice(startIdx, endIdx);
+              
+              return (
+                <div key={bracket} className="bracket-section">
+                  <div className="bracket-header">
+                    <FaMedal className="bracket-icon" />
+                    <h2 className="bracket-title">{bracket}</h2>
+                    <span className="bracket-count">
+                      ({bracketMatches.length} {bracketMatches.length === 1 ? 'match' : 'matches'})
                     </span>
                   </div>
+
+                  <div className="matches-grid">
+                    {paginatedMatches.map(match => {
+                      const matchDateTime = formatScheduleDateTime(match.date, match.time);
+                      const status = getScheduleStatus(match.date, match.time);
+                      
+                      return (
+                        <div key={match.id} className={`match-card ${status}`}>
+                          {/* Match Header */}
+                          <div className="match-card-header">
+                            <div className="match-info">
+                              <FaTrophy className="info-icon" />
+                              <span className="tournament-name">{selectedRecentEvent?.name}</span>
+                              <span className="info-divider">•</span>
+                              <span className="round-name">{formatRoundDisplay(match)}</span>
+                            </div>
+                            {getStatusBadge(status)}
+                          </div>
+
+                          {/* Match Body */}
+                          <div className="match-card-body">
+                            <div className="teams-container">
+                              {/* Team 1 */}
+                              <div className="team-side team-left">
+                                <span className="team-logo">
+                                  {match.sport_type === 'basketball' ? '🏀' : '🏐'}
+                                </span>
+                                <div className="team-details">
+                                  <h3 className="team-name">{match.team1_name || "TBD"}</h3>
+                                  <p className="team-record">{formatTeamRecord(match.team1_name)}</p>
+                                </div>
+                              </div>
+
+                              {/* Score/VS */}
+                              <div className="match-center">
+                                {status === 'completed' ? (
+                                  <div className="score-container completed">
+                                    <div className="final-score">
+                                      <span className="score-number">{match.score_team1 || 0}</span>
+                                      <span className="score-divider">-</span>
+                                      <span className="score-number">{match.score_team2 || 0}</span>
+                                    </div>
+                                    <div className="final-label">Final Score</div>
+                                    <div className="match-datetime">
+                                      <div className="datetime-item">
+                                        <FaCalendarAlt className="datetime-icon" />
+                                        <span>{matchDateTime.date}</span>
+                                      </div>
+                                      <div className="datetime-item">
+                                        <FaClock className="datetime-icon" />
+                                        <span>{matchDateTime.time}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="score-container upcoming">
+                                    <div className="vs-text">VS</div>
+                                    <div className="match-datetime scheduled">
+                                      <div className="datetime-item">
+                                        <FaCalendarAlt className="datetime-icon" />
+                                        <span>{matchDateTime.date}</span>
+                                      </div>
+                                      <div className="datetime-item">
+                                        <FaClock className="datetime-icon" />
+                                        <span>{matchDateTime.time}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Team 2 */}
+                              <div className="team-side team-right">
+                                <div className="team-details">
+                                  <h3 className="team-name">{match.team2_name || "TBD"}</h3>
+                                  <p className="team-record">{formatTeamRecord(match.team2_name)}</p>
+                                </div>
+                                <span className="team-logo">
+                                  {match.sport_type === 'basketball' ? '🏀' : '🏐'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Match Footer */}
+                            <div className="match-card-footer">
+                              <div className="venue-info">
+                                <FaMapMarkerAlt className="venue-icon" />
+                                <span>{match.venue || 'Venue TBD'}</span>
+                              </div>
+                              {status === 'completed' && (
+                                <button 
+                                  className="view-stats-btn"
+                                  onClick={() => handleViewStats(match)}
+                                >
+                                  View Stats →
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+ })}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="pagination-container">
+                <div className="pagination-info">
+                  Page {currentPage} of {totalPages}
+                </div>
+                
+                <div className="pagination-controls">
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
                   
-                  <div className="detail-item">
-                    <span className="detail-label">Venue</span>
-                    <span className="detail-value">{selectedSchedule.venue}</span>
+                  <div className="pagination-numbers">
+                    {[...Array(totalPages)].map((_, index) => {
+                      const pageNumber = index + 1;
+                      if (
+                        pageNumber === 1 ||
+                        pageNumber === totalPages ||
+                        (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={pageNumber}
+                            className={`pagination-number ${currentPage === pageNumber ? 'active' : ''}`}
+                            onClick={() => paginate(pageNumber)}
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      } else if (
+                        pageNumber === currentPage - 2 ||
+                        pageNumber === currentPage + 2
+                      ) {
+                        return <span key={pageNumber} className="pagination-ellipsis">...</span>;
+                      }
+                      return null;
+                    })}
                   </div>
                   
-                  {selectedSchedule.description && (
-                    <div className="detail-item full-width">
-                      <span className="detail-label">Additional Notes</span>
-                      <span className="detail-value">{selectedSchedule.description}</span>
-                    </div>
-                  )}
+                  <button 
+                    className="pagination-btn"
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
+            )}
+
+            <div className="matches-info">
+              Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="empty-state">
+            <FaTrophy className="empty-icon" />
+            <h3>No matches found</h3>
+            <p>Try adjusting your filters</p>
+          </div>
+        )}
+      </div>
 
       {/* Stats Modal */}
       {showStatsModal && (
@@ -1010,7 +861,7 @@ const UserSchedulePage = () => {
               {statsLoading ? (
                 <div className="stats-loading">
                   <div className="loading-spinner"></div>
-                    <p>Loading statistics...</p>
+                  <p>Loading statistics...</p>
                 </div>
               ) : (
                 renderMatchStatsTable()

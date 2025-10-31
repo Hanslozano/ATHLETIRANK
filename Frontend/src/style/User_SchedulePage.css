@@ -13,6 +13,7 @@
   --border-radius: 8px;
   --border-radius-lg: 12px;
   --transition: all 0.2s ease-in-out;
+  --shadow-light: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
   --shadow-medium: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   --shadow-heavy: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 }
@@ -28,17 +29,37 @@
 .schedule-header {
   background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-card) 100%);
   border-bottom: 1px solid var(--border-color);
-  padding: 2rem 0;
+  padding: 2.5rem 0 2rem;
+  text-align: center;
+}
+
+.filter-matches-container,
+.matches-section,
+.bracket-section {
+  width: 100%;
+  max-width: none;
+}
+
+.header-content {
+  max-width: none; /* Remove max-width constraint */
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
 }
 
 .schedule-header .header-content {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 2rem;
+  position: relative;
 }
 
 .schedule-header .header-top {
-  margin-bottom: 1.5rem;
+  position: absolute;
+  top: 0;
+  left: 2rem;
+  margin-bottom: 0;
 }
 
 .schedule-header .back-btn {
@@ -54,32 +75,42 @@
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow-light);
 }
 
 .schedule-header .back-btn:hover {
-  background: var(--primary-color);
+  background: var(--background-secondary);
   color: var(--text-primary);
   border-color: var(--primary-color);
-  transform: translateX(-4px);
+  transform: translateX(-3px);
+  box-shadow: var(--shadow-medium);
 }
 
 .schedule-header .back-arrow {
   font-size: 1.2rem;
+  font-weight: bold;
   transition: var(--transition);
 }
 
 .schedule-header .back-btn:hover .back-arrow {
-  transform: translateX(-2px);
+  transform: translateX(-3px);
 }
 
-.schedule-header .header-title-section h1 {
+.schedule-header .header-center {
+  text-align: center;
+  width: 100%;
+}
+
+.schedule-header .header-center h1 {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0.5rem;
   font-size: 2.5rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.75rem 0;
   color: var(--text-primary);
+  line-height: 1.2;
 }
 
 .schedule-header .header-icon {
@@ -87,36 +118,374 @@
   color: var(--primary-color);
 }
 
-.schedule-header .header-title-section p {
-  font-size: 1.1rem;
+.schedule-header .header-center p {
+  font-size: 1.2rem;
   color: var(--text-secondary);
-  margin: 0;
+  margin: 0 auto;
+  max-width: 600px;
+  line-height: 1.5;
 }
 
 /* Container */
 .schedule-container {
-  max-width: 1400px;
+  max-width: none; /* Remove max-width constraint */
+  width: 100%; /* Take full width */
   margin: 0 auto;
   padding: 2rem;
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
-/* Controls Section */
-.schedule-controls {
-  display: flex;
-  gap: 1rem;
+/* Filter Container */
+.filter-container {
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
   margin-bottom: 2rem;
+  box-shadow: var(--shadow-light);
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.filter-icon {
+  color: var(--primary-color);
+  font-size: 1rem;
+}
+
+.filter-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Tournament and Bracket Selectors - Matching Stats Page Style */
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.label-icon {
+  font-size: 0.9rem;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+/* Filter Matches Container - Stats Page Style */
+.filter-matches-container {
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-light);
+}
+
+.filter-matches-header {
+  background: var(--background-secondary);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-matches-icon {
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.filter-matches-title {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.filter-matches-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.filter-matches-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.filter-matches-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-matches-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.filter-matches-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-matches-label-icon {
+  font-size: 0.9rem;
+  color: var(--primary-color);
+}
+
+.filter-matches-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: var(--transition);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+.filter-matches-select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background-color: var(--background-secondary);
+}
+
+.filter-matches-select:not(:disabled):hover {
+  border-color: var(--primary-color);
+  background-color: var(--background-card);
+}
+
+.filter-matches-select:not(:disabled):focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Status Buttons */
+.filter-status-buttons {
+  display: flex;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
-.search-section {
+.filter-status-btn {
   flex: 1;
-  min-width: 300px;
+  min-width: 100px;
+  padding: 0.75rem 1.5rem;
+  background: var(--background-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.filter-status-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+}
+
+.filter-status-btn.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Search Container */
+.filter-search-container {
+  position: relative;
+  width: 100%;
+}
+
+.filter-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.filter-search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  background: var(--background-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: var(--transition);
+}
+
+.filter-search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.filter-search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background-color: var(--background-card);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .filter-matches-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .filter-status-buttons {
+    flex-direction: column;
+  }
+  
+  .filter-status-btn {
+    width: 100%;
+  }
+}
+
+.filter-select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.filter-select:not(:disabled):hover {
+  border-color: var(--primary-color);
+  background-color: var(--background-card);
+}
+
+.filter-select:not(:disabled):focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.filter-select:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  background: var(--background-card);
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.status-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.status-btn:hover {
+  background: var(--background-card);
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+}
+
+.status-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-medium);
+}
+
+.search-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1rem;
 }
 
 .search-input {
   width: 100%;
-  padding: 0.875rem 1rem;
-  background: var(--background-card);
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  background: var(--background-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   color: var(--text-primary);
@@ -128,51 +497,11 @@
   outline: none;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: var(--background-card);
 }
 
 .search-input::placeholder {
   color: var(--text-muted);
-}
-
-.filter-section {
-  display: flex;
-  gap: 1rem;
-}
-
-.event-filter,
-.sport-filter {
-  padding: 0.875rem 1rem;
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: var(--transition);
-  min-width: 150px;
-}
-
-.event-filter:focus,
-.sport-filter:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.event-filter:hover,
-.sport-filter:hover {
-  border-color: var(--primary-color);
-}
-
-/* Stats */
-.schedule-stats {
-  margin-bottom: 1.5rem;
-}
-
-.stats-text {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  font-weight: 500;
 }
 
 /* Loading and Empty States */
@@ -184,6 +513,10 @@
   justify-content: center;
   padding: 4rem 2rem;
   text-align: center;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-light);
 }
 
 .loading-spinner {
@@ -203,6 +536,7 @@
 .loading-state p {
   color: var(--text-secondary);
   font-size: 1.1rem;
+  margin: 0;
 }
 
 .empty-icon {
@@ -214,310 +548,132 @@
 .empty-state h3 {
   color: var(--text-primary);
   font-size: 1.5rem;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.5rem 0;
 }
 
 .empty-state p {
   color: var(--text-secondary);
   font-size: 1rem;
   max-width: 400px;
+  margin: 0;
 }
 
-/* New Schedule Grid */
-.schedule-grid-new {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
+/* Matches Section */
+.matches-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
-/* New Schedule Card */
-.schedule-card-new {
+/* Bracket Section */
+.bracket-section {
   background: var(--background-card);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
-  overflow: hidden;
-  transition: var(--transition);
-  position: relative;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-light);
 }
 
-.schedule-card-new:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-medium);
-  border-color: var(--primary-color);
-}
-
-.schedule-card-new.upcoming {
-  border-left: 4px solid var(--primary-color);
-}
-
-.schedule-card-new.past {
-  border-left: 4px solid var(--text-muted);
-  opacity: 0.85;
-}
-
-.schedule-card-header-new {
-  padding: 1.25rem 1.25rem 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.match-sport-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sport-type-new {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.status-badge-new {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  width: fit-content;
-}
-
-.status-badge-new.upcoming {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.status-badge-new.past {
-  background: rgba(100, 116, 139, 0.2);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-}
-
-.match-date-new {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
-
-.date-day {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.date-full {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.schedule-card-body-new {
-  padding: 1.5rem 1.25rem;
-}
-
-.teams-container-new {
+.bracket-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.team-new {
-  flex: 1;
-  text-align: center;
+.bracket-icon {
+  color: #fbbf24;
+  font-size: 1.5rem;
 }
 
-.team-name-new {
-  font-size: 1.25rem;
+.bracket-title {
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 0.25rem;
-  line-height: 1.3;
+  margin: 0;
 }
 
-.team-record {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-weight: 500;
+.bracket-count {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-left: auto;
 }
 
-.vs-section-new {
+/* Matches Grid */
+.matches-grid {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 0 1rem;
-}
-
-.vs-text {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--primary-color);
-  background: rgba(59, 130, 246, 0.1);
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--border-radius);
-}
-
-.match-details-new {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.detail-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.detail-icon {
-  font-size: 1rem;
-  min-width: 1.5rem;
-  text-align: center;
-}
-
-.detail-text {
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-/* Recent Matches Section */
-.recent-matches-section {
-  margin-bottom: 3rem;
-}
-
-/* Container 1: Filters */
-.recent-container-1 {
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.recent-filter-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
-  align-items: end;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.filter-group label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.recent-select {
-  padding: 0.75rem 1rem;
-  background: var(--background-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.recent-select:hover {
-  border-color: var(--primary-color);
-}
-
-.recent-select:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.recent-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Match-by-Match View */
-.match-by-match-view {
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 1.5rem;
-}
-
-/* Matches Grid - Simple 2-column layout */
-.recent-matches-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
 }
 
 /* Match Card */
-.recent-match-card {
-  background: var(--background-card);
+.match-card {
+  background: var(--background-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
-  padding: 1.5rem;
-  transition: var(--transition);
-  position: relative;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 280px;
+  transition: var(--transition);
+  box-shadow: var(--shadow-light);
 }
 
-.recent-match-card:hover {
+.match-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-medium);
   border-color: var(--primary-color);
 }
 
-.recent-match-card.upcoming {
+.match-card.upcoming {
   border-left: 4px solid var(--primary-color);
 }
 
-.recent-match-card.past {
-  border-left: 4px solid var(--text-muted);
-  opacity: 0.9;
+.match-card.completed {
+  border-left: 4px solid #10b981;
 }
 
-/* ADDED: Date and Time Info Styles */
-.match-date-time-info {
+.match-card.scheduled {
+  border-left: 4px solid #8b5cf6;
+}
+
+/* Match Card Header */
+.match-card-header {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.match-date {
+.match-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.info-icon {
+  color: #fbbf24;
+  font-size: 0.9rem;
+}
+
+.tournament-name {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
-.match-time {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--primary-color);
+.info-divider {
+  color: var(--border-color);
+  font-weight: bold;
+}
+
+.round-name {
+  font-size: 0.9rem;
+  color: var(--text-muted);
 }
 
 .match-status-badge {
@@ -525,120 +681,243 @@
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
-.match-status-badge.upcoming {
+.match-status-badge.status-upcoming {
   background: rgba(59, 130, 246, 0.2);
   color: #60a5fa;
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
-.match-status-badge.past {
-  background: rgba(100, 116, 139, 0.2);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+.match-status-badge.status-completed {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.match-teams-row {
+.match-status-badge.status-scheduled {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* Match Card Body */
+.match-card-body {
+  padding: 1.5rem;
+}
+
+.teams-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.team-side {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   flex: 1;
 }
 
-.team-info {
+.team-side.team-left {
+  justify-content: flex-start;
+}
+
+.team-side.team-right {
+  justify-content: flex-end;
+}
+
+.team-logo {
+  font-size: 3rem;
+  flex-shrink: 0;
+}
+
+.team-details {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  flex: 1;
 }
 
-.team-info:first-child {
-  text-align: left;
-}
-
-.team-info:last-child {
-  text-align: right;
+.team-side.team-right .team-details {
+  align-items: flex-end;
 }
 
 .team-name {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
 }
 
 .team-record {
   font-size: 0.85rem;
   color: var(--text-secondary);
-  font-weight: 500;
+  margin: 0;
 }
 
-.match-vs {
+/* Match Center */
+.match-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0 1rem;
+  justify-content: center;
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.score-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  width: 100%;
+}
+
+.score-container.completed {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.score-container.upcoming {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.final-score {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.score-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.score-divider {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.final-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #34d399;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .vs-text {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 2.5rem;
+  font-weight: 700;
   color: var(--primary-color);
+  padding: 0.5rem 1rem;
   background: rgba(59, 130, 246, 0.1);
-  padding: 0.5rem 0.75rem;
   border-radius: var(--border-radius);
 }
 
-.match-score {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
+.match-datetime {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
 }
 
-/* NEW: Match card footer for positioning the small button */
-.match-card-footer {
-  margin-top: auto;
+.match-datetime.scheduled {
+  background: rgba(59, 130, 246, 0.05);
+  padding: 0.75rem;
+  border-radius: var(--border-radius);
+}
+
+.datetime-item {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.datetime-icon {
+  color: var(--primary-color);
+  font-size: 0.9rem;
+}
+
+/* Match Card Footer */
+.match-card-footer {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-/* UPDATED: Small View Stats button styles */
-.view-stats-btn-small {
+.venue-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.venue-icon {
+  color: var(--primary-color);
+  font-size: 1rem;
+}
+
+.view-stats-btn {
   padding: 0.5rem 1rem;
   background: var(--primary-color);
   color: white;
   border: none;
   border-radius: var(--border-radius);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
-  min-width: 100px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.view-stats-btn-small:hover {
+.view-stats-btn:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-medium);
 }
 
-.view-stats-btn-small:active {
-  transform: translateY(0);
+/* Pagination */
+.pagination-container {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
 }
 
-/* Pagination */
-.recent-matches-pagination {
+.pagination-info {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.pagination-controls {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .pagination-btn {
@@ -647,6 +926,8 @@
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
 }
@@ -655,6 +936,7 @@
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
+  transform: translateY(-1px);
 }
 
 .pagination-btn:disabled {
@@ -662,39 +944,52 @@
   cursor: not-allowed;
 }
 
-.pagination-info {
+.pagination-numbers {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.pagination-number {
+  padding: 0.5rem 0.75rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 40px;
+  text-align: center;
+}
+
+.pagination-number:hover {
+  background: var(--background-card);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.pagination-number.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-medium);
+}
+
+.pagination-ellipsis {
+  color: var(--text-muted);
+  padding: 0 0.5rem;
   font-weight: 600;
 }
 
-.recent-matches-info {
+.matches-info {
   text-align: center;
-  font-size: 0.9rem;
   color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
-}
-
-/* Loading and Empty States */
-.recent-loading,
-.recent-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 2rem;
-  text-align: center;
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-}
-
-.recent-loading p,
-.recent-empty p {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  margin-top: 1rem;
 }
 
 /* Modal Styles */
@@ -715,12 +1010,8 @@
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
@@ -728,11 +1019,15 @@
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
   width: 100%;
-  max-width: 700px;
+  max-width: 900px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-heavy);
   animation: slideUp 0.3s ease-out;
+}
+
+.stats-modal-content {
+  max-width: 1200px;
 }
 
 @keyframes slideUp {
@@ -759,6 +1054,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1;
 }
 
 .modal-title h2 {
@@ -766,6 +1062,18 @@
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
+}
+
+.match-title {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.match-date-time-modal {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
 }
 
 .close-btn {
@@ -783,6 +1091,7 @@
   border-radius: var(--border-radius);
   transition: var(--transition);
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .close-btn:hover {
@@ -794,161 +1103,10 @@
   padding: 1.5rem;
 }
 
-.match-details {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-/* Team record styles */
-.team-record {
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 4px;
-  font-weight: 500;
-}
-
-.team-record-modal {
-  font-size: 0.9rem;
-  color: #666;
-  margin: 4px 0;
-  font-weight: 500;
-}
-
-/* Enhanced team display */
-.team-new {
-  text-align: center;
-  flex: 1;
-}
-
-.team-name-new {
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 2px;
-}
-
-/* Modal team display enhancements */
-.team-side {
-  text-align: center;
-  flex: 1;
-}
-
-.team-side h3 {
-  margin-bottom: 4px;
-}
-
-.team-label {
-  font-size: 0.8rem;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.teams-display {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.5rem;
-  background: rgba(59, 130, 246, 0.05);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-}
-
-.team-side {
-  flex: 1;
-  text-align: center;
-}
-
-.team-side h3 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.team-label {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
-
-.vs-divider {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary-color);
-  padding: 0 1rem;
-}
-
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.25rem;
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  padding: 1rem;
-  background: rgba(59, 130, 246, 0.05);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  transition: var(--transition);
-}
-
-.detail-item:hover {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: var(--primary-color);
-}
-
-.detail-item.full-width {
-  grid-column: 1 / -1;
-}
-
-.detail-label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.detail-value {
-  font-size: 1rem;
-  color: var(--text-primary);
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-/* Stats Modal Styles */
-.stats-modal-content {
-  max-width: 90%;
-  width: 1200px;
-  max-height: 90vh;
-}
-
 .stats-modal-body {
   padding: 0;
   max-height: calc(90vh - 120px);
   overflow-y: auto;
-}
-
-.match-title {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  margin-top: 0.5rem;
-  font-weight: 600;
-}
-
-/* ADDED: Match date and time in stats modal */
-.match-date-time-modal {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin-top: 0.25rem;
-  font-weight: 500;
 }
 
 .stats-loading {
@@ -960,7 +1118,13 @@
   text-align: center;
 }
 
-/* Stats Table Styles */
+.stats-loading p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+/* Stats Table */
 .stats-table-container {
   width: 100%;
 }
@@ -982,6 +1146,9 @@
   font-weight: 600;
   border-bottom: 2px solid var(--border-color);
   color: var(--text-primary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .stats-table td {
@@ -996,11 +1163,13 @@
 
 .stats-player-name {
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .stats-jersey-number {
   text-align: center;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .stats-highlight {
@@ -1009,224 +1178,184 @@
 }
 
 /* Scrollbar Styles */
-.modal-content::-webkit-scrollbar {
+.modal-content::-webkit-scrollbar,
+.stats-modal-body::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
-.modal-content::-webkit-scrollbar-track {
+.modal-content::-webkit-scrollbar-track,
+.stats-modal-body::-webkit-scrollbar-track {
   background: var(--background-card);
 }
 
-.modal-content::-webkit-scrollbar-thumb {
+.modal-content::-webkit-scrollbar-thumb,
+.stats-modal-body::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 4px;
 }
 
-.modal-content::-webkit-scrollbar-thumb:hover {
+.modal-content::-webkit-scrollbar-thumb:hover,
+.stats-modal-body::-webkit-scrollbar-thumb:hover {
   background: var(--primary-color);
 }
 
 /* Responsive Design */
-@media (max-width: 1200px) {
-  .schedule-grid-new {
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+@media (max-width: 1024px) {
+  .schedule-container {
+    padding: 1.5rem;
+  }
+
+  .filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .teams-container {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .team-side.team-left,
+  .team-side.team-right {
+    justify-content: center;
+  }
+
+  .team-side.team-right .team-details {
+    align-items: center;
+  }
+
+  .match-center {
+    width: 100%;
+    order: -1;
+  }
+
+  .team-name {
+    font-size: 1.25rem;
+  }
+
+  .score-number {
+    font-size: 2.5rem;
   }
 }
 
 @media (max-width: 768px) {
+  .schedule-header {
+    padding: 2rem 0 1.5rem;
+  }
+
   .schedule-header .header-content {
     padding: 0 1rem;
   }
 
-  .schedule-header .header-title-section h1 {
+  .schedule-header .header-top {
+    position: relative;
+    left: 0;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    width: 100%;
+  }
+
+  .schedule-header .header-center h1 {
     font-size: 2rem;
+    flex-direction: column;
   }
 
   .schedule-header .header-icon {
     font-size: 2rem;
   }
 
+  .schedule-header .header-center p {
+    font-size: 1rem;
+  }
+
   .schedule-container {
     padding: 1rem;
   }
 
-  .schedule-controls {
+  .filter-container {
+    padding: 1rem;
+  }
+
+  .status-buttons {
     flex-direction: column;
   }
 
-  .search-section {
-    min-width: 100%;
+  .status-btn {
+    min-width: auto;
   }
 
-  .filter-section {
-    flex-direction: column;
-    width: 100%;
+  .bracket-section {
+    padding: 1rem;
   }
 
-  .event-filter,
-  .sport-filter {
-    width: 100%;
-  }
-
-  .schedule-grid-new {
-    grid-template-columns: 1fr;
-  }
-
-  .schedule-card-header-new {
+  .bracket-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
-  .match-date-new {
-    align-items: flex-start;
+  .bracket-count {
+    margin-left: 0;
   }
 
-  .teams-container-new {
-    flex-direction: column;
-    gap: 1rem;
+  .match-card-body {
+    padding: 1rem;
   }
 
-  .vs-section-new {
-    order: -1;
-    width: 100%;
+  .team-logo {
+    font-size: 2.5rem;
+  }
+
+  .team-name {
+    font-size: 1.1rem;
+  }
+
+  .score-number {
+    font-size: 2rem;
   }
 
   .vs-text {
-    width: 100%;
-    text-align: center;
+    font-size: 2rem;
   }
 
-  .teams-display {
+  .match-card-footer {
     flex-direction: column;
-    gap: 1rem;
+    align-items: flex-start;
   }
 
-  .vs-divider {
-    transform: rotate(90deg);
+  .view-stats-btn {
+    width: 100%;
+    justify-content: center;
   }
 
-  .details-grid {
-    grid-template-columns: 1fr;
+  .pagination-controls {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .pagination-numbers {
+    width: 100%;
+    justify-content: center;
+  }
+  .modal-content {
+    max-width: 95%;
+    width: 95%;
+  }
+
+  .modal-header {
+    padding: 1rem;
   }
 
   .modal-title h2 {
     font-size: 1.5rem;
   }
 
-  /* Recent Matches Responsive */
-  .recent-filter-row {
-    grid-template-columns: 1fr;
-  }
-
-  .recent-matches-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .match-teams-row {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .team-info:first-child,
-  .team-info:last-child {
-    text-align: center;
-  }
-
-  .match-vs {
-    order: -1;
-    width: 100%;
-  }
-
-  .vs-text {
-    width: 100%;
-    text-align: center;
-  }
-
-  .team-name {
-    font-size: 1.1rem;
-  }
-
-  .match-score {
-    font-size: 1.25rem;
-  }
-
-  .recent-matches-pagination {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .stats-modal-content {
-    max-width: 95%;
-    width: 95%;
-  }
-
-  /* Date Time Info Responsive */
-  .match-date-time-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .match-date,
-  .match-time {
-    font-size: 0.85rem;
-  }
-
-  /* Small button responsive */
-  .view-stats-btn-small {
-    width: 100%;
-    min-width: auto;
-  }
-}
-
-@media (max-width: 480px) {
-  .schedule-header .header-title-section h1 {
-    font-size: 1.75rem;
-  }
-
-  .schedule-header .back-btn {
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
-  }
-
-  .team-name-new {
-    font-size: 1.1rem;
-  }
-
-  .schedule-card-header-new,
-  .schedule-card-body-new {
-    padding: 1rem;
-  }
-
-  .modal-header,
-  .modal-body {
-    padding: 1rem;
-  }
-
-  .team-side h3 {
-    font-size: 1.25rem;
-  }
-
-  .recent-container-1 {
-    padding: 1rem;
-  }
-
-  .match-by-match-view {
-    padding: 1rem;
-  }
-
-  .recent-match-card {
-    padding: 1rem;
-    min-height: 250px;
-  }
-
-  .team-name {
+  .match-title {
     font-size: 1rem;
   }
 
-  .match-score {
-    font-size: 1.1rem;
+  .modal-body {
+    padding: 1rem;
   }
 
   .stats-table {
@@ -1237,63 +1366,183 @@
   .stats-table td {
     padding: 0.5rem 0.75rem;
   }
+}
 
-  .view-stats-btn-small {
+@media (max-width: 480px) {
+  .schedule-header .header-center h1 {
+    font-size: 1.75rem;
+  }
+
+  .schedule-header .back-btn {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .filter-container {
+    padding: 0.75rem;
+  }
+
+  .filter-title {
+    font-size: 0.8rem;
+  }
+
+  .filter-label {
+    font-size: 0.75rem;
+  }
+
+  .filter-select,
+  .search-input,
+  .status-btn {
+    font-size: 0.85rem;
+    padding: 0.625rem 0.875rem;
+  }
+
+  .bracket-section {
+    padding: 0.75rem;
+  }
+
+  .bracket-title {
+    font-size: 1.25rem;
+  }
+
+  .match-card-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .match-info {
+    font-size: 0.8rem;
+  }
+
+  .tournament-name,
+  .round-name {
+    font-size: 0.8rem;
+  }
+
+  .match-status-badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .match-card-body {
+    padding: 0.75rem;
+  }
+
+  .team-logo {
+    font-size: 2rem;
+  }
+
+  .team-name {
+    font-size: 1rem;
+  }
+
+  .team-record {
+    font-size: 0.75rem;
+  }
+
+  .score-number {
+    font-size: 1.75rem;
+  }
+
+  .score-divider {
+    font-size: 1.5rem;
+  }
+
+  .vs-text {
+    font-size: 1.75rem;
+  }
+
+  .final-label,
+  .datetime-item {
+    font-size: 0.75rem;
+  }
+
+  .venue-info {
+    font-size: 0.8rem;
+  }
+
+  .view-stats-btn {
     font-size: 0.75rem;
     padding: 0.4rem 0.8rem;
   }
+
+  .pagination-btn,
+  .pagination-number {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .pagination-number {
+    min-width: 32px;
+  }
+
+  .matches-info,
+  .pagination-info {
+    font-size: 0.8rem;
+  }
+
+  .modal-header {
+    padding: 0.75rem;
+  }
+
+  .modal-title h2 {
+    font-size: 1.25rem;
+  }
+
+  .match-title {
+    font-size: 0.9rem;
+  }
+
+  .match-date-time-modal {
+    font-size: 0.8rem;
+  }
+
+  .close-btn {
+    font-size: 1.75rem;
+    width: 28px;
+    height: 28px;
+  }
+
+  .modal-body {
+    padding: 0.75rem;
+  }
+
+  .stats-table {
+    font-size: 0.75rem;
+  }
+
+  .stats-table th,
+  .stats-table td {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .stats-loading p {
+    font-size: 0.9rem;
+  }
 }
 
-/* Section Toggle Styles */
-.section-toggle {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 0.5rem;
+/* Animation for smooth transitions */
+.matches-section,
+.bracket-section,
+.match-card {
+  animation: fadeInUp 0.4s ease-out;
 }
 
-.toggle-btn {
-  flex: 1;
-  padding: 0.875rem 1.5rem;
-  background: transparent;
-  border: none;
-  border-radius: var(--border-radius);
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
+.bracket-section:nth-child(1) {
+  animation-delay: 0s;
 }
 
-.toggle-btn:hover {
-  background: var(--background-secondary);
-  color: var(--text-primary);
+.bracket-section:nth-child(2) {
+  animation-delay: 0.1s;
 }
 
-.toggle-btn.active {
-  background: var(--primary-color);
-  color: white;
-  box-shadow: var(--shadow-medium);
+.bracket-section:nth-child(3) {
+  animation-delay: 0.2s;
 }
 
-/* All Tournaments Section */
-.all-tournaments-section {
-  margin-bottom: 3rem;
-}
-
-/* Ensure both sections have consistent styling */
-.recent-matches-section,
-.all-tournaments-section {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -1301,633 +1550,285 @@
   }
 }
 
-/* Responsive Design for Toggle */
-@media (max-width: 768px) {
-  .section-toggle {
-    flex-direction: column;
-  }
-  
-  .toggle-btn {
-    text-align: center;
-  }
-}
-
-/* Section Toggle Styles */
-.section-toggle {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 0.5rem;
-}
-
-.toggle-btn {
-  flex: 1;
-  padding: 0.875rem 1.5rem;
-  background: transparent;
-  border: none;
-  border-radius: var(--border-radius);
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.toggle-btn:hover {
-  background: var(--background-secondary);
-  color: var(--text-primary);
-}
-
-.toggle-btn.active {
-  background: var(--primary-color);
-  color: white;
-  box-shadow: var(--shadow-medium);
-}
-
-/* All Tournaments Section */
-.all-tournaments-section {
-  margin-bottom: 3rem;
-}
-
-/* Schedule Section */
-.schedule-section {
-  margin-bottom: 3rem;
-}
-
-/* View Details Button */
-.view-details-btn {
-  width: 100%;
-  padding: 0.75rem 1.5rem;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius);
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  margin-top: 1rem;
-}
-
-.view-details-btn:hover {
-  background: var(--primary-hover);
-  transform: translateY(-2px);
-}
-
-/* Ensure both sections have consistent styling */
-.recent-matches-section,
-.all-tournaments-section,
-.schedule-section {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Event Filter */
-.event-filter {
-  padding: 0.875rem 1rem;
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: var(--transition);
-  min-width: 150px;
-}
-
-.event-filter:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.event-filter:hover {
-  border-color: var(--primary-color);
-}
-
-/* Filter Section Layout */
-.filter-section {
-  display: flex;
-  gap: 1rem;
-}
-
-/* Match Details in Schedule Cards */
-.match-details-new {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
-  margin-top: 1rem;
-}
-
-.detail-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-}
-
-.detail-icon {
-  font-size: 0.9rem;
-  min-width: 1.2rem;
-  text-align: center;
-}
-
-.detail-text {
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-/* Responsive Design for Toggle */
-@media (max-width: 768px) {
-  .section-toggle {
-    flex-direction: column;
-  }
-  
-  .toggle-btn {
-    text-align: center;
-  }
-
-  .filter-section {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .event-filter,
-  .sport-filter {
-    width: 100%;
-  }
-}
-
-.recent-matches-pagination,
-.schedule-pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin: 1.5rem 0;
-}
-
-.pagination-btn {
-  padding: 0.5rem 1rem;
-  background: var(--background-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: var(--transition);
-  font-weight: 600;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-info {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-
-
-
-
-/* NEW: Rectangle Match Card Styles */
-.recent-matches-grid-single {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.recent-match-card-rectangle {
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 1.5rem;
-  transition: var(--transition);
+/* Hover effects for interactive elements */
+.filter-select,
+.status-btn,
+.search-input,
+.pagination-btn,
+.pagination-number,
+.view-stats-btn {
   position: relative;
   overflow: hidden;
 }
 
-.recent-match-card-rectangle:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-medium);
-  border-color: var(--primary-color);
+.filter-select::before,
+.status-btn::before,
+.pagination-btn::before,
+.pagination-number::before,
+.view-stats-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
 }
 
-.recent-match-card-rectangle.upcoming {
-  border-left: 4px solid var(--primary-color);
+.filter-select:hover::before,
+.status-btn:hover::before,
+.pagination-btn:not(:disabled):hover::before,
+.pagination-number:hover::before,
+.view-stats-btn:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
-.recent-match-card-rectangle.past {
-  border-left: 4px solid var(--text-muted);
-  opacity: 0.9;
+/* Focus visible for accessibility */
+.filter-select:focus-visible,
+.status-btn:focus-visible,
+.search-input:focus-visible,
+.pagination-btn:focus-visible,
+.pagination-number:focus-visible,
+.view-stats-btn:focus-visible,
+.close-btn:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }
 
-/* Rectangle Card Header */
-.match-card-header-rectangle {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.match-sport-info-rectangle {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sport-type-rectangle {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.match-status-badge-rectangle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  width: fit-content;
-}
-
-.match-status-badge-rectangle.upcoming {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.match-status-badge-rectangle.past {
-  background: rgba(100, 116, 139, 0.2);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-}
-
-.match-date-time-rectangle {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-  text-align: right;
-}
-
-.match-date-rectangle {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.match-time-rectangle {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
-/* Rectangle Teams Row */
-.match-teams-row-rectangle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.team-info-rectangle {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 1;
-}
-
-.team-info-rectangle:first-child {
-  text-align: left;
-}
-
-.team-info-rectangle:last-child {
-  text-align: right;
-}
-
-.team-name-rectangle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.3;
-}
-
-.team-record-rectangle {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.match-vs-rectangle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0 1rem;
-}
-
-.vs-text-rectangle {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--primary-color);
-  background: rgba(59, 130, 246, 0.1);
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--border-radius);
-}
-
-.match-score-rectangle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-/* Rectangle Card Footer */
-.match-card-footer-rectangle {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.view-stats-btn-rectangle {
-  padding: 0.5rem 1rem;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  min-width: 100px;
-}
-
-.view-stats-btn-rectangle:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-medium);
-}
-
-.view-stats-btn-rectangle:active {
-  transform: translateY(0);
-}
-
-/* Remove the old match grid styles */
-.recent-matches-grid {
-  display: none;
-}
-
-.recent-match-card {
-  display: none;
-}
-
-/* Responsive Design for Rectangle Cards */
-@media (max-width: 768px) {
-  .match-card-header-rectangle {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+/* Print styles */
+@media print {
+  .schedule-header,
+  .filter-container,
+  .pagination-container,
+  .view-stats-btn,
+  .back-btn {
+    display: none;
   }
-  
-  .match-date-time-rectangle {
-    align-items: flex-start;
-    text-align: left;
+
+  .match-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
-  
-  .match-teams-row-rectangle {
-    flex-direction: column;
+
+  .matches-section {
     gap: 1rem;
   }
-  
-  .team-info-rectangle:first-child,
-  .team-info-rectangle:last-child {
-    text-align: center;
-  }
-  
-  .match-vs-rectangle {
-    order: -1;
-    width: 100%;
-  }
-  
-  .vs-text-rectangle {
-    width: 100%;
-    text-align: center;
-  }
-  
-  .team-name-rectangle {
-    font-size: 1.1rem;
-  }
-  
-  .match-score-rectangle {
-    font-size: 1.25rem;
-  }
-  
-  .view-stats-btn-rectangle {
-    width: 100%;
-    min-width: auto;
+
+  .bracket-section {
+    page-break-after: always;
   }
 }
 
-@media (max-width: 480px) {
-  .recent-match-card-rectangle {
-    padding: 1rem;
-  }
-  
-  .team-name-rectangle {
-    font-size: 1rem;
-  }
-  
-  .match-score-rectangle {
-    font-size: 1.1rem;
-  }
-  
-  .view-stats-btn-rectangle {
-    font-size: 0.75rem;
-    padding: 0.4rem 0.8rem;
+/* Dark mode enhancements (if needed) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-primary: #0a0e1a;
+    --background-secondary: #151b2e;
+    --background-card: #1f2937;
   }
 }
 
-/* Remove View Details Button from Schedule Cards */
-.view-details-btn {
-  display: none;
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-/* Ensure schedule cards look good without the button */
-.schedule-card-body-new {
-  padding-bottom: 1.5rem;
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .match-card,
+  .filter-container,
+  .bracket-section {
+    border-width: 2px;
+  }
+
+  .match-status-badge,
+  .status-btn.active,
+  .pagination-number.active {
+    border-width: 2px;
+  }
 }
 
-.match-details-new {
-  margin-bottom: 0;
-}
-
-/* Add this to your existing CSS file */
-
-/* Schedule Section Under Recent */
-.schedule-section-under-recent {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.schedule-section-under-recent .schedule-controls {
-  margin-bottom: 1.5rem;
-}
-
-/* Remove event filter from schedule controls */
-.schedule-section-under-recent .event-filter {
-  display: none;
-}
-
-/* Ensure the schedule content looks good in the nested layout */
-.schedule-section-under-recent .schedule-content {
-  margin-top: 1rem;
-}
-
-/* Adjust spacing for the nested schedule section */
-.schedule-section-under-recent .schedule-stats {
-  margin-bottom: 1rem;
-}
-
-/* Add this to your existing CSS file */
-
-/* Schedule Section Under Recent */
-.schedule-section-under-recent {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.schedule-section-under-recent .schedule-controls {
-  margin-bottom: 1.5rem;
-}
-
-/* Remove event filter from schedule controls */
-.schedule-section-under-recent .event-filter {
-  display: none;
-}
-
-/* Ensure the schedule content looks good in the nested layout */
-.schedule-section-under-recent .schedule-content {
-  margin-top: 1rem;
-}
-
-/* Adjust spacing for the nested schedule section */
-.schedule-section-under-recent .schedule-stats {
-  margin-bottom: 1rem;
-}
-
-/* Match Schedules Title */
-.match-schedules-title {
-  margin: 3rem 0 1.5rem 0;
+/* Additional utility classes */
+.text-center {
   text-align: center;
 }
 
-.match-schedules-title h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-  padding: 1rem 0;
-  border-bottom: 2px solid var(--primary-color);
-  display: inline-block;
-}
-
-/* Remove section toggle styles since we don't need tabs anymore */
-.section-toggle {
-  display: none;
-}
-
-/* Match Schedules Container */
-.match-schedules-container {
-  margin-top: 3rem;
-  background: var(--background-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  overflow: hidden;
-}
-
-.match-schedules-header {
-  padding: 1.5rem 1.5rem 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.match-schedules-header h2 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
+.text-left {
   text-align: left;
-  padding-bottom: 1rem;
 }
 
-.match-schedules-content {
-  padding: 1.5rem;
+.text-right {
+  text-align: right;
 }
 
-/* Schedule Section Under Recent */
-.schedule-section-under-recent {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
+.mb-1 {
+  margin-bottom: 0.5rem;
 }
 
-.schedule-section-under-recent .schedule-controls {
-  margin-bottom: 1.5rem;
-}
-
-/* Remove event filter from schedule controls */
-.schedule-section-under-recent .event-filter {
-  display: none;
-}
-
-/* Ensure the schedule content looks good in the nested layout */
-.schedule-section-under-recent .schedule-content {
-  margin-top: 1rem;
-}
-
-/* Adjust spacing for the nested schedule section */
-.schedule-section-under-recent .schedule-stats {
+.mb-2 {
   margin-bottom: 1rem;
 }
 
-/* Remove the old match schedules title styles */
-.match-schedules-title {
-  display: none;
+.mb-3 {
+  margin-bottom: 1.5rem;
 }
+
+.mt-1 {
+  margin-top: 0.5rem;
+}
+
+.mt-2 {
+  margin-top: 1rem;
+}
+
+.mt-3 {
+  margin-top: 1.5rem;
+}
+
+.p-1 {
+  padding: 0.5rem;
+}
+
+.p-2 {
+  padding: 1rem;
+}
+
+.p-3 {
+  padding: 1.5rem;
+}
+
+/* Skeleton loading animation (optional) */
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--background-secondary) 0px,
+    var(--background-card) 40px,
+    var(--background-secondary) 80px
+  );
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* Selection color */
+::selection {
+  background: var(--primary-color);
+  color: white;
+}
+
+::-moz-selection {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Ensure proper box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margins and paddings */
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+li {
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove list styles */
+ul,
+ol {
+  list-style: none;
+}
+
+/* Remove button styles */
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Image responsive */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Links */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Focus styles for better accessibility */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better font rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* End of CSS */
