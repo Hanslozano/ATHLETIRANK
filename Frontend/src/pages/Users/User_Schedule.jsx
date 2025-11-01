@@ -745,15 +745,15 @@ const UserSchedulePage = () => {
                       return (
                         <div key={match.id} className={`stats-match-card stats-match-card-compact ${status}`}>
                           {/* Match Header */}
-                          <div className="stats-match-card-header">
-                            <div className="stats-match-info">
-                              <FaTrophy className="stats-info-icon" />
-                              <span className="stats-tournament-name">{selectedRecentEvent?.name}</span>
-                              <span className="stats-info-divider">•</span>
-                              <span className="stats-round-name">{formatRoundDisplay(match)}</span>
-                            </div>
-                            {getStatusBadge(status)}
-                          </div>
+                          <div className="stats-match-card-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+  <div className="stats-match-info" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+    <FaTrophy className="stats-info-icon" />
+    <span className="stats-tournament-name">{selectedRecentEvent?.name}</span>
+    <span className="stats-info-divider">•</span>
+    <span className="stats-round-name">{formatRoundDisplay(match)}</span>
+  </div>
+  {getStatusBadge(status)}
+</div>
 
                           {/* Match Body */}
                           <div className="stats-match-card-body stats-match-card-body-compact">
