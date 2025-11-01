@@ -834,7 +834,35 @@
   font-weight: 600;
   letter-spacing: 0.5px;
 }
+.container-2 .stats-table-container .stats-table td.stats-team-name,
+.container-2 .stats-table-container .stats-table td.stats-team-name strong {
+  font-size: 0.85rem !important;
+}
 
+/* Ensure all table cells maintain consistent font size */
+.container-2 .stats-table-container .stats-table td {
+  font-size: 0.85rem !important;
+}
+
+.container-2 .stats-table-container .stats-table th {
+  font-size: 0.8rem !important;
+}
+
+/* Player Stats Table - Fix font sizes */
+.container-3 .stats-table-container .stats-table td.stats-team-name,
+.container-3 .stats-table-container .stats-table td.stats-team-name strong,
+.container-3 .stats-table-container .stats-table td.stats-player-name {
+  font-size: 0.85rem !important;
+}
+
+/* Ensure all table cells maintain consistent font size */
+.container-3 .stats-table-container .stats-table td {
+  font-size: 0.85rem !important;
+}
+
+.container-3 .stats-table-container .stats-table th {
+  font-size: 0.8rem !important;
+}
 
 .stats-filter-matches-content {
   padding: 1.5rem;

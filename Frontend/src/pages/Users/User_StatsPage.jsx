@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaSearch, FaUsers, FaChartLine, FaTrophy, FaArrowLeft, FaChartBar, FaEye, FaFilter, FaMedal } from "react-icons/fa";
+import { FaSearch, FaUsers, FaChartLine, FaTrophy, FaArrowLeft, FaChartBar, FaEye, FaFilter, FaMedal, FaCalendarAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import '../../style/User_StatsPage.css'
 
@@ -752,159 +752,160 @@ const loadRecentBracketData = async (event, bracket) => {
     <span className="stats-filter-matches-title">FILTER STATISTICS</span>
   </div>
   
-  <div className="stats-filter-matches-content">
-    {/* Tournament and Bracket Row */}
-    <div className="stats-filter-matches-row">
-      <div className="stats-filter-matches-group">
-        <div className="stats-filter-matches-label">
-          <FaTrophy className="stats-filter-matches-label-icon" />
-          <span>TOURNAMENT</span>
-        </div>
-        <select
-          value={recentTournament?.id || ""}
-          onChange={(e) => {
-            const tournamentId = parseInt(e.target.value);
-            const tournament = events.find(ev => ev.id === tournamentId);
-            if (tournament) {
-              setRecentTournament(tournament);
-              setDateRangeFilter({ start: '', end: '' }); // Reset date filter
-              setFilteredByDateStandings([]); // Reset filtered standings
-              const fetchBrackets = async () => {
+ <div className="stats-filter-matches-content">
+  {/* Single Row with Tournament, Bracket, and Period */}
+  <div className="stats-filter-matches-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
+    <div className="stats-filter-matches-group" style={{ flex: '1', minWidth: '200px' }}>
+      <div className="stats-filter-matches-label">
+        <FaTrophy className="stats-filter-matches-label-icon" />
+        <span>TOURNAMENT</span>
+      </div>
+      <select
+        value={recentTournament?.id || ""}
+        onChange={(e) => {
+          const tournamentId = parseInt(e.target.value);
+          const tournament = events.find(ev => ev.id === tournamentId);
+          if (tournament) {
+            setRecentTournament(tournament);
+            setDateRangeFilter({ start: '', end: '' });
+            setFilteredByDateStandings([]);
+            const fetchBrackets = async () => {
+              try {
+                let bracketsRes;
                 try {
-                  let bracketsRes;
-                  try {
-                    bracketsRes = await fetch(`http://localhost:5000/api/events/${tournament.id}/brackets`);
-                  } catch (err) {
-                    bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${tournament.id}/completed-brackets`);
-                  }
-                  const brackets = await bracketsRes.json();
-                  setRecentBrackets(brackets || []);
-                  if (brackets && brackets.length > 0) {
-                    setSelectedRecentBracket(brackets[0]);
-                    await loadRecentBracketData(tournament, brackets[0]);
-                  }
+                  bracketsRes = await fetch(`http://localhost:5000/api/events/${tournament.id}/brackets`);
                 } catch (err) {
-                  console.error("Error fetching brackets:", err);
+                  bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${tournament.id}/completed-brackets`);
                 }
-              };
-              fetchBrackets();
-            }
-          }}
-          className="stats-filter-matches-select"
-        >
-          {events.map(event => (
-            <option key={event.id} value={event.id}>{event.name}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="stats-filter-matches-group">
-        <div className="stats-filter-matches-label">
-          <FaMedal className="stats-filter-matches-label-icon" />
-          <span>BRACKET</span>
-        </div>
-        <select 
-          value={selectedRecentBracket?.id || ''}
-          onChange={(e) => {
-            const bracketId = parseInt(e.target.value);
-            const bracket = recentBrackets.find(b => b.id === bracketId);
-            if (bracket) {
-              setSelectedRecentBracket(bracket);
-              setDateRangeFilter({ start: '', end: '' }); // Reset date filter
-              setFilteredByDateStandings([]); // Reset filtered standings
-              loadRecentBracketData(recentTournament, bracket);
-            }
-          }}
-          className="stats-filter-matches-select"
-          disabled={recentBrackets.length === 0}
-        >
-          {recentBrackets.map(bracket => (
-            <option key={bracket.id} value={bracket.id}>
-              {bracket.name}
-            </option>
-          ))}
-        </select>
-      </div>
+                const brackets = await bracketsRes.json();
+                setRecentBrackets(brackets || []);
+                if (brackets && brackets.length > 0) {
+                  setSelectedRecentBracket(brackets[0]);
+                  await loadRecentBracketData(tournament, brackets[0]);
+                }
+              } catch (err) {
+                console.error("Error fetching brackets:", err);
+              }
+            };
+            fetchBrackets();
+          }
+        }}
+        className="stats-filter-matches-select"
+      >
+        {events.map(event => (
+          <option key={event.id} value={event.id}>{event.name}</option>
+        ))}
+      </select>
     </div>
 
-    {/* Tournament Period Display */}
-    {tournamentPeriod && (
-      <div className="stats-filter-matches-row">
-        <div className="stats-tournament-period">
-          <div className="stats-filter-matches-label">
-            <FaChartLine className="stats-filter-matches-label-icon" />
-            <span>TOURNAMENT PERIOD</span>
-          </div>
-          <div className="stats-period-display">
-            <span className="stats-period-date">{new Date(tournamentPeriod.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-            <span className="stats-period-separator">→</span>
-            <span className="stats-period-date">{new Date(tournamentPeriod.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-          </div>
-        </div>
+    <div className="stats-filter-matches-group" style={{ flex: '1', minWidth: '200px' }}>
+      <div className="stats-filter-matches-label">
+        <FaMedal className="stats-filter-matches-label-icon" />
+        <span>BRACKET</span>
       </div>
-    )}
+      <select 
+        value={selectedRecentBracket?.id || ''}
+        onChange={(e) => {
+          const bracketId = parseInt(e.target.value);
+          const bracket = recentBrackets.find(b => b.id === bracketId);
+          if (bracket) {
+            setSelectedRecentBracket(bracket);
+            setDateRangeFilter({ start: '', end: '' });
+            setFilteredByDateStandings([]);
+            loadRecentBracketData(recentTournament, bracket);
+          }
+        }}
+        className="stats-filter-matches-select"
+        disabled={recentBrackets.length === 0}
+      >
+        {recentBrackets.map(bracket => (
+          <option key={bracket.id} value={bracket.id}>
+            {bracket.name}
+          </option>
+        ))}
+      </select>
+    </div>
 
-    {/* Date Range Filter */}
-    <div className="stats-filter-matches-row">
-      <div className="stats-filter-matches-group">
-        <div className="stats-filter-matches-label">
-          <FaChartBar className="stats-filter-matches-label-icon" />
-          <span>FILTER BY DATE RANGE</span>
-        </div>
-        <div className="stats-date-range-inputs">
-          <input
-            type="date"
-            value={dateRangeFilter.start}
-            onChange={(e) => setDateRangeFilter({ ...dateRangeFilter, start: e.target.value })}
-            min={tournamentPeriod?.start}
-            max={tournamentPeriod?.end}
-            className="stats-date-input"
-            placeholder="Start Date"
-          />
-          <span className="stats-date-separator">to</span>
-          <input
-            type="date"
-            value={dateRangeFilter.end}
-            onChange={(e) => setDateRangeFilter({ ...dateRangeFilter, end: e.target.value })}
-            min={dateRangeFilter.start || tournamentPeriod?.start}
-            max={tournamentPeriod?.end}
-            className="stats-date-input"
-            placeholder="End Date"
-          />
+    {tournamentPeriod && (
+  <div className="stats-filter-matches-group" style={{ flex: '1', minWidth: '250px' }}>
+    <div className="stats-filter-matches-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      <FaCalendarAlt className="stats-filter-matches-label-icon" style={{ fontSize: '0.9rem', color: 'var(--primary-color)' }} />
+      <span>TOURNAMENT PERIOD</span>
+    </div>
+    <div className="stats-period-display" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', background: 'var(--background-secondary)', border: '2px solid var(--border-color)', borderRadius: 'var(--border-radius)', height: '48px', boxSizing: 'border-box' }}>
+      <span className="stats-period-date" style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+        {new Date(tournamentPeriod.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+      </span>
+      <span className="stats-period-separator" style={{ color: 'var(--primary-color)', fontWeight: 'bold', fontSize: '1.2rem' }}>→</span>
+      <span className="stats-period-date" style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+        {new Date(tournamentPeriod.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+      </span>
+    </div>
+  </div>
+)}
+  </div>
+
+  {/* Date Range Filter Row */}
+  <div className="stats-filter-matches-row">
+    <div className="stats-filter-matches-group" style={{ width: '100%' }}>
+      <div className="stats-filter-matches-label">
+        <FaChartBar className="stats-filter-matches-label-icon" />
+        <span>FILTER BY DATE RANGE</span>
+      </div>
+      <div className="stats-date-range-inputs">
+        <input
+          type="date"
+          value={dateRangeFilter.start}
+          onChange={(e) => setDateRangeFilter({ ...dateRangeFilter, start: e.target.value })}
+          min={tournamentPeriod?.start}
+          max={tournamentPeriod?.end}
+          className="stats-date-input"
+          placeholder="Start Date"
+        />
+        <span className="stats-date-separator">to</span>
+        <input
+          type="date"
+          value={dateRangeFilter.end}
+          onChange={(e) => setDateRangeFilter({ ...dateRangeFilter, end: e.target.value })}
+          min={dateRangeFilter.start || tournamentPeriod?.start}
+          max={tournamentPeriod?.end}
+          className="stats-date-input"
+          placeholder="End Date"
+        />
+        <button
+          onClick={() => {
+            if (selectedRecentBracket && dateRangeFilter.start && dateRangeFilter.end) {
+              filterStandingsByDate(selectedRecentBracket.id, dateRangeFilter.start, dateRangeFilter.end);
+            }
+          }}
+          disabled={!dateRangeFilter.start || !dateRangeFilter.end}
+          className="stats-date-apply-btn"
+        >
+          Apply Filter
+        </button>
+        {(dateRangeFilter.start || dateRangeFilter.end || filteredByDateStandings.length > 0) && (
           <button
             onClick={() => {
-              if (selectedRecentBracket && dateRangeFilter.start && dateRangeFilter.end) {
-                filterStandingsByDate(selectedRecentBracket.id, dateRangeFilter.start, dateRangeFilter.end);
-              }
+              setDateRangeFilter({ start: '', end: '' });
+              setFilteredByDateStandings([]);
             }}
-            disabled={!dateRangeFilter.start || !dateRangeFilter.end}
-            className="stats-date-apply-btn"
+            className="stats-date-clear-btn"
           >
-            Apply Filter
+            Clear
           </button>
-          {(dateRangeFilter.start || dateRangeFilter.end || filteredByDateStandings.length > 0) && (
-            <button
-              onClick={() => {
-                setDateRangeFilter({ start: '', end: '' });
-                setFilteredByDateStandings([]);
-              }}
-              className="stats-date-clear-btn"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        )}
       </div>
     </div>
-
-    {/* Date Filter Status */}
-    {filteredByDateStandings.length > 0 && (
-      <div className="stats-filter-status">
-        <span className="stats-filter-status-icon">ℹ️</span>
-        <span>Showing standings from {new Date(dateRangeFilter.start).toLocaleDateString()} to {new Date(dateRangeFilter.end).toLocaleDateString()}</span>
-      </div>
-    )}
   </div>
+
+  {/* Date Filter Status */}
+  {filteredByDateStandings.length > 0 && (
+    <div className="stats-filter-status">
+      <span className="stats-filter-status-icon">ℹ️</span>
+      <span>Showing standings from {new Date(dateRangeFilter.start).toLocaleDateString()} to {new Date(dateRangeFilter.end).toLocaleDateString()}</span>
+    </div>
+  )}
+</div>
 </div>
 
         {/* Stats Containers Grid */}

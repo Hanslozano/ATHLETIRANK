@@ -11,6 +11,10 @@ const UserSchedulePage = () => {
   const [selectedSport, setSelectedSport] = useState("all");
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [events, setEvents] = useState([]);
+
+  const [tournamentPeriod, setTournamentPeriod] = useState(null);
+const [dateRangeFilter, setDateRangeFilter] = useState('all');
+const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   
   // Recent matches state
   const [recentEvents, setRecentEvents] = useState([]);
@@ -30,8 +34,7 @@ const UserSchedulePage = () => {
   const [statsLoading, setStatsLoading] = useState(false);
 
   // Filter state
-  const [tournamentPeriod, setTournamentPeriod] = useState(null);
-  const [dateRangeFilter, setDateRangeFilter] = useState('all');
+
 
   const sports = ["all", "Basketball", "Volleyball"];
 
@@ -344,20 +347,30 @@ const UserSchedulePage = () => {
   };
 
   const isMatchInDateRange = (match) => {
-    if (dateRangeFilter === 'all') return true;
-    
-    const dateRange = getDateRangeFilters();
-    if (!dateRange) return true;
-    
-    if (!match.date || match.date === 'Date TBD') return false;
-    
-    try {
-      const matchDate = new Date(match.date);
-      return matchDate >= dateRange.start && matchDate <= dateRange.end;
-    } catch (error) {
-      return false;
-    }
-  };
+  if (dateRangeFilter === 'all') return true;
+  
+  let dateRange;
+  if (dateRangeFilter === 'custom') {
+    if (!customDateRange.start || !customDateRange.end) return true;
+    dateRange = {
+      start: new Date(customDateRange.start),
+      end: new Date(customDateRange.end)
+    };
+  } else {
+    dateRange = getDateRangeFilters();
+  }
+  
+  if (!dateRange) return true;
+  
+  if (!match.date || match.date === 'Date TBD') return false;
+  
+  try {
+    const matchDate = new Date(match.date);
+    return matchDate >= dateRange.start && matchDate <= dateRange.end;
+  } catch (error) {
+    return false;
+  }
+};
 
   const handleViewStats = async (match) => {
     setStatsLoading(true);
@@ -611,106 +624,141 @@ const UserSchedulePage = () => {
           </div>
           
           <div className="stats-filter-matches-content">
-            {/* Tournament and Bracket Row */}
-            <div className="stats-filter-matches-row">
-              <div className="stats-filter-matches-group">
-                <div className="stats-filter-matches-label">
-                  <FaTrophy className="stats-filter-matches-label-icon" />
-                  <span>TOURNAMENT</span>
-                </div>
-                <select
-                  value={selectedRecentEvent?.id || ""}
-                  onChange={(e) => handleRecentEventChange(e.target.value)}
-                  className="stats-filter-matches-select"
-                >
-                  {recentEvents.map(event => (
-                    <option key={event.id} value={event.id}>
-                      {event.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+  {/* Single Row with Tournament, Bracket, and Period */}
+  <div className="stats-filter-matches-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
+    <div className="stats-filter-matches-group" style={{ flex: '1', minWidth: '200px' }}>
+      <div className="stats-filter-matches-label">
+        <FaTrophy className="stats-filter-matches-label-icon" />
+        <span>TOURNAMENT</span>
+      </div>
+      <select
+        value={selectedRecentEvent?.id || ""}
+        onChange={(e) => handleRecentEventChange(e.target.value)}
+        className="stats-filter-matches-select"
+      >
+        {recentEvents.map(event => (
+          <option key={event.id} value={event.id}>
+            {event.name}
+          </option>
+        ))}
+      </select>
+    </div>
 
-              <div className="stats-filter-matches-group">
-                <div className="stats-filter-matches-label">
-                  <FaMedal className="stats-filter-matches-label-icon" />
-                  <span>BRACKET</span>
-                </div>
-                <select
-                  value={selectedRecentBracket?.id || ""}
-                  onChange={(e) => handleRecentBracketChange(e.target.value)}
-                  className="stats-filter-matches-select"
-                  disabled={recentBrackets.length === 0}
-                >
-                  {recentBrackets.map(bracket => (
-                    <option key={bracket.id} value={bracket.id}>
-                      {bracket.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+    <div className="stats-filter-matches-group" style={{ flex: '1', minWidth: '200px' }}>
+      <div className="stats-filter-matches-label">
+        <FaMedal className="stats-filter-matches-label-icon" />
+        <span>BRACKET</span>
+      </div>
+      <select
+        value={selectedRecentBracket?.id || ""}
+        onChange={(e) => handleRecentBracketChange(e.target.value)}
+        className="stats-filter-matches-select"
+        disabled={recentBrackets.length === 0}
+      >
+        {recentBrackets.map(bracket => (
+          <option key={bracket.id} value={bracket.id}>
+            {bracket.name}
+          </option>
+        ))}
+      </select>
+    </div>
 
-            {/* Tournament Period and Date Range in One Row */}
-            <div className="stats-filter-matches-row">
-              {/* Tournament Period */}
-              {tournamentPeriod && (
-                <div className="stats-filter-matches-group">
-                  <div className="stats-filter-matches-label">
-                    <FaCalendarAlt className="stats-filter-matches-label-icon" />
-                    <span>TOURNAMENT PERIOD</span>
-                  </div>
-                  <div className="stats-period-display">
-                    <span className="stats-period-date">
-                      {new Date(tournamentPeriod.start).toLocaleDateString('en-US', { 
-                        month: 'short', day: 'numeric', year: 'numeric' 
-                      })}
-                    </span>
-                    <span className="stats-period-separator">→</span>
-                    <span className="stats-period-date">
-                      {new Date(tournamentPeriod.end).toLocaleDateString('en-US', { 
-                        month: 'short', day: 'numeric', year: 'numeric' 
-                      })}
-                    </span>
-                  </div>
-                </div>
-              )}
+    {tournamentPeriod && (
+  <div className="stats-filter-matches-group" style={{ flex: '1', minWidth: '250px' }}>
+    <div className="stats-filter-matches-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      <FaCalendarAlt className="stats-filter-matches-label-icon" style={{ fontSize: '0.9rem', color: 'var(--primary-color)' }} />
+      <span>TOURNAMENT PERIOD</span>
+    </div>
+    <div className="stats-period-display" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', background: 'var(--background-secondary)', border: '2px solid var(--border-color)', borderRadius: 'var(--border-radius)', height: '48px', boxSizing: 'border-box' }}>
+      <span className="stats-period-date" style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+        {new Date(tournamentPeriod.start).toLocaleDateString('en-US', { 
+          month: 'short', day: 'numeric', year: 'numeric' 
+        })}
+      </span>
+      <span className="stats-period-separator" style={{ color: 'var(--primary-color)', fontWeight: 'bold', fontSize: '1.2rem' }}>→</span>
+      <span className="stats-period-date" style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+        {new Date(tournamentPeriod.end).toLocaleDateString('en-US', { 
+          month: 'short', day: 'numeric', year: 'numeric' 
+        })}
+      </span>
+    </div>
+  </div>
+)}
+  </div>
 
-              {/* Date Range Filter */}
-              <div className="stats-filter-matches-group">
-                <div className="stats-filter-matches-label">
-                  <FaCalendarAlt className="stats-filter-matches-label-icon" />
-                  <span>DATE RANGE</span>
-                </div>
-                <div className="stats-filter-date-range-buttons">
-                  <button
-                    onClick={() => setDateRangeFilter('all')}
-                    className={`stats-filter-date-btn ${dateRangeFilter === 'all' ? 'active' : ''}`}
-                  >
-                    All Dates
-                  </button>
-                  <button
-                    onClick={() => setDateRangeFilter('today')}
-                    className={`stats-filter-date-btn ${dateRangeFilter === 'today' ? 'active' : ''}`}
-                  >
-                    Today
-                  </button>
-                  <button
-                    onClick={() => setDateRangeFilter('week')}
-                    className={`stats-filter-date-btn ${dateRangeFilter === 'week' ? 'active' : ''}`}
-                  >
-                    This Week
-                  </button>
-                  <button
-                    onClick={() => setDateRangeFilter('month')}
-                    className={`stats-filter-date-btn ${dateRangeFilter === 'month' ? 'active' : ''}`}
-                  >
-                    This Month
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+  {/* Date Range Filter Row */}
+  <div className="stats-filter-matches-row">
+    <div className="stats-filter-matches-group" style={{ width: '100%' }}>
+      <div className="stats-filter-matches-label">
+        <FaCalendarAlt className="stats-filter-matches-label-icon" />
+        <span>DATE RANGE</span>
+      </div>
+      <div className="stats-filter-date-range-buttons">
+        <button
+          onClick={() => setDateRangeFilter('all')}
+          className={`stats-filter-date-btn ${dateRangeFilter === 'all' ? 'active' : ''}`}
+        >
+          All Dates
+        </button>
+        <button
+          onClick={() => setDateRangeFilter('today')}
+          className={`stats-filter-date-btn ${dateRangeFilter === 'today' ? 'active' : ''}`}
+        >
+          Today
+        </button>
+        <button
+          onClick={() => setDateRangeFilter('week')}
+          className={`stats-filter-date-btn ${dateRangeFilter === 'week' ? 'active' : ''}`}
+        >
+          This Week
+        </button>
+        <button
+          onClick={() => setDateRangeFilter('month')}
+          className={`stats-filter-date-btn ${dateRangeFilter === 'month' ? 'active' : ''}`}
+        >
+          This Month
+        </button>
+        <button
+          onClick={() => setDateRangeFilter('custom')}
+          className={`stats-filter-date-btn ${dateRangeFilter === 'custom' ? 'active' : ''}`}
+        >
+          Custom Range
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* Custom Date Range Inputs */}
+  {dateRangeFilter === 'custom' && (
+    <div className="stats-filter-matches-row">
+      <div className="stats-filter-matches-group" style={{ width: '100%' }}>
+        <div className="stats-date-range-inputs" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <input
+            type="date"
+            value={customDateRange?.start || ''}
+            onChange={(e) => setCustomDateRange({ ...customDateRange, start: e.target.value })}
+            min={tournamentPeriod?.start}
+            max={tournamentPeriod?.end}
+            className="stats-filter-matches-select"
+            style={{ flex: '1', minWidth: '150px' }}
+            placeholder="Start Date"
+          />
+          <span style={{ color: 'var(--text-secondary)', fontWeight: '500', fontSize: '0.9rem' }}>to</span>
+          <input
+            type="date"
+            value={customDateRange?.end || ''}
+            onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
+            min={customDateRange?.start || tournamentPeriod?.start}
+            max={tournamentPeriod?.end}
+            className="stats-filter-matches-select"
+            style={{ flex: '1', minWidth: '150px' }}
+            placeholder="End Date"
+          />
+        </div>
+      </div>
+    </div>
+  )}
+</div>
         </div>
 
         {/* Matches Section */}
