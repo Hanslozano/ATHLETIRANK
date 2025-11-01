@@ -123,10 +123,10 @@ const Homepage = () => {
                     <ul>
                         <li><a href="#home" className="nav-link" onClick={toggleNav}>Home</a></li>
                         <li><a href="#about" className="nav-link" onClick={toggleNav}>About</a></li>
-                        <li><Link to="/brackets" className="nav-link" onClick={toggleNav}>Brackets</Link></li>
+                               
+                        <li><Link to="/schedules" className="nav-link" onClick={toggleNav}>Matches</Link></li>
                         <li><Link to="/stats" className="nav-link" onClick={toggleNav}>Statistics</Link></li>
-                        <li><Link to="/teams" className="nav-link" onClick={toggleNav}>Teams</Link></li>
-                        <li><Link to="/schedules" className="nav-link" onClick={toggleNav}>Schedules</Link></li>
+               
                         <li><Link to="/awards%standings" className="nav-link" onClick={toggleNav}>Awards & Standings</Link></li>
                     </ul>
                 </div>
