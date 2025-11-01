@@ -1830,5 +1830,146 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
+/* Add these new styles to your existing CSS file */
+/* Tournament Period Display */
+.stats-tournament-period {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
 
+.stats-period-display {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.stats-period-date {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stats-period-separator {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+/* Date Range Filter Buttons */
+.filter-date-range-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.filter-date-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.75rem 1.5rem;
+  background: var(--background-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.filter-date-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+}
+
+.filter-date-btn.active {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Compact Match Card Styles */
+.match-card-compact {
+  min-height: auto;
+}
+
+.match-card-body-compact {
+  padding: 1rem 1.5rem;
+}
+
+.teams-container-compact {
+  margin-bottom: 0;
+}
+
+.team-logo-compact {
+  font-size: 2.5rem;
+}
+
+.match-center-compact {
+  min-width: 180px;
+}
+
+.score-container-compact {
+  padding: 0.75rem;
+  gap: 0.5rem;
+}
+
+.score-number-compact {
+  font-size: 2.5rem;
+}
+
+.vs-text-compact {
+  font-size: 2rem;
+  padding: 0.25rem 0.75rem;
+}
+
+.match-datetime-compact {
+  gap: 0.35rem;
+}
+
+.datetime-item-compact {
+  font-size: 0.8rem;
+}
+
+.view-stats-btn-compact {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+/* Remove venue styles since we're removing it */
+.venue-info {
+  display: none;
+}
+
+.match-card-footer {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .filter-date-range-buttons {
+    flex-direction: column;
+  }
+  
+  .filter-date-btn {
+    width: 100%;
+  }
+  
+  .stats-period-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .stats-period-separator {
+    transform: rotate(90deg);
+  }
+}
 /* End of CSS */

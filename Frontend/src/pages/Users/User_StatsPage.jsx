@@ -11,6 +11,9 @@ const UserStatsPage = () => {
   const [brackets, setBrackets] = useState([]);
   const [standings, setStandings] = useState([]);
   const [allPlayersData, setAllPlayersData] = useState([]);
+  const [tournamentPeriod, setTournamentPeriod] = useState(null);
+const [dateRangeFilter, setDateRangeFilter] = useState({ start: '', end: '' });
+const [filteredByDateStandings, setFilteredByDateStandings] = useState([]);
   const [allTeamsData, setAllTeamsData] = useState([]);
   const [eventStatistics, setEventStatistics] = useState({
     total_players: 0,
@@ -32,6 +35,8 @@ const UserStatsPage = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'overall_score', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Add these after line 33
 
   // Event filters
   const [eventSearchTerm, setEventSearchTerm] = useState("");
@@ -114,6 +119,46 @@ const UserStatsPage = () => {
     }
   };
 
+  // Add this function after the fetchEvents function (around line 150)
+const fetchTournamentPeriod = async (eventId) => {
+  try {
+    const res = await fetch(`http://localhost:5000/api/events/${eventId}`);
+    const data = await res.json();
+    setTournamentPeriod({
+      start: data.start_date,
+      end: data.end_date
+    });
+  } catch (err) {
+    console.error("Error fetching tournament period:", err);
+  }
+};
+
+const filterStandingsByDate = async (bracketId, startDate, endDate) => {
+  try {
+    let url = `http://localhost:5000/api/awards/brackets/${bracketId}/standings`;
+    if (startDate && endDate) {
+      url += `?startDate=${startDate}&endDate=${endDate}`;
+    }
+    
+    const standingsRes = await fetch(url);
+    if (!standingsRes.ok) {
+      console.warn(`Server error loading standings for date range`);
+      setFilteredByDateStandings([]);
+      return;
+    }
+    
+    const standingsData = await standingsRes.json();
+    if (standingsData.standings && Array.isArray(standingsData.standings)) {
+      setFilteredByDateStandings(standingsData.standings);
+    } else {
+      setFilteredByDateStandings([]);
+    }
+  } catch (err) {
+    console.error("Error filtering standings by date:", err);
+    setFilteredByDateStandings([]);
+  }
+};
+
   // Fetch recent matches for the top containers
   const fetchRecentMatches = async () => {
     try {
@@ -161,25 +206,31 @@ const UserStatsPage = () => {
     }
   };
 
-  const loadRecentBracketData = async (event, bracket) => {
-    try {
-      // Clear previous data
-      setStandings([]);
-      setAllPlayersData([]);
-      setAllTeamsData([]);
+  // Find the loadRecentBracketData function and update it (around line 180)
+const loadRecentBracketData = async (event, bracket) => {
+  try {
+    // Clear previous data
+    setStandings([]);
+    setAllPlayersData([]);
+    setAllTeamsData([]);
+    setDateRangeFilter({ start: '', end: '' }); // Reset date filter
+    setFilteredByDateStandings([]); // Reset filtered standings
 
-      // Load standings
-      await loadStandingsData(bracket.id);
-      
-      // Load players data
-      await loadRecentPlayersData(event.id, bracket.id);
-      
-      // Load teams data
-      await loadRecentTeamsData(event.id, bracket.id);
-    } catch (err) {
-      console.error("Error loading recent bracket data:", err);
-    }
-  };
+    // Fetch tournament period
+    await fetchTournamentPeriod(event.id);
+
+    // Load standings
+    await loadStandingsData(bracket.id);
+    
+    // Load players data
+    await loadRecentPlayersData(event.id, bracket.id);
+    
+    // Load teams data
+    await loadRecentTeamsData(event.id, bracket.id);
+  } catch (err) {
+    console.error("Error loading recent bracket data:", err);
+  }
+};
 
   const loadStandingsData = async (bracketId) => {
     try {
@@ -696,83 +747,165 @@ const UserStatsPage = () => {
       <div className="recent-tournament-section">
         {/* New Filter Container - Matching Schedule Page Style */}
         <div className="stats-filter-matches-container">
-          <div className="stats-filter-matches-header">
-            <FaFilter className="stats-filter-matches-icon" />
-            <span className="stats-filter-matches-title">FILTER STATISTICS</span>
-          </div>
-          
-          <div className="stats-filter-matches-content">
-            {/* Tournament and Bracket Row */}
-            <div className="stats-filter-matches-row">
-              <div className="stats-filter-matches-group">
-                <div className="stats-filter-matches-label">
-                  <FaTrophy className="stats-filter-matches-label-icon" />
-                  <span>TOURNAMENT</span>
-                </div>
-                <select
-                  value={recentTournament?.id || ""}
-                  onChange={(e) => {
-                    const tournamentId = parseInt(e.target.value);
-                    const tournament = events.find(ev => ev.id === tournamentId);
-                    if (tournament) {
-                      setRecentTournament(tournament);
-                      const fetchBrackets = async () => {
-                        try {
-                          let bracketsRes;
-                          try {
-                            bracketsRes = await fetch(`http://localhost:5000/api/events/${tournament.id}/brackets`);
-                          } catch (err) {
-                            bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${tournament.id}/completed-brackets`);
-                          }
-                          const brackets = await bracketsRes.json();
-                          setRecentBrackets(brackets || []);
-                          if (brackets && brackets.length > 0) {
-                            setSelectedRecentBracket(brackets[0]);
-                            await loadRecentBracketData(tournament, brackets[0]);
-                          }
-                        } catch (err) {
-                          console.error("Error fetching brackets:", err);
-                        }
-                      };
-                      fetchBrackets();
-                    }
-                  }}
-                  className="stats-filter-matches-select"
-                >
-                  {events.map(event => (
-                    <option key={event.id} value={event.id}>{event.name}</option>
-                  ))}
-                </select>
-              </div>
+  <div className="stats-filter-matches-header">
+    <FaFilter className="stats-filter-matches-icon" />
+    <span className="stats-filter-matches-title">FILTER STATISTICS</span>
+  </div>
+  
+  <div className="stats-filter-matches-content">
+    {/* Tournament and Bracket Row */}
+    <div className="stats-filter-matches-row">
+      <div className="stats-filter-matches-group">
+        <div className="stats-filter-matches-label">
+          <FaTrophy className="stats-filter-matches-label-icon" />
+          <span>TOURNAMENT</span>
+        </div>
+        <select
+          value={recentTournament?.id || ""}
+          onChange={(e) => {
+            const tournamentId = parseInt(e.target.value);
+            const tournament = events.find(ev => ev.id === tournamentId);
+            if (tournament) {
+              setRecentTournament(tournament);
+              setDateRangeFilter({ start: '', end: '' }); // Reset date filter
+              setFilteredByDateStandings([]); // Reset filtered standings
+              const fetchBrackets = async () => {
+                try {
+                  let bracketsRes;
+                  try {
+                    bracketsRes = await fetch(`http://localhost:5000/api/events/${tournament.id}/brackets`);
+                  } catch (err) {
+                    bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${tournament.id}/completed-brackets`);
+                  }
+                  const brackets = await bracketsRes.json();
+                  setRecentBrackets(brackets || []);
+                  if (brackets && brackets.length > 0) {
+                    setSelectedRecentBracket(brackets[0]);
+                    await loadRecentBracketData(tournament, brackets[0]);
+                  }
+                } catch (err) {
+                  console.error("Error fetching brackets:", err);
+                }
+              };
+              fetchBrackets();
+            }
+          }}
+          className="stats-filter-matches-select"
+        >
+          {events.map(event => (
+            <option key={event.id} value={event.id}>{event.name}</option>
+          ))}
+        </select>
+      </div>
 
-              <div className="stats-filter-matches-group">
-                <div className="stats-filter-matches-label">
-                  <FaMedal className="stats-filter-matches-label-icon" />
-                  <span>BRACKET</span>
-                </div>
-                <select 
-                  value={selectedRecentBracket?.id || ''}
-                  onChange={(e) => {
-                    const bracketId = parseInt(e.target.value);
-                    const bracket = recentBrackets.find(b => b.id === bracketId);
-                    if (bracket) {
-                      setSelectedRecentBracket(bracket);
-                      loadRecentBracketData(recentTournament, bracket);
-                    }
-                  }}
-                  className="stats-filter-matches-select"
-                  disabled={recentBrackets.length === 0}
-                >
-                  {recentBrackets.map(bracket => (
-                    <option key={bracket.id} value={bracket.id}>
-                      {bracket.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+      <div className="stats-filter-matches-group">
+        <div className="stats-filter-matches-label">
+          <FaMedal className="stats-filter-matches-label-icon" />
+          <span>BRACKET</span>
+        </div>
+        <select 
+          value={selectedRecentBracket?.id || ''}
+          onChange={(e) => {
+            const bracketId = parseInt(e.target.value);
+            const bracket = recentBrackets.find(b => b.id === bracketId);
+            if (bracket) {
+              setSelectedRecentBracket(bracket);
+              setDateRangeFilter({ start: '', end: '' }); // Reset date filter
+              setFilteredByDateStandings([]); // Reset filtered standings
+              loadRecentBracketData(recentTournament, bracket);
+            }
+          }}
+          className="stats-filter-matches-select"
+          disabled={recentBrackets.length === 0}
+        >
+          {recentBrackets.map(bracket => (
+            <option key={bracket.id} value={bracket.id}>
+              {bracket.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+
+    {/* Tournament Period Display */}
+    {tournamentPeriod && (
+      <div className="stats-filter-matches-row">
+        <div className="stats-tournament-period">
+          <div className="stats-filter-matches-label">
+            <FaChartLine className="stats-filter-matches-label-icon" />
+            <span>TOURNAMENT PERIOD</span>
+          </div>
+          <div className="stats-period-display">
+            <span className="stats-period-date">{new Date(tournamentPeriod.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            <span className="stats-period-separator">→</span>
+            <span className="stats-period-date">{new Date(tournamentPeriod.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
           </div>
         </div>
+      </div>
+    )}
+
+    {/* Date Range Filter */}
+    <div className="stats-filter-matches-row">
+      <div className="stats-filter-matches-group">
+        <div className="stats-filter-matches-label">
+          <FaChartBar className="stats-filter-matches-label-icon" />
+          <span>FILTER BY DATE RANGE</span>
+        </div>
+        <div className="stats-date-range-inputs">
+          <input
+            type="date"
+            value={dateRangeFilter.start}
+            onChange={(e) => setDateRangeFilter({ ...dateRangeFilter, start: e.target.value })}
+            min={tournamentPeriod?.start}
+            max={tournamentPeriod?.end}
+            className="stats-date-input"
+            placeholder="Start Date"
+          />
+          <span className="stats-date-separator">to</span>
+          <input
+            type="date"
+            value={dateRangeFilter.end}
+            onChange={(e) => setDateRangeFilter({ ...dateRangeFilter, end: e.target.value })}
+            min={dateRangeFilter.start || tournamentPeriod?.start}
+            max={tournamentPeriod?.end}
+            className="stats-date-input"
+            placeholder="End Date"
+          />
+          <button
+            onClick={() => {
+              if (selectedRecentBracket && dateRangeFilter.start && dateRangeFilter.end) {
+                filterStandingsByDate(selectedRecentBracket.id, dateRangeFilter.start, dateRangeFilter.end);
+              }
+            }}
+            disabled={!dateRangeFilter.start || !dateRangeFilter.end}
+            className="stats-date-apply-btn"
+          >
+            Apply Filter
+          </button>
+          {(dateRangeFilter.start || dateRangeFilter.end || filteredByDateStandings.length > 0) && (
+            <button
+              onClick={() => {
+                setDateRangeFilter({ start: '', end: '' });
+                setFilteredByDateStandings([]);
+              }}
+              className="stats-date-clear-btn"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Date Filter Status */}
+    {filteredByDateStandings.length > 0 && (
+      <div className="stats-filter-status">
+        <span className="stats-filter-status-icon">ℹ️</span>
+        <span>Showing standings from {new Date(dateRangeFilter.start).toLocaleDateString()} to {new Date(dateRangeFilter.end).toLocaleDateString()}</span>
+      </div>
+    )}
+  </div>
+</div>
 
         {/* Stats Containers Grid */}
         <div className="recent-stats-vertical">
@@ -821,7 +954,7 @@ const UserStatsPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {standings.slice(0, 10).map((team, index) => (
+                       {(filteredByDateStandings.length > 0 ? filteredByDateStandings : standings).slice(0, 10).map((team, index) => (
                           <tr key={index} className={team.position <= 3 ? `awards_standings_podium_${team.position}` : ""}>
                             <td className="stats-rank-cell">
                               <div className={`stats-rank-badge ${

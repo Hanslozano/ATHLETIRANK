@@ -323,13 +323,6 @@ const TeamsPage = ({ sidebarOpen }) => {
       return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
     }
     
-    // Check for duplicate player names
-    const playerNames = validPlayers.map(p => p.name.trim().toLowerCase());
-    const uniquePlayerNames = new Set(playerNames);
-    if (playerNames.length !== uniquePlayerNames.size) {
-      return "Duplicate player names found. Each player must have a unique name.";
-    }
-    
     // Check position limits (maximum 3 per position)
     const positionCounts = {};
     validPlayers.forEach(player => {
@@ -1166,7 +1159,7 @@ const TeamsPage = ({ sidebarOpen }) => {
                           fontSize: '14px',
                           color: '#93c5fd'
                         }}>
-                          <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
+                          <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate jersey numbers allowed. Player names must contain only letters and spaces. 
                           <br />
                           <strong>Position Limits:</strong> Maximum 3 players per position. Not all positions need to be filled.
                         </div>

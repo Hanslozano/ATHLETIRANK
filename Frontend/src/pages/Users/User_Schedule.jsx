@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaSearch, FaTrophy, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaMedal, FaFilter } from "react-icons/fa";
+import { FaArrowLeft, FaTrophy, FaCalendarAlt, FaClock, FaMedal, FaFilter } from "react-icons/fa";
 import '../../style/User_SchedulePage.css';
 
 const UserSchedulePage = () => {
@@ -8,7 +8,6 @@ const UserSchedulePage = () => {
   const [schedules, setSchedules] = useState([]);
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedSport, setSelectedSport] = useState("all");
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [events, setEvents] = useState([]);
@@ -31,7 +30,8 @@ const UserSchedulePage = () => {
   const [statsLoading, setStatsLoading] = useState(false);
 
   // Filter state
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [tournamentPeriod, setTournamentPeriod] = useState(null);
+  const [dateRangeFilter, setDateRangeFilter] = useState('all');
 
   const sports = ["all", "Basketball", "Volleyball"];
 
@@ -204,10 +204,24 @@ const UserSchedulePage = () => {
       if (sortedEvents.length > 0) {
         const mostRecent = sortedEvents[0];
         setSelectedRecentEvent(mostRecent);
+        await fetchTournamentPeriod(mostRecent.id);
         await fetchBracketsForRecentEvent(mostRecent.id);
       }
     } catch (err) {
       console.error("Error fetching events:", err);
+    }
+  };
+
+  const fetchTournamentPeriod = async (eventId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/events/${eventId}`);
+      const data = await res.json();
+      setTournamentPeriod({
+        start: data.start_date,
+        end: data.end_date
+      });
+    } catch (err) {
+      console.error("Error fetching tournament period:", err);
     }
   };
 
@@ -290,6 +304,8 @@ const UserSchedulePage = () => {
     const event = recentEvents.find(e => e.id === parseInt(eventId));
     if (event) {
       setSelectedRecentEvent(event);
+      setDateRangeFilter('all');
+      await fetchTournamentPeriod(event.id);
       await fetchBracketsForRecentEvent(event.id);
     }
   };
@@ -299,6 +315,47 @@ const UserSchedulePage = () => {
     if (bracket) {
       setSelectedRecentBracket(bracket);
       await fetchMatchesForRecentBracket(bracket.id);
+    }
+  };
+
+  const getDateRangeFilters = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch(dateRangeFilter) {
+      case 'today':
+        return {
+          start: today,
+          end: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        };
+      case 'week':
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        return { start: weekStart, end: weekEnd };
+      case 'month':
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        return { start: monthStart, end: monthEnd };
+      default:
+        return null;
+    }
+  };
+
+  const isMatchInDateRange = (match) => {
+    if (dateRangeFilter === 'all') return true;
+    
+    const dateRange = getDateRangeFilters();
+    if (!dateRange) return true;
+    
+    if (!match.date || match.date === 'Date TBD') return false;
+    
+    try {
+      const matchDate = new Date(match.date);
+      return matchDate >= dateRange.start && matchDate <= dateRange.end;
+    } catch (error) {
+      return false;
     }
   };
 
@@ -397,17 +454,12 @@ const UserSchedulePage = () => {
 
   // Filter matches
   const filteredMatches = recentMatches.filter(match => {
-    const matchesSearch = 
-      (match.team1_name && match.team1_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (match.team2_name && match.team2_name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
     const matchesSport = selectedSport === "all" || 
       (match.sport_type && match.sport_type.toLowerCase() === selectedSport.toLowerCase());
     
-    const status = getScheduleStatus(match.date, match.time);
-    const matchesStatus = selectedStatus === "all" || status === selectedStatus;
+    const matchesDateRange = isMatchInDateRange(match);
     
-    return matchesSearch && matchesSport && matchesStatus;
+    return matchesSport && matchesDateRange;
   });
 
   // Group matches by bracket
@@ -429,8 +481,6 @@ const UserSchedulePage = () => {
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
   const getStatusBadge = (status) => {
     const badges = {
@@ -555,89 +605,113 @@ const UserSchedulePage = () => {
       <div className="schedule-container">
         {/* Filter Container */}
         <div className="filter-matches-container">
-  <div className="filter-matches-header">
-    <FaFilter className="filter-matches-icon" />
-    <span className="filter-matches-title">FILTER MATCHES</span>
-  </div>
-  
-  <div className="filter-matches-content">
-    {/* Tournament and Bracket Row */}
-    <div className="filter-matches-row">
-      <div className="filter-matches-group">
-        <div className="filter-matches-label">
-          <FaTrophy className="filter-matches-label-icon" />
-          <span>TOURNAMENT</span>
+          <div className="filter-matches-header">
+            <FaFilter className="filter-matches-icon" />
+            <span className="filter-matches-title">FILTER MATCHES</span>
+          </div>
+          
+          <div className="filter-matches-content">
+            {/* Tournament and Bracket Row */}
+            <div className="filter-matches-row">
+              <div className="filter-matches-group">
+                <div className="filter-matches-label">
+                  <FaTrophy className="filter-matches-label-icon" />
+                  <span>TOURNAMENT</span>
+                </div>
+                <select
+                  value={selectedRecentEvent?.id || ""}
+                  onChange={(e) => handleRecentEventChange(e.target.value)}
+                  className="filter-matches-select"
+                >
+                  {recentEvents.map(event => (
+                    <option key={event.id} value={event.id}>
+                      {event.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-matches-group">
+                <div className="filter-matches-label">
+                  <FaMedal className="filter-matches-label-icon" />
+                  <span>BRACKET</span>
+                </div>
+                <select
+                  value={selectedRecentBracket?.id || ""}
+                  onChange={(e) => handleRecentBracketChange(e.target.value)}
+                  className="filter-matches-select"
+                  disabled={recentBrackets.length === 0}
+                >
+                  {recentBrackets.map(bracket => (
+                    <option key={bracket.id} value={bracket.id}>
+                      {bracket.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Tournament Period and Date Range in One Row */}
+            <div className="filter-matches-row">
+              {/* Tournament Period */}
+              {tournamentPeriod && (
+                <div className="filter-matches-group">
+                  <div className="filter-matches-label">
+                    <FaCalendarAlt className="filter-matches-label-icon" />
+                    <span>TOURNAMENT PERIOD</span>
+                  </div>
+                  <div className="stats-period-display">
+                    <span className="stats-period-date">
+                      {new Date(tournamentPeriod.start).toLocaleDateString('en-US', { 
+                        month: 'short', day: 'numeric', year: 'numeric' 
+                      })}
+                    </span>
+                    <span className="stats-period-separator">→</span>
+                    <span className="stats-period-date">
+                      {new Date(tournamentPeriod.end).toLocaleDateString('en-US', { 
+                        month: 'short', day: 'numeric', year: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Date Range Filter */}
+              <div className="filter-matches-group">
+                <div className="filter-matches-label">
+                  <FaCalendarAlt className="filter-matches-label-icon" />
+                  <span>DATE RANGE</span>
+                </div>
+                <div className="filter-date-range-buttons">
+                  <button
+                    onClick={() => setDateRangeFilter('all')}
+                    className={`filter-date-btn ${dateRangeFilter === 'all' ? 'active' : ''}`}
+                  >
+                    All Dates
+                  </button>
+                  <button
+                    onClick={() => setDateRangeFilter('today')}
+                    className={`filter-date-btn ${dateRangeFilter === 'today' ? 'active' : ''}`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setDateRangeFilter('week')}
+                    className={`filter-date-btn ${dateRangeFilter === 'week' ? 'active' : ''}`}
+                  >
+                    This Week
+                  </button>
+                  <button
+                    onClick={() => setDateRangeFilter('month')}
+                    className={`filter-date-btn ${dateRangeFilter === 'month' ? 'active' : ''}`}
+                  >
+                    This Month
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <select
-          value={selectedRecentEvent?.id || ""}
-          onChange={(e) => handleRecentEventChange(e.target.value)}
-          className="filter-matches-select"
-        >
-          {recentEvents.map(event => (
-            <option key={event.id} value={event.id}>
-              {event.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="filter-matches-group">
-        <div className="filter-matches-label">
-          <FaMedal className="filter-matches-label-icon" />
-          <span>BRACKET</span>
-        </div>
-        <select
-          value={selectedRecentBracket?.id || ""}
-          onChange={(e) => handleRecentBracketChange(e.target.value)}
-          className="filter-matches-select"
-          disabled={recentBrackets.length === 0}
-        >
-          {recentBrackets.map(bracket => (
-            <option key={bracket.id} value={bracket.id}>
-              {bracket.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-
-    {/* Sport Selection Row */}
- 
-
-    {/* Status Buttons Row */}
-    <div className="filter-matches-row">
-      <div className="filter-matches-group full-width">
-        <div className="filter-matches-label">
-          <FaClock className="filter-matches-label-icon" />
-          <span>STATUS</span>
-        </div>
-        <div className="filter-status-buttons">
-          <button
-            onClick={() => setSelectedStatus('all')}
-            className={`filter-status-btn ${selectedStatus === 'all' ? 'active' : ''}`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setSelectedStatus('upcoming')}
-            className={`filter-status-btn ${selectedStatus === 'upcoming' ? 'active' : ''}`}
-          >
-            Upcoming
-          </button>
-          <button
-            onClick={() => setSelectedStatus('completed')}
-            className={`filter-status-btn ${selectedStatus === 'completed' ? 'active' : ''}`}
-          >
-            Completed
-          </button>
-        </div>
-      </div>
-    </div>
-
-    {/* Search Row */}
-
-  </div>
-</div>
 
         {/* Matches Section */}
         {loading ? (
@@ -669,7 +743,7 @@ const UserSchedulePage = () => {
                       const status = getScheduleStatus(match.date, match.time);
                       
                       return (
-                        <div key={match.id} className={`match-card ${status}`}>
+                        <div key={match.id} className={`match-card match-card-compact ${status}`}>
                           {/* Match Header */}
                           <div className="match-card-header">
                             <div className="match-info">
@@ -682,11 +756,11 @@ const UserSchedulePage = () => {
                           </div>
 
                           {/* Match Body */}
-                          <div className="match-card-body">
-                            <div className="teams-container">
+                          <div className="match-card-body match-card-body-compact">
+                            <div className="teams-container teams-container-compact">
                               {/* Team 1 */}
                               <div className="team-side team-left">
-                                <span className="team-logo">
+                                <span className="team-logo team-logo-compact">
                                   {match.sport_type === 'basketball' ? '🏀' : '🏐'}
                                 </span>
                                 <div className="team-details">
@@ -696,35 +770,43 @@ const UserSchedulePage = () => {
                               </div>
 
                               {/* Score/VS */}
-                              <div className="match-center">
+                              <div className="match-center match-center-compact">
                                 {status === 'completed' ? (
-                                  <div className="score-container completed">
+                                  <div className="score-container score-container-compact completed">
                                     <div className="final-score">
-                                      <span className="score-number">{match.score_team1 || 0}</span>
+                                      <span className="score-number score-number-compact">{match.score_team1 || 0}</span>
                                       <span className="score-divider">-</span>
-                                      <span className="score-number">{match.score_team2 || 0}</span>
+                                      <span className="score-number score-number-compact">{match.score_team2 || 0}</span>
                                     </div>
-                                    <div className="final-label">Final Score</div>
-                                    <div className="match-datetime">
-                                      <div className="datetime-item">
+                                    <div className="final-label">Final</div>
+                                    <div className="match-datetime match-datetime-compact">
+                                      <div className="datetime-item datetime-item-compact">
                                         <FaCalendarAlt className="datetime-icon" />
-                                        <span>{matchDateTime.date}</span>
+                                        <span>{matchDateTime.shortDate}</span>
                                       </div>
-                                      <div className="datetime-item">
+                                      <div className="datetime-item datetime-item-compact">
                                         <FaClock className="datetime-icon" />
                                         <span>{matchDateTime.time}</span>
                                       </div>
                                     </div>
+                                    {status === 'completed' && (
+                                      <button 
+                                        className="view-stats-btn view-stats-btn-compact"
+                                        onClick={() => handleViewStats(match)}
+                                      >
+                                        View Stats
+                                      </button>
+                                    )}
                                   </div>
                                 ) : (
-                                  <div className="score-container upcoming">
-                                    <div className="vs-text">VS</div>
-                                    <div className="match-datetime scheduled">
-                                      <div className="datetime-item">
+                                  <div className="score-container score-container-compact upcoming">
+                                    <div className="vs-text vs-text-compact">VS</div>
+                                    <div className="match-datetime match-datetime-compact scheduled">
+                                      <div className="datetime-item datetime-item-compact">
                                         <FaCalendarAlt className="datetime-icon" />
-                                        <span>{matchDateTime.date}</span>
+                                        <span>{matchDateTime.shortDate}</span>
                                       </div>
-                                      <div className="datetime-item">
+                                      <div className="datetime-item datetime-item-compact">
                                         <FaClock className="datetime-icon" />
                                         <span>{matchDateTime.time}</span>
                                       </div>
@@ -739,26 +821,10 @@ const UserSchedulePage = () => {
                                   <h3 className="team-name">{match.team2_name || "TBD"}</h3>
                                   <p className="team-record">{formatTeamRecord(match.team2_name)}</p>
                                 </div>
-                                <span className="team-logo">
+                                <span className="team-logo team-logo-compact">
                                   {match.sport_type === 'basketball' ? '🏀' : '🏐'}
                                 </span>
                               </div>
-                            </div>
-
-                            {/* Match Footer */}
-                            <div className="match-card-footer">
-                              <div className="venue-info">
-                                <FaMapMarkerAlt className="venue-icon" />
-                                <span>{match.venue || 'Venue TBD'}</span>
-                              </div>
-                              {status === 'completed' && (
-                                <button 
-                                  className="view-stats-btn"
-                                  onClick={() => handleViewStats(match)}
-                                >
-                                  View Stats →
-                                </button>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -767,7 +833,7 @@ const UserSchedulePage = () => {
                   </div>
                 </div>
               );
- })}
+            })}
 
             {/* Pagination */}
             {totalPages > 1 && (

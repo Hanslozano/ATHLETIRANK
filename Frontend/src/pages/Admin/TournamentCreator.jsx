@@ -397,13 +397,6 @@ const getPositionLimits = (teamSize, sport) => {
     return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
   }
   
-  // Check for duplicate player names (only among valid players)
-  const playerNames = validPlayers.map(p => p.name.trim().toLowerCase());
-  const uniquePlayerNames = new Set(playerNames);
-  if (playerNames.length !== uniquePlayerNames.size) {
-    return "Duplicate player names found. Each player must have a unique name.";
-  }
-  
   // NEW: Check position limits (maximum 3 per position)
   const positionCounts = {};
   validPlayers.forEach(player => {
@@ -1182,7 +1175,7 @@ const handleCreateAllBrackets = async () => {
   fontSize: '14px',
   color: '#93c5fd'
 }}>
-  <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate names or jersey numbers allowed. Player names must contain only letters and spaces. Jersey numbers must contain only numbers.
+  <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate jersey numbers allowed. Player names must contain only letters and spaces. 
   <br />
   <strong>Position Limits:</strong> Maximum 3 players per position. Not all positions need to be filled.
 </div>
@@ -1772,7 +1765,7 @@ const handleCreateAllBrackets = async () => {
 
         .admin-teams-count-warning {
           color: #fbbf24;
-          font-size: 16px;
+          font-size: '16px';
         }
 
         /* NEW: Position Limits Styles */
@@ -2442,7 +2435,7 @@ const handleCreateAllBrackets = async () => {
           }
 
           .team-sport-filter {
-            width: 100%;
+            width: '100%';
           }
 
           .teams-table {
