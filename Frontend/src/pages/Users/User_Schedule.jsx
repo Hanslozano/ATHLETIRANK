@@ -484,13 +484,13 @@ const UserSchedulePage = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      upcoming: { className: 'status-upcoming', label: 'Upcoming' },
-      scheduled: { className: 'status-scheduled', label: 'Scheduled' },
-      completed: { className: 'status-completed', label: 'Completed' }
+      upcoming: { className: 'stats-status-upcoming', label: 'Upcoming' },
+      scheduled: { className: 'stats-status-scheduled', label: 'Scheduled' },
+      completed: { className: 'stats-status-completed', label: 'Completed' }
     };
     const badge = badges[status] || badges.scheduled;
     return (
-      <span className={`match-status-badge ${badge.className}`}>
+      <span className={`stats-match-status-badge ${badge.className}`}>
         {badge.label}
       </span>
     );
@@ -604,24 +604,24 @@ const UserSchedulePage = () => {
 
       <div className="schedule-container">
         {/* Filter Container */}
-        <div className="filter-matches-container">
-          <div className="filter-matches-header">
-            <FaFilter className="filter-matches-icon" />
-            <span className="filter-matches-title">FILTER MATCHES</span>
+        <div className="stats-filter-matches-container">
+          <div className="stats-filter-matches-header">
+            <FaFilter className="stats-filter-matches-icon" />
+            <span className="stats-filter-matches-title">FILTER MATCHES</span>
           </div>
           
-          <div className="filter-matches-content">
+          <div className="stats-filter-matches-content">
             {/* Tournament and Bracket Row */}
-            <div className="filter-matches-row">
-              <div className="filter-matches-group">
-                <div className="filter-matches-label">
-                  <FaTrophy className="filter-matches-label-icon" />
+            <div className="stats-filter-matches-row">
+              <div className="stats-filter-matches-group">
+                <div className="stats-filter-matches-label">
+                  <FaTrophy className="stats-filter-matches-label-icon" />
                   <span>TOURNAMENT</span>
                 </div>
                 <select
                   value={selectedRecentEvent?.id || ""}
                   onChange={(e) => handleRecentEventChange(e.target.value)}
-                  className="filter-matches-select"
+                  className="stats-filter-matches-select"
                 >
                   {recentEvents.map(event => (
                     <option key={event.id} value={event.id}>
@@ -631,15 +631,15 @@ const UserSchedulePage = () => {
                 </select>
               </div>
 
-              <div className="filter-matches-group">
-                <div className="filter-matches-label">
-                  <FaMedal className="filter-matches-label-icon" />
+              <div className="stats-filter-matches-group">
+                <div className="stats-filter-matches-label">
+                  <FaMedal className="stats-filter-matches-label-icon" />
                   <span>BRACKET</span>
                 </div>
                 <select
                   value={selectedRecentBracket?.id || ""}
                   onChange={(e) => handleRecentBracketChange(e.target.value)}
-                  className="filter-matches-select"
+                  className="stats-filter-matches-select"
                   disabled={recentBrackets.length === 0}
                 >
                   {recentBrackets.map(bracket => (
@@ -652,12 +652,12 @@ const UserSchedulePage = () => {
             </div>
 
             {/* Tournament Period and Date Range in One Row */}
-            <div className="filter-matches-row">
+            <div className="stats-filter-matches-row">
               {/* Tournament Period */}
               {tournamentPeriod && (
-                <div className="filter-matches-group">
-                  <div className="filter-matches-label">
-                    <FaCalendarAlt className="filter-matches-label-icon" />
+                <div className="stats-filter-matches-group">
+                  <div className="stats-filter-matches-label">
+                    <FaCalendarAlt className="stats-filter-matches-label-icon" />
                     <span>TOURNAMENT PERIOD</span>
                   </div>
                   <div className="stats-period-display">
@@ -677,33 +677,33 @@ const UserSchedulePage = () => {
               )}
 
               {/* Date Range Filter */}
-              <div className="filter-matches-group">
-                <div className="filter-matches-label">
-                  <FaCalendarAlt className="filter-matches-label-icon" />
+              <div className="stats-filter-matches-group">
+                <div className="stats-filter-matches-label">
+                  <FaCalendarAlt className="stats-filter-matches-label-icon" />
                   <span>DATE RANGE</span>
                 </div>
-                <div className="filter-date-range-buttons">
+                <div className="stats-filter-date-range-buttons">
                   <button
                     onClick={() => setDateRangeFilter('all')}
-                    className={`filter-date-btn ${dateRangeFilter === 'all' ? 'active' : ''}`}
+                    className={`stats-filter-date-btn ${dateRangeFilter === 'all' ? 'active' : ''}`}
                   >
                     All Dates
                   </button>
                   <button
                     onClick={() => setDateRangeFilter('today')}
-                    className={`filter-date-btn ${dateRangeFilter === 'today' ? 'active' : ''}`}
+                    className={`stats-filter-date-btn ${dateRangeFilter === 'today' ? 'active' : ''}`}
                   >
                     Today
                   </button>
                   <button
                     onClick={() => setDateRangeFilter('week')}
-                    className={`filter-date-btn ${dateRangeFilter === 'week' ? 'active' : ''}`}
+                    className={`stats-filter-date-btn ${dateRangeFilter === 'week' ? 'active' : ''}`}
                   >
                     This Week
                   </button>
                   <button
                     onClick={() => setDateRangeFilter('month')}
-                    className={`filter-date-btn ${dateRangeFilter === 'month' ? 'active' : ''}`}
+                    className={`stats-filter-date-btn ${dateRangeFilter === 'month' ? 'active' : ''}`}
                   >
                     This Month
                   </button>
@@ -715,12 +715,12 @@ const UserSchedulePage = () => {
 
         {/* Matches Section */}
         {loading ? (
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
+          <div className="stats-loading-state">
+            <div className="stats-loading-spinner"></div>
             <p>Loading matches...</p>
           </div>
         ) : Object.keys(matchesByBracket).length > 0 ? (
-          <div className="matches-section">
+          <div className="stats-matches-section">
             {Object.entries(matchesByBracket).map(([bracket, bracketMatches]) => {
               // Paginate within each bracket
               const startIdx = (currentPage - 1) * matchesPerPage;
@@ -728,70 +728,70 @@ const UserSchedulePage = () => {
               const paginatedMatches = bracketMatches.slice(startIdx, endIdx);
               
               return (
-                <div key={bracket} className="bracket-section">
-                  <div className="bracket-header">
-                    <FaMedal className="bracket-icon" />
-                    <h2 className="bracket-title">{bracket}</h2>
-                    <span className="bracket-count">
+                <div key={bracket} className="stats-bracket-section">
+                  <div className="stats-bracket-header">
+                    <FaMedal className="stats-bracket-icon" />
+                    <h2 className="stats-bracket-title">{bracket}</h2>
+                    <span className="stats-bracket-count">
                       ({bracketMatches.length} {bracketMatches.length === 1 ? 'match' : 'matches'})
                     </span>
                   </div>
 
-                  <div className="matches-grid">
+                  <div className="stats-matches-grid">
                     {paginatedMatches.map(match => {
                       const matchDateTime = formatScheduleDateTime(match.date, match.time);
                       const status = getScheduleStatus(match.date, match.time);
                       
                       return (
-                        <div key={match.id} className={`match-card match-card-compact ${status}`}>
+                        <div key={match.id} className={`stats-match-card stats-match-card-compact ${status}`}>
                           {/* Match Header */}
-                          <div className="match-card-header">
-                            <div className="match-info">
-                              <FaTrophy className="info-icon" />
-                              <span className="tournament-name">{selectedRecentEvent?.name}</span>
-                              <span className="info-divider">•</span>
-                              <span className="round-name">{formatRoundDisplay(match)}</span>
+                          <div className="stats-match-card-header">
+                            <div className="stats-match-info">
+                              <FaTrophy className="stats-info-icon" />
+                              <span className="stats-tournament-name">{selectedRecentEvent?.name}</span>
+                              <span className="stats-info-divider">•</span>
+                              <span className="stats-round-name">{formatRoundDisplay(match)}</span>
                             </div>
                             {getStatusBadge(status)}
                           </div>
 
                           {/* Match Body */}
-                          <div className="match-card-body match-card-body-compact">
-                            <div className="teams-container teams-container-compact">
+                          <div className="stats-match-card-body stats-match-card-body-compact">
+                            <div className="stats-teams-container stats-teams-container-compact">
                               {/* Team 1 */}
-                              <div className="team-side team-left">
-                                <span className="team-logo team-logo-compact">
+                              <div className="stats-team-side stats-team-left">
+                                <span className="stats-team-logo stats-team-logo-compact">
                                   {match.sport_type === 'basketball' ? '🏀' : '🏐'}
                                 </span>
-                                <div className="team-details">
-                                  <h3 className="team-name">{match.team1_name || "TBD"}</h3>
-                                  <p className="team-record">{formatTeamRecord(match.team1_name)}</p>
+                                <div className="stats-team-details">
+                                  <h3 className="stats-team-name">{match.team1_name || "TBD"}</h3>
+                                  <p className="stats-team-record">{formatTeamRecord(match.team1_name)}</p>
                                 </div>
                               </div>
 
                               {/* Score/VS */}
-                              <div className="match-center match-center-compact">
+                              <div className="stats-match-center stats-match-center-compact">
                                 {status === 'completed' ? (
-                                  <div className="score-container score-container-compact completed">
-                                    <div className="final-score">
-                                      <span className="score-number score-number-compact">{match.score_team1 || 0}</span>
-                                      <span className="score-divider">-</span>
-                                      <span className="score-number score-number-compact">{match.score_team2 || 0}</span>
+                                  <div className="stats-score-container stats-score-container-compact completed">
+                                    <div className="stats-final-score">
+                                      <span className="stats-score-number stats-score-number-compact">{match.score_team1 || 0}</span>
+                                      <span className="stats-score-divider">-</span>
+                                      <span className="stats-score-number stats-score-number-compact">{match.score_team2 || 0}</span>
                                     </div>
-                                    <div className="final-label">Final</div>
-                                    <div className="match-datetime match-datetime-compact">
-                                      <div className="datetime-item datetime-item-compact">
-                                        <FaCalendarAlt className="datetime-icon" />
+                                    <div className="stats-final-label">Final</div>
+                                    <div className="stats-match-datetime stats-match-datetime-compact">
+                                      <div className="stats-datetime-item stats-datetime-item-compact">
+                                        <FaCalendarAlt className="stats-datetime-icon" />
                                         <span>{matchDateTime.shortDate}</span>
                                       </div>
-                                      <div className="datetime-item datetime-item-compact">
-                                        <FaClock className="datetime-icon" />
+                                      <div className="stats-datetime-item stats-datetime-item-compact">
+                                        <FaClock className="stats-datetime-icon" />
                                         <span>{matchDateTime.time}</span>
                                       </div>
                                     </div>
                                     {status === 'completed' && (
                                       <button 
-                                        className="view-stats-btn view-stats-btn-compact"
+                                        className="stats-view-stats-btn stats-view-stats-btn-compact"
                                         onClick={() => handleViewStats(match)}
                                       >
                                         View Stats
@@ -799,15 +799,15 @@ const UserSchedulePage = () => {
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="score-container score-container-compact upcoming">
-                                    <div className="vs-text vs-text-compact">VS</div>
-                                    <div className="match-datetime match-datetime-compact scheduled">
-                                      <div className="datetime-item datetime-item-compact">
-                                        <FaCalendarAlt className="datetime-icon" />
+                                  <div className="stats-score-container stats-score-container-compact upcoming">
+                                    <div className="stats-vs-text stats-vs-text-compact">VS</div>
+                                    <div className="stats-match-datetime stats-match-datetime-compact scheduled">
+                                      <div className="stats-datetime-item stats-datetime-item-compact">
+                                        <FaCalendarAlt className="stats-datetime-icon" />
                                         <span>{matchDateTime.shortDate}</span>
                                       </div>
-                                      <div className="datetime-item datetime-item-compact">
-                                        <FaClock className="datetime-icon" />
+                                      <div className="stats-datetime-item stats-datetime-item-compact">
+                                        <FaClock className="stats-datetime-icon" />
                                         <span>{matchDateTime.time}</span>
                                       </div>
                                     </div>
@@ -816,12 +816,12 @@ const UserSchedulePage = () => {
                               </div>
 
                               {/* Team 2 */}
-                              <div className="team-side team-right">
-                                <div className="team-details">
-                                  <h3 className="team-name">{match.team2_name || "TBD"}</h3>
-                                  <p className="team-record">{formatTeamRecord(match.team2_name)}</p>
+                              <div className="stats-team-side stats-team-right">
+                                <div className="stats-team-details">
+                                  <h3 className="stats-team-name">{match.team2_name || "TBD"}</h3>
+                                  <p className="stats-team-record">{formatTeamRecord(match.team2_name)}</p>
                                 </div>
-                                <span className="team-logo team-logo-compact">
+                                <span className="stats-team-logo stats-team-logo-compact">
                                   {match.sport_type === 'basketball' ? '🏀' : '🏐'}
                                 </span>
                               </div>
@@ -837,21 +837,21 @@ const UserSchedulePage = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="pagination-container">
-                <div className="pagination-info">
+              <div className="stats-pagination-container">
+                <div className="stats-pagination-info">
                   Page {currentPage} of {totalPages}
                 </div>
                 
-                <div className="pagination-controls">
+                <div className="stats-pagination-controls">
                   <button 
-                    className="pagination-btn"
+                    className="stats-pagination-btn"
                     onClick={() => paginate(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
                     Previous
                   </button>
                   
-                  <div className="pagination-numbers">
+                  <div className="stats-pagination-numbers">
                     {[...Array(totalPages)].map((_, index) => {
                       const pageNumber = index + 1;
                       if (
@@ -862,7 +862,7 @@ const UserSchedulePage = () => {
                         return (
                           <button
                             key={pageNumber}
-                            className={`pagination-number ${currentPage === pageNumber ? 'active' : ''}`}
+                            className={`stats-pagination-number ${currentPage === pageNumber ? 'active' : ''}`}
                             onClick={() => paginate(pageNumber)}
                           >
                             {pageNumber}
@@ -872,14 +872,14 @@ const UserSchedulePage = () => {
                         pageNumber === currentPage - 2 ||
                         pageNumber === currentPage + 2
                       ) {
-                        return <span key={pageNumber} className="pagination-ellipsis">...</span>;
+                        return <span key={pageNumber} className="stats-pagination-ellipsis">...</span>;
                       }
                       return null;
                     })}
                   </div>
                   
                   <button 
-                    className="pagination-btn"
+                    className="stats-pagination-btn"
                     onClick={() => paginate(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
@@ -889,13 +889,13 @@ const UserSchedulePage = () => {
               </div>
             )}
 
-            <div className="matches-info">
+            <div className="stats-matches-info">
               Showing {indexOfFirstMatch + 1}-{Math.min(indexOfLastMatch, filteredMatches.length)} of {filteredMatches.length} matches
             </div>
           </div>
         ) : (
-          <div className="empty-state">
-            <FaTrophy className="empty-icon" />
+          <div className="stats-empty-state">
+            <FaTrophy className="stats-empty-icon" />
             <h3>No matches found</h3>
             <p>Try adjusting your filters</p>
           </div>
@@ -904,29 +904,29 @@ const UserSchedulePage = () => {
 
       {/* Stats Modal */}
       {showStatsModal && (
-        <div className="modal-overlay" onClick={handleCloseStatsModal}>
-          <div className="modal-content stats-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">
+        <div className="stats-modal-overlay" onClick={handleCloseStatsModal}>
+          <div className="stats-modal-content stats-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="stats-modal-header">
+              <div className="stats-modal-title">
                 <h2>Match Statistics</h2>
                 {selectedMatchStats && (
-                  <div className="match-title">
+                  <div className="stats-match-title">
                     {selectedMatchStats.team1_name} vs {selectedMatchStats.team2_name}
-                    <div className="match-date-time-modal">
+                    <div className="stats-match-date-time-modal">
                       {formatScheduleDateTime(selectedMatchStats.date, selectedMatchStats.time).full}
                     </div>
                   </div>
                 )}
               </div>
-              <button className="close-btn" onClick={handleCloseStatsModal}>
+              <button className="stats-close-btn" onClick={handleCloseStatsModal}>
                 ×
               </button>
             </div>
             
-            <div className="modal-body stats-modal-body">
+            <div className="stats-modal-body stats-modal-body">
               {statsLoading ? (
-                <div className="stats-loading">
-                  <div className="loading-spinner"></div>
+                <div className="stats-stats-loading">
+                  <div className="stats-loading-spinner"></div>
                   <p>Loading statistics...</p>
                 </div>
               ) : (
