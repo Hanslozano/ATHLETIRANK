@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaSearch, FaFilter, FaDownload, FaTrophy, FaArrowLeft, FaUsers, FaChartBar } from "react-icons/fa";
 import "../../style/Admin_Stats.css";
 
-const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedded = false }) => {
+const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedded = false, statsViewMode = "players", onViewModeChange }) => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(preselectedEvent || null);
@@ -21,8 +21,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [cameFromAdminEvents, setCameFromAdminEvents] = useState(false);
   
-  // Updated states for view modes
-  const [viewMode, setViewMode] = useState("allPlayers");
   const [sortConfig, setSortConfig] = useState({ key: 'overall_score', direction: 'desc' });
 
   // Pagination state
@@ -119,10 +117,33 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     }
   }, [preselectedEvent, preselectedBracket]);
 
+  // Auto-load data when statsViewMode changes (controlled by parent)
+  useEffect(() => {
+    const loadDataForStatsView = async () => {
+      if (selectedEvent && selectedBracket && statsViewMode) {
+        setLoading(true);
+        try {
+          if (statsViewMode === "players") {
+            await loadAllPlayersData(selectedEvent.id, selectedBracket.id);
+          } else if (statsViewMode === "teams") {
+            await loadAllTeamsData(selectedEvent.id, selectedBracket.id);
+          }
+          await loadEventStatistics(selectedEvent.id, selectedBracket.id);
+        } catch (err) {
+          console.error("Error loading data for stats view:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadDataForStatsView();
+  }, [statsViewMode, selectedEvent, selectedBracket]);
+
   // Fetch events only if no preselected event
   useEffect(() => {
     const fetchEvents = async () => {
-      if (preselectedEvent) return; // Skip if we have a preselected event
+      if (preselectedEvent) return;
       
       setLoading(true);
       try {
@@ -235,9 +256,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       setAllPlayersData([]);
       setAllTeamsData([]);
       
-      if (viewMode === "allPlayers") {
+      if (statsViewMode === "players") {
         setActiveTab("players");
-      } else if (viewMode === "teams") {
+      } else if (statsViewMode === "teams") {
         setActiveTab("teams");
       } else {
         setActiveTab("brackets");
@@ -269,9 +290,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       ];
       setMatches(mockMatches);
       
-      if (viewMode === "allPlayers") {
+      if (statsViewMode === "players") {
         setActiveTab("players");
-      } else if (viewMode === "teams") {
+      } else if (statsViewMode === "teams") {
         setActiveTab("teams");
       }
     } finally {
@@ -285,9 +306,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     setLoading(true);
     try {
       // Load data based on current view mode
-      if (viewMode === "allPlayers") {
+      if (statsViewMode === "players") {
         await loadAllPlayersData(selectedEvent.id, bracket.id);
-      } else if (viewMode === "teams") {
+      } else if (statsViewMode === "teams") {
         await loadAllTeamsData(selectedEvent.id, bracket.id);
       }
       
@@ -321,43 +342,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       setLoading(false);
     }
   };
-
-  // FIX: Automatically reload data when viewMode changes and a bracket is selected
-  useEffect(() => {
-    const reloadDataForViewMode = async () => {
-      if (selectedEvent && selectedBracket) {
-        setLoading(true);
-        try {
-          if (viewMode === "allPlayers") {
-            await loadAllPlayersData(selectedEvent.id, selectedBracket.id);
-            setActiveTab("players");
-          } else if (viewMode === "teams") {
-            await loadAllTeamsData(selectedEvent.id, selectedBracket.id);
-            setActiveTab("teams");
-          } else {
-            setActiveTab("brackets");
-          }
-          
-          await loadEventStatistics(selectedEvent.id, selectedBracket.id);
-        } catch (err) {
-          console.error("Error reloading data for view mode:", err);
-        } finally {
-          setLoading(false);
-        }
-      } else if (selectedEvent) {
-        // If no bracket selected but event is selected, update the active tab
-        if (viewMode === "allPlayers") {
-          setActiveTab("players");
-        } else if (viewMode === "teams") {
-          setActiveTab("teams");
-        } else {
-          setActiveTab("brackets");
-        }
-      }
-    };
-
-    reloadDataForViewMode();
-  }, [viewMode, selectedEvent, selectedBracket]);
 
   // Load all players data for the event
   const loadAllPlayersData = async (eventId, bracketId = null) => {
@@ -496,28 +480,26 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       if (value <= threshold.low) return 'stats-low-value';
       return 'stats-medium-value';
     } else {
-      // Volleyball thresholds - UPDATED for receptions
       const thresholds = {
-        kills: { high: 50, low: 20 },           // Total kills across all games
-        assists: { high: 40, low: 15 },         // Total assists across all games
-        digs: { high: 60, low: 25 },            // Total digs across all games
-        blocks: { high: 15, low: 5 },           // Total blocks across all games
-        service_aces: { high: 10, low: 3 },     // Total aces across all games
-        receptions: { high: 80, low: 30 },      // Total receptions across all games
-        serve_errors: { high: 10, low: 3 },     // Serve errors (lower is better)
-        attack_errors: { high: 8, low: 2 },     // Attack errors (lower is better)
-        reception_errors: { high: 6, low: 1 },  // Reception errors (lower is better)
-        eff: { high: 80, low: 30 },             // Efficiency per game
-        overall_score: { high: 25, low: 12 }    // Overall score per game
+        kills: { high: 50, low: 20 },
+        assists: { high: 40, low: 15 },
+        digs: { high: 60, low: 25 },
+        blocks: { high: 15, low: 5 },
+        service_aces: { high: 10, low: 3 },
+        receptions: { high: 80, low: 30 },
+        serve_errors: { high: 10, low: 3 },
+        attack_errors: { high: 8, low: 2 },
+        reception_errors: { high: 6, low: 1 },
+        eff: { high: 80, low: 30 },
+        overall_score: { high: 25, low: 12 }
       };
       
       const threshold = thresholds[stat];
       if (!threshold) return 'text-gray-300';
       
-      // For errors, lower values are better (reverse logic)
       if (stat.includes('errors')) {
-        if (value <= threshold.low) return 'stats-high-value'; // Low errors = good
-        if (value >= threshold.high) return 'stats-low-value'; // High errors = bad
+        if (value <= threshold.low) return 'stats-high-value';
+        if (value >= threshold.high) return 'stats-low-value';
         return 'stats-medium-value';
       }
       
@@ -527,7 +509,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     }
   };
 
-  // Export all players data to CSV - UPDATED for receptions
+  // Export all players data to CSV
   const exportAllPlayersCSV = () => {
     if (allPlayersData.length === 0) return;
     
@@ -552,7 +534,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.total_rebounds
       ]);
     } else {
-      // Volleyball - UPDATED with receptions
       headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 
                  'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Aces', 
                  'Total Receptions', 'Service Errors', 'Attack Errors', 'Reception Errors', 'Efficiency'];
@@ -568,7 +549,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.digs || 0,
         player.blocks || 0,
         player.service_aces || 0,
-        player.receptions || 0, // ADDED RECEPTIONS
+        player.receptions || 0,
         player.serve_errors || 0,
         player.attack_errors || 0,
         player.reception_errors || 0,
@@ -586,7 +567,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     document.body.removeChild(link);
   };
 
-  // Export all teams data to CSV - UPDATED for receptions
+  // Export all teams data to CSV
   const exportAllTeamsCSV = () => {
     if (allTeamsData.length === 0) return;
     
@@ -609,7 +590,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         team.total_rebounds
       ]);
     } else {
-      // Volleyball - UPDATED with receptions
       headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Aces', 'Total Receptions', 'Service Errors', 'Attack Errors', 'Reception Errors', 'Efficiency'];
       rows = filteredTeams.map((team, index) => [
         index + 1,
@@ -621,7 +601,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         team.digs || 0,
         team.blocks || 0,
         team.service_aces || 0,
-        team.receptions || 0, // ADDED RECEPTIONS
+        team.receptions || 0,
         team.serve_errors || 0,
         team.attack_errors || 0,
         team.reception_errors || 0,
@@ -729,7 +709,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-  // Render Volleyball Players Table Headers - UPDATED for receptions
+  // Render Volleyball Players Table Headers
   const renderVolleyballPlayerHeaders = () => {
     return (
       <>
@@ -748,7 +728,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <th className="stats-sortable-header" onClick={() => handleSort('service_aces')}>
           Total Aces {sortConfig.key === 'service_aces' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
-        {/* ADD RECEPTIONS COLUMN */}
         <th className="stats-sortable-header" onClick={() => handleSort('receptions')}>
           Total Receptions {sortConfig.key === 'receptions' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
@@ -781,8 +760,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
             {indexOfFirstItem + index + 1}
           </div>
         </td>
-        <td className="stats-player-name">{player.name}</td>
-        <td className="stats-team-name">{player.team_name}</td>
+        <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>{player.name}</td>
+        <td className="stats-team-name" style={{ fontSize: '0.9rem' }}>{player.team_name}</td>
         <td className="stats-jersey-number">{player.jersey_number}</td>
         <td className="stats-games-played">{player.games_played}</td>
         <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
@@ -796,7 +775,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     ));
   };
 
-  // Render Volleyball Players Table Rows - UPDATED for receptions
+  // Render Volleyball Players Table Rows
   const renderVolleyballPlayerRows = () => {
     return currentPlayers.map((player, index) => (
       <tr key={player.id} className="stats-player-row">
@@ -809,8 +788,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
             {indexOfFirstItem + index + 1}
           </div>
         </td>
-        <td className="stats-player-name">{player.name}</td>
-        <td className="stats-team-name">{player.team_name}</td>
+        <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>{player.name}</td>
+        <td className="stats-team-name" style={{ fontSize: '0.9rem' }}>{player.team_name}</td>
         <td className="stats-jersey-number">{player.jersey_number}</td>
         <td className="stats-games-played">{player.games_played}</td>
         <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
@@ -821,7 +800,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(player.digs, 'digs')}>{player.digs || 0}</td>
         <td className="stats-blocks">{player.blocks || 0}</td>
         <td className="stats-service-aces">{player.service_aces || 0}</td>
-        {/* ADD RECEPTIONS COLUMN */}
         <td className={getPerformanceColor(player.receptions, 'receptions')}>{player.receptions || 0}</td>
         <td className="stats-error">{player.serve_errors || 0}</td>
         <td className="stats-error">{player.attack_errors || 0}</td>
@@ -863,7 +841,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-  // Render Volleyball Teams Table Headers - UPDATED for receptions
+  // Render Volleyball Teams Table Headers
   const renderVolleyballTeamHeaders = () => {
     return (
       <>
@@ -897,7 +875,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         >
           Total Aces {sortConfig.key === 'service_aces' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
         </th>
-        {/* ADD RECEPTIONS COLUMN */}
         <th 
           className="stats-sortable-header"
           onClick={() => handleSort('receptions')}
@@ -945,7 +922,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
             {indexOfFirstItem + index + 1}
           </div>
         </td>
-        <td className="stats-team-name">{team.team_name}</td>
+        <td className="stats-team-name" style={{ fontSize: '0.95rem' }}>{team.team_name}</td>
         <td className="stats-games-played">{team.games_played}</td>
         <td className={getPerformanceColor(team.overall_score, 'overall_score')}>
           {team.overall_score || 0}
@@ -958,7 +935,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     ));
   };
 
-  // Render Volleyball Teams Table Rows - UPDATED for receptions
+  // Render Volleyball Teams Table Rows
   const renderVolleyballTeamRows = () => {
     return currentTeams.map((team, index) => (
       <tr key={team.team_id} className="stats-player-row">
@@ -971,7 +948,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
             {indexOfFirstItem + index + 1}
           </div>
         </td>
-        <td className="stats-team-name">{team.team_name}</td>
+        <td className="stats-team-name" style={{ fontSize: '0.95rem' }}>{team.team_name}</td>
         <td className="stats-games-played">{team.games_played}</td>
         <td className={getPerformanceColor(team.overall_score, 'overall_score')}>
           {team.overall_score || 0}
@@ -981,7 +958,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         <td className={getPerformanceColor(team.digs, 'digs')}>{team.digs || 0}</td>
         <td className="stats-blocks">{team.blocks || 0}</td>
         <td className="stats-service-aces">{team.service_aces || 0}</td>
-        {/* ADD RECEPTIONS COLUMN */}
         <td className={getPerformanceColor(team.receptions, 'receptions')}>{team.receptions || 0}</td>
         <td className="stats-error">{team.serve_errors || 0}</td>
         <td className="stats-error">{team.attack_errors || 0}</td>
@@ -1281,7 +1257,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-  // Render player statistics table for match view - UPDATED for receptions
+  // Render player statistics table for match view
   const renderMatchStatsTable = () => {
     if (playerStats.length === 0) return <p>No statistics available for this match.</p>;
     
@@ -1332,7 +1308,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
             <tbody>
               {filteredPlayerStats.map((player) => {
                 const jerseyNumber = player.jersey_number || player.jerseyNumber || "N/A";
-                // Calculate efficiency for volleyball: (Kills + Digs + Blocks + Aces) - Errors
                 const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0);
                 const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
                 
@@ -1377,7 +1352,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-  // Export data as CSV - UPDATED for receptions
+  // Export data as CSV
   const exportToCSV = () => {
     if (playerStats.length === 0) return;
     
@@ -1387,7 +1362,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     if (isBasketball) {
       csvContent += "Player,Team,Jersey,PTS,AST,REB,STL,BLK,3PM,Fouls,TO\n";
     } else {
-      // UPDATED: Added receptions column
       csvContent += "Player,Team,Jersey,Kills,Assists,Digs,Blocks,Aces,Receptions,Service Errors,Attack Errors,Reception Errors,Eff\n";
     }
     
@@ -1398,7 +1372,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       } else {
         const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0);
         const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
-        // UPDATED: Export receptions
         csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.kills || 0},${player.volleyball_assists || 0},${player.digs || 0},${player.volleyball_blocks || 0},${player.service_aces || 0},${player.receptions || 0},${player.serve_errors || 0},${player.attack_errors || 0},${player.reception_errors || 0},${efficiency}\n`;
       }
     });
@@ -1412,32 +1385,12 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     document.body.removeChild(link);
   };
 
-  // Render sport-specific stats cards with View Mode dropdown integrated
+  // Render sport-specific stats cards (removed View Mode card - now in parent)
   const renderStatsCards = () => {
     const sportType = getCurrentSportType();
     
     return (
       <div className="stats-cards-grid">
-        {/* View Mode Card - First in the grid */}
-        <div className="stats-card stats-view-mode-card">
-          <div className="stats-card-header">
-            <span className="stats-card-label">View Mode</span>
-            <FaChartBar className="stats-card-icon" />
-          </div>
-          <select 
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value)}
-            className="stats-view-mode-select"
-          >
-            <option value="allPlayers">All Players Statistics</option>
-            <option value="teams">Team Statistics</option>
-            <option value="match">Match-by-Match View</option>
-          </select>
-          <div className="stats-card-subtext">
-            Change data view
-          </div>
-        </div>
-        
         {/* Statistics Cards */}
         <div className="stats-card stats-card-primary">
           <div className="stats-card-header">
@@ -1483,10 +1436,10 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     );
   };
 
-return (
-  <div className={`stats-admin-dashboard ${embedded ? 'stats-embedded' : ''}`}>
-    <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
-      {!embedded && (
+  return (
+    <div className={`stats-admin-dashboard ${embedded ? 'stats-embedded' : ''}`}>
+      <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
+        {!embedded && (
           <div className="dashboard-header">
             <div>
               <h1>Admin Statistics</h1>
@@ -1497,51 +1450,15 @@ return (
 
         <div className="dashboard-main">
           <div className="bracket-content">
-           {/* Quick Stats Cards - Show for ALL view modes when event and bracket are selected */}
-{selectedEvent && selectedBracket && (
-  renderStatsCards()
-)}
+            {/* Quick Stats Cards - Show for ALL view modes when event and bracket are selected */}
+            {selectedEvent && selectedBracket && (
+              renderStatsCards()
+            )}
 
-            {/* Tabs Navigation */}
-            <div className="stats-tabs-navigation">
-              {viewMode === "allPlayers" && selectedEvent && selectedBracket && (
-                <button
-                  className={`stats-tab-btn ${activeTab === "players" ? "stats-tab-active" : ""}`}
-                  onClick={() => setActiveTab("players")}
-                >
-                  All Players Statistics
-                </button>
-              )}
-              {viewMode === "teams" && selectedEvent && selectedBracket && (
-                <button
-                  className={`stats-tab-btn ${activeTab === "teams" ? "stats-tab-active" : ""}`}
-                  onClick={() => setActiveTab("teams")}
-                >
-                  Team Statistics
-                </button>
-              )}
-              {viewMode === "match" && selectedEvent && selectedBracket && (
-                <button
-                  className={`stats-tab-btn ${activeTab === "brackets" ? "stats-tab-active" : ""}`}
-                  onClick={() => setActiveTab("brackets")}
-                >
-                  Brackets & Matches
-                </button>
-              )}
-              {playerStats.length > 0 && viewMode === "match" && (
-                <button
-                  className={`stats-tab-btn ${activeTab === "statistics" ? "stats-tab-active" : ""}`}
-                  onClick={() => setActiveTab("statistics")}
-                >
-                  Match Statistics
-                </button>
-              )}
-            </div>
-
-            {/* Tab Content */}
+            {/* Content based on statsViewMode */}
             <div className="stats-tab-content">
-              {/* All Players Statistics Tab */}
-              {activeTab === "players" && viewMode === "allPlayers" && (
+              {/* Players View */}
+              {statsViewMode === "players" && selectedEvent && selectedBracket && (
                 <div className="stats-players-section">
                   <div className="stats-section-header">
                     <h2 className="stats-section-title">
@@ -1571,8 +1488,8 @@ return (
                 </div>
               )}
 
-              {/* Team Statistics Tab */}
-              {activeTab === "teams" && viewMode === "teams" && (
+              {/* Teams View */}
+              {statsViewMode === "teams" && selectedEvent && selectedBracket && (
                 <div className="stats-players-section">
                   <div className="stats-section-header">
                     <h2 className="stats-section-title">
@@ -1602,8 +1519,8 @@ return (
                 </div>
               )}
 
-              {/* Brackets & Matches Tab */}
-              {activeTab === "brackets" && viewMode === "match" && selectedEvent && selectedBracket && (
+              {/* Matches View */}
+              {statsViewMode === "matches" && selectedEvent && selectedBracket && (
                 <div className="stats-brackets-section">
                   {loading ? (
                     <p className="stats-loading-text">Loading brackets and matches...</p>
@@ -1614,50 +1531,225 @@ return (
                   ) : (
                     <div className="stats-brackets-list">
                       <div className="stats-bracket-section">
-                        <div className="stats-bracket-header">
-                          <h3>
-                            {selectedBracket.name} - {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'} ({selectedBracket.sport_type})
+                        <div 
+                          className="stats-bracket-header"
+                          style={{
+                            background: '#1a2332',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            marginBottom: '24px',
+                            border: '1px solid rgba(148, 163, 184, 0.1)',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+                          }}
+                        >
+                          <h3 style={{
+                            fontSize: '1.5rem',
+                            fontWeight: '600',
+                            color: '#f1f5f9',
+                            marginBottom: '12px'
+                          }}>
+                            {selectedBracket.name}
                           </h3>
-                          {bracketWinners[selectedBracket.id] && (
-                            <div className="stats-bracket-winner">
-                              <FaTrophy /> Winner: {bracketWinners[selectedBracket.id]}
-                            </div>
-                          )}
+                          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span style={{
+                              padding: '6px 12px',
+                              background: 'rgba(59, 130, 246, 0.2)',
+                              borderRadius: '20px',
+                              fontSize: '0.875rem',
+                              color: '#93c5fd',
+                              border: '1px solid rgba(59, 130, 246, 0.3)'
+                            }}>
+                              {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}
+                            </span>
+                            <span style={{
+                              padding: '6px 12px',
+                              background: 'rgba(168, 85, 247, 0.2)',
+                              borderRadius: '20px',
+                              fontSize: '0.875rem',
+                              color: '#d8b4fe',
+                              border: '1px solid rgba(168, 85, 247, 0.3)',
+                              textTransform: 'capitalize'
+                            }}>
+                              {selectedBracket.sport_type}
+                            </span>
+                            {bracketWinners[selectedBracket.id] && (
+                              <div style={{
+                                padding: '6px 12px',
+                                background: 'rgba(34, 197, 94, 0.2)',
+                                borderRadius: '20px',
+                                fontSize: '0.875rem',
+                                color: '#86efac',
+                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                <FaTrophy style={{ color: '#fbbf24' }} /> Winner: {bracketWinners[selectedBracket.id]}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         
                         {matches.length > 0 ? (
-                          <div className="stats-matches-grid">
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+                            gap: '20px',
+                            padding: '0'
+                          }}>
                             {matches.map((match) => (
                               <div 
-                                key={match.id} 
-                                className="stats-match-card"
+                                key={match.id}
                                 onClick={() => handleMatchSelect(match)}
+                                style={{
+                                  background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                                  borderRadius: '12px',
+                                  padding: '20px',
+                                  border: '1px solid rgba(148, 163, 184, 0.2)',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.3s ease',
+                                  position: 'relative',
+                                  overflow: 'hidden'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(-4px)';
+                                  e.currentTarget.style.boxShadow = '0 12px 24px -4px rgba(0, 0, 0, 0.5)';
+                                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                                }}
                               >
-                                <div className="stats-match-teams">
-                                  <div className={`stats-match-team ${match.winner_id === match.team1_id ? "stats-match-winner" : ""}`}>
-                                    {match.team1_name}
-                                  </div>
-                                  <div className="stats-match-vs">vs</div>
-                                  <div className={`stats-match-team ${match.winner_id === match.team2_id ? "stats-match-winner" : ""}`}>
-                                    {match.team2_name}
-                                  </div>
+                                {/* Round Badge */}
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '16px',
+                                  left: '16px',
+                                  background: 'rgba(59, 130, 246, 0.2)',
+                                  padding: '6px 14px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  color: '#93c5fd',
+                                  border: '1px solid rgba(59, 130, 246, 0.3)'
+                                }}>
+                                  {formatRoundDisplay(match)}
                                 </div>
-                                <div className="stats-match-score">
-                                  {match.score_team1} - {match.score_team2}
-                                </div>
-                                <div className="stats-match-info">
-                                  <span>{formatRoundDisplay(match)}</span>
-                                  {match.winner_name && (
-                                    <span className="stats-match-winner-tag">
-                                      Winner: {match.winner_name}
+
+                                {/* Teams Section */}
+                                <div style={{ marginTop: '48px', marginBottom: '16px' }}>
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    marginBottom: '12px',
+                                    padding: '12px',
+                                    background: match.winner_id === match.team1_id 
+                                      ? 'rgba(34, 197, 94, 0.15)' 
+                                      : 'rgba(51, 65, 85, 0.5)',
+                                    borderRadius: '8px',
+                                    border: match.winner_id === match.team1_id 
+                                      ? '2px solid rgba(34, 197, 94, 0.4)' 
+                                      : '1px solid rgba(71, 85, 105, 0.3)',
+                                    transition: 'all 0.2s ease'
+                                  }}>
+                                    {match.winner_id === match.team1_id && (
+                                      <FaTrophy style={{ color: '#fbbf24', fontSize: '1rem' }} />
+                                    )}
+                                    <span style={{
+                                      flex: 1,
+                                      fontSize: '1rem',
+                                      fontWeight: match.winner_id === match.team1_id ? '600' : '500',
+                                      color: match.winner_id === match.team1_id ? '#86efac' : '#cbd5e1'
+                                    }}>
+                                      {match.team1_name}
                                     </span>
-                                  )}
+                                    <span style={{
+                                      fontSize: '1.25rem',
+                                      fontWeight: '700',
+                                      color: match.winner_id === match.team1_id ? '#86efac' : '#94a3b8',
+                                      minWidth: '32px',
+                                      textAlign: 'center'
+                                    }}>
+                                      {match.score_team1}
+                                    </span>
+                                  </div>
+
+                                  <div style={{
+                                    textAlign: 'center',
+                                    margin: '8px 0',
+                                    fontSize: '0.75rem',
+                                    color: '#64748b',
+                                    fontWeight: '600'
+                                  }}>
+                                    VS
+                                  </div>
+
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '12px',
+                                    background: match.winner_id === match.team2_id 
+                                      ? 'rgba(34, 197, 94, 0.15)' 
+                                      : 'rgba(51, 65, 85, 0.5)',
+                                    borderRadius: '8px',
+                                    border: match.winner_id === match.team2_id 
+                                      ? '2px solid rgba(34, 197, 94, 0.4)' 
+                                      : '1px solid rgba(71, 85, 105, 0.3)',
+                                    transition: 'all 0.2s ease'
+                                  }}>
+                                    {match.winner_id === match.team2_id && (
+                                      <FaTrophy style={{ color: '#fbbf24', fontSize: '1rem' }} />
+                                    )}
+                                    <span style={{
+                                      flex: 1,
+                                      fontSize: '1rem',
+                                      fontWeight: match.winner_id === match.team2_id ? '600' : '500',
+                                      color: match.winner_id === match.team2_id ? '#86efac' : '#cbd5e1'
+                                    }}>
+                                      {match.team2_name}
+                                    </span>
+                                    <span style={{
+                                      fontSize: '1.25rem',
+                                      fontWeight: '700',
+                                      color: match.winner_id === match.team2_id ? '#86efac' : '#94a3b8',
+                                      minWidth: '32px',
+                                      textAlign: 'center'
+                                    }}>
+                                      {match.score_team2}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="stats-match-actions">
-                                  <button className="stats-view-btn">
-                                    View Stats
-                                  </button>
-                                </div>
+
+                                {/* Action Button */}
+                                <button
+                                  style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    color: 'white',
+                                    fontSize: '0.875rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    marginTop: '12px'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
+                                    e.currentTarget.style.transform = 'scale(1.02)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                  }}
+                                >
+                                  View Detailed Stats →
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -1670,8 +1762,8 @@ return (
                 </div>
               )}
 
-              {/* Match Statistics Tab */}
-              {activeTab === "statistics" && viewMode === "match" && (
+              {/* Match Statistics View */}
+              {statsViewMode === "matches" && activeTab === "statistics" && (
                 <div className="stats-player-section">
                   <div className="stats-player-header">
                     {selectedMatch && (
