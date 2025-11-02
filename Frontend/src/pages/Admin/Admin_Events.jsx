@@ -2155,36 +2155,28 @@ const AdminEvents = ({ sidebarOpen }) => {
                     {contentTab === "statistics" && (
                       <div className="awards_standings_tab_content">
                         {/* VIEW SWITCHER - Prominent buttons */}
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'center',
-                          gap: '12px',
-                          marginBottom: '32px',
-                          background: '#1a2332',
-                          padding: '20px',
-                          borderRadius: '12px',
-                          border: '1px solid var(--border-color)'
-                        }}>
-                          <button
-                            onClick={() => setStatsViewMode("players")}
-                            style={{
-                              padding: '14px 32px',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '15px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              background: statsViewMode === "players" ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'transparent',
-                              color: statsViewMode === "players" ? '#ffffff' : '#cbd5e1',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              boxShadow: statsViewMode === "players" ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
-                            }}
-                          >
-                            <FaUsers /> Players
-                          </button>
+                        <div className="stats-view-mode-wrapper">
+                          <div className="stats-view-mode-container">
+                              <button
+                                        onClick={() => setStatsViewMode("players")}
+                                        style={{
+                                          padding: '14px 32px',
+                                          border: 'none',
+                                          borderRadius: '8px',
+                                          fontSize: '15px',
+                                          fontWeight: '600',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.2s ease',
+                                          background: statsViewMode === "players" ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'transparent',
+                                          color: statsViewMode === "players" ? '#ffffff' : '#cbd5e1',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '8px',
+                                          boxShadow: statsViewMode === "players" ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
+                                        }}
+                                      >
+                                        <FaUsers /> Players
+                                      </button>
                           <button
                             onClick={() => setStatsViewMode("teams")}
                             style={{
@@ -2225,7 +2217,10 @@ const AdminEvents = ({ sidebarOpen }) => {
                           >
                             <FaTrophy /> Matches
                           </button>
-                        </div>
+                          
+                              </div>
+                                
+</div>
 
                         <AdminStats 
                           sidebarOpen={sidebarOpen}

@@ -917,7 +917,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
               whiteSpace: 'nowrap'
             }}
           >
-            {groupByRound ? '📊 Grouped' : '📋 List'}
+            {groupByRound ? 'Grouped' : 'List'}
           </button>
           {canBulkSchedule && !isStaffView && (
             <button 

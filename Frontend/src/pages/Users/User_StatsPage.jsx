@@ -1220,7 +1220,13 @@ const loadRecentBracketData = async (event, bracket) => {
               ) : (
                 <>
                   {/* Stats Cards */}
-                  <div className="stats-cards-grid" style={{ marginBottom: '2rem' }}>
+                  <div className="stats-cards-grid" style={{
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: '20px',
+  padding: '0 20px',  // Add consistent horizontal padding
+  marginBottom: '24px'
+}}>
                     <div className="stats-card stats-view-mode-card">
                       <div className="stats-card-header">
                         <span className="stats-card-label">View Mode</span>

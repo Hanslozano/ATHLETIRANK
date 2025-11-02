@@ -20,6 +20,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [cameFromAdminEvents, setCameFromAdminEvents] = useState(false);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMatchForModal, setSelectedMatchForModal] = useState(null);
   
   const [sortConfig, setSortConfig] = useState({ key: 'overall_score', direction: 'desc' });
 
@@ -393,7 +396,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
 
   // Handle match selection to view player stats
   const handleMatchSelect = async (match) => {
-    setSelectedMatch(match);
+    setSelectedMatchForModal(match);
+    setIsModalOpen(true);
     setLoading(true);
     try {
       const res = await fetch(`http://localhost:5000/api/stats/matches/${match.id}/stats`);
@@ -407,13 +411,19 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
       }));
       
       setPlayerStats(playersWithDetails);
-      setActiveTab("statistics");
     } catch (err) {
       console.error("Error fetching player stats:", err);
       setPlayerStats([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add modal close function
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedMatchForModal(null);
+    setPlayerStats([]);
   };
 
   // Handle sorting for tables
@@ -974,7 +984,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     const sportType = getCurrentSportType();
     
     return (
-      <div className="stats-table-container">
+      <div className="stats-table-container" style={{
+        padding: '0 20px'
+      }}>
         <div className="stats-table-controls">
           <div className="stats-search-container">
             <FaSearch className="stats-search-icon" />
@@ -1119,7 +1131,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     const sportType = getCurrentSportType();
     
     return (
-      <div className="stats-table-container">
+      <div className="stats-table-container" style={{
+        padding: '0 20px'
+      }}>
         <div className="stats-table-controls">
           <div className="stats-search-container">
             <FaSearch className="stats-search-icon" />
@@ -1390,7 +1404,13 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     const sportType = getCurrentSportType();
     
     return (
-      <div className="stats-cards-grid">
+      <div className="stats-cards-grid" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '20px',
+        padding: '0 20px',
+        marginBottom: '24px'
+      }}>
         {/* Statistics Cards */}
         <div className="stats-card stats-card-primary">
           <div className="stats-card-header">
@@ -1464,12 +1484,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                     <h2 className="stats-section-title">
                       Player Statistics
                     </h2>
-                    <p className="stats-section-subtitle">
-                      {selectedBracket 
-                        ? `Showing players ranked by performance in ${selectedBracket.name} (${getCurrentSportType()})`
-                        : 'Please select a bracket to view player statistics'
-                      }
-                    </p>
                   </div>
 
                   {!selectedBracket ? (
@@ -1495,12 +1509,6 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                     <h2 className="stats-section-title">
                       Team Statistics
                     </h2>
-                    <p className="stats-section-subtitle">
-                      {selectedBracket 
-                        ? `Showing teams ranked by overall performance in ${selectedBracket.name} (${getCurrentSportType()})`
-                        : 'Please select a bracket to view team statistics'
-                      }
-                    </p>
                   </div>
 
                   {!selectedBracket ? (
@@ -1522,6 +1530,15 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
               {/* Matches View */}
               {statsViewMode === "matches" && selectedEvent && selectedBracket && (
                 <div className="stats-brackets-section">
+                  <div className="stats-section-header" style={{
+                    marginBottom: '24px',
+                    padding: '0 20px'
+                  }}>
+                    <h2 className="stats-section-title">
+                      Match Statistics
+                    </h2>
+                  </div>
+                  
                   {loading ? (
                     <p className="stats-loading-text">Loading brackets and matches...</p>
                   ) : matches.length === 0 ? (
@@ -1589,13 +1606,13 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                             )}
                           </div>
                         </div>
-                        
+          
                         {matches.length > 0 ? (
                           <div style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
                             gap: '20px',
-                            padding: '0'
+                            padding: '0 20px'
                           }}>
                             {matches.map((match) => (
                               <div 
@@ -1792,6 +1809,40 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
           </div>
         </div>
       </div>
+
+      {/* MODAL COMPONENT - PLACED RIGHT BEFORE THE FINAL CLOSING DIV */}
+      {isModalOpen && selectedMatchForModal && (
+        <div className="stats-modal-overlay" onClick={handleCloseModal}>
+          <div className="stats-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="stats-modal-header">
+              <h2 className="stats-modal-title">
+                {selectedMatchForModal.team1_name} vs {selectedMatchForModal.team2_name}
+              </h2>
+              <button className="stats-modal-close" onClick={handleCloseModal}>
+                &times;
+              </button>
+            </div>
+            <div className="stats-modal-body">
+              <div className="stats-match-details" style={{ marginBottom: '20px', padding: '0 20px' }}>
+                <p style={{ color: '#94a3b8', marginBottom: '8px' }}>
+                  {selectedEvent?.name} - {formatRoundDisplay(selectedMatchForModal)}
+                </p>
+                <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                  <strong>Bracket:</strong> {selectedBracket?.name || selectedMatchForModal.bracket_name} | 
+                  <strong> Type:</strong> {selectedBracket?.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'} |
+                  <strong> Sport:</strong> {getCurrentSportType()}
+                </p>
+              </div>
+              
+              {loading ? (
+                <p className="stats-loading-text">Loading statistics...</p>
+              ) : (
+                renderMatchStatsTable()
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
