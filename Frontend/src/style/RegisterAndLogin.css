@@ -37,20 +37,16 @@
 }
 
 .auth-card {
-  background: var(--background-card);
-  border-radius: var(--border-radius-lg);
-  box-shadow: 
-    var(--shadow-heavy),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 0 60px rgba(66, 133, 244, 0.1);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  position: relative;
-  transform: translateZ(0);
-  transition: var(--transition);
+    background: linear-gradient(135deg, var(--background-card) 0%, rgba(30, 37, 50, 0.8) 100%);  /* Use the gradient! */
+    
+    box-shadow: var(--shadow-heavy);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    position: relative;
+    width: 100%;
+    min-height: 750px; /* Ensure minimum height */
 }
-
 .auth-card::before {
   content: '';
   position: absolute;
@@ -71,7 +67,7 @@
 .auth-header {
   text-align: center;
   padding: 12px 16px 8px;
-  background: linear-gradient(135deg, var(--background-card) 0%, rgba(30, 37, 50, 0.8) 100%);
+  background: transparent;
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -211,10 +207,10 @@
 
 /* Ensure it's properly placed in the form container */
 .auth-form-container {
-    padding: 24px;
-    position: relative;
+  padding: 24px;
+  background: transparent;
+  position: relative;
 }
-
 /* Responsive */
 @media (max-width: 480px) {
     .back-to-home-btn {

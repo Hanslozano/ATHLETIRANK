@@ -94,11 +94,7 @@ const Login = () => {
                     <p className="brand-subtitle">ATHLETIRANK</p>
                 </div>
 
-                <div className="auth-tabs">
-                    <button className="tab-btn active">
-                        Login
-                    </button>
-                </div>
+              
 
                 <div className="auth-form-container">
                     <h2 className="form-title">Welcome Back</h2>
