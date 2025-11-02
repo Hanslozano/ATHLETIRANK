@@ -74,9 +74,16 @@ const AdminEvents = ({ sidebarOpen }) => {
   const [awardsTab, setAwardsTab] = useState("standings");
 
   const safeNumber = (value, decimals = 1) => {
-    const num = Number(value);
-    return isNaN(num) ? 0 : Number(num.toFixed(decimals));
-  };
+  const num = Number(value);
+  if (isNaN(num)) return 0;
+  
+  // For efficiency, always use 2 decimal places
+  if (typeof value === 'string' && value.includes('Eff')) {
+    return Number(num.toFixed(2));
+  }
+  
+  return Number(num.toFixed(decimals));
+};
 
   // Sport position mappings
   const sportPositions = {
@@ -94,43 +101,6 @@ const AdminEvents = ({ sidebarOpen }) => {
       'Middle Blocker',
       'Libero',
       'Defensive Specialist'
-    ],
-    football: [
-      'Quarterback',
-      'Running Back',
-      'Wide Receiver',
-      'Tight End',
-      'Offensive Lineman',
-      'Defensive Lineman',
-      'Linebacker',
-      'Cornerback',
-      'Safety',
-      'Kicker',
-      'Punter'
-    ],
-    soccer: [
-      'Goalkeeper',
-      'Defender',
-      'Center Back',
-      'Full Back',
-      'Midfielder',
-      'Defensive Midfielder',
-      'Attacking Midfielder',
-      'Winger',
-      'Forward',
-      'Striker'
-    ],
-    baseball: [
-      'Pitcher',
-      'Catcher',
-      'First Baseman',
-      'Second Baseman',
-      'Third Baseman',
-      'Shortstop',
-      'Left Fielder',
-      'Center Fielder',
-      'Right Fielder',
-      'Designated Hitter'
     ]
   };
 
@@ -544,97 +514,109 @@ const AdminEvents = ({ sidebarOpen }) => {
   };
 
   // Get awards for display
-  const getAwardsForDisplay = () => {
-    if (!awards || !selectedBracket) return [];
-    
-    const awardsArray = [];
-    
-    if (selectedBracket.sport_type === "basketball") {
-      if (awards.mvp) {
-        awardsArray.push({
-          category: "Most Valuable Player",
-          winner: awards.mvp.player_name || 'Unknown',
-          team: awards.mvp.team_name || 'Unknown',
-          stat: `${safeNumber(awards.mvp.ppg)} PPG`
-        });
-      }
-      if (awards.best_playmaker) {
-        awardsArray.push({
-          category: "Best Playmaker",
-          winner: awards.best_playmaker.player_name || 'Unknown',
-          team: awards.best_playmaker.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_playmaker.apg)} APG`
-        });
-      }
-      if (awards.best_defender) {
-        awardsArray.push({
-          category: "Best Defender",
-          winner: awards.best_defender.player_name || 'Unknown',
-          team: awards.best_defender.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_defender.spg)} SPG`
-        });
-      }
-      if (awards.best_rebounder) {
-        awardsArray.push({
-          category: "Best Rebounder",
-          winner: awards.best_rebounder.player_name || 'Unknown',
-          team: awards.best_rebounder.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_rebounder.rpg)} RPG`
-        });
-      }
-      if (awards.best_blocker) {
-        awardsArray.push({
-          category: "Best Blocker",
-          winner: awards.best_blocker.player_name || 'Unknown',
-          team: awards.best_blocker.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_blocker.bpg)} BPG`
-        });
-      }
-    } else {
-      if (awards.mvp) {
-        awardsArray.push({
-          category: "Most Valuable Player",
-          winner: awards.mvp.player_name || 'Unknown',
-          team: awards.mvp.team_name || 'Unknown',
-          stat: `${safeNumber(awards.mvp.kpg)} K/G`
-        });
-      }
-      if (awards.best_blocker) {
-        awardsArray.push({
-          category: "Best Blocker",
-          winner: awards.best_blocker.player_name || 'Unknown',
-          team: awards.best_blocker.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_blocker.bpg)} BPG, ${safeNumber(awards.best_blocker.hitting_percentage)}% Hit`
-        });
-      }
-      if (awards.best_setter) {
-        awardsArray.push({
-          category: "Best Setter",
-          winner: awards.best_setter.player_name || 'Unknown',
-          team: awards.best_setter.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_setter.apg)} A/G`
-        });
-      }
-      if (awards.best_libero) {
-        awardsArray.push({
-          category: "Best Libero",
-          winner: awards.best_libero.player_name || 'Unknown',
-          team: awards.best_libero.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_libero.dpg)} D/G, ${safeNumber(awards.best_libero.reception_percentage)}% Rec`
-        });
-      }
-      if (awards.best_server) {
-        awardsArray.push({
-          category: "Best Server",
-          winner: awards.best_server.player_name || 'Unknown',
-          team: awards.best_server.team_name || 'Unknown',
-          stat: `${safeNumber(awards.best_server.acepg)} ACE/G, ${safeNumber(awards.best_server.service_percentage)}% Srv`
-        });
-      }
+  // Update the getAwardsForDisplay function to show totals instead of averages
+  // Update the getAwardsForDisplay function to show totals instead of averages
+const getAwardsForDisplay = () => {
+  if (!awards || !selectedBracket) return [];
+  
+  const awardsArray = [];
+  
+  if (selectedBracket.sport_type === "basketball") {
+    if (awards.mvp) {
+      awardsArray.push({
+        category: "Most Valuable Player",
+        winner: awards.mvp.player_name || 'Unknown',
+        team: awards.mvp.team_name || 'Unknown',
+        stat: `${safeNumber(awards.mvp.total_points)} Points`
+      });
     }
-    
-    return awardsArray.filter(a => a.winner && a.winner !== 'Unknown');
-  };
+    if (awards.best_playmaker) {
+      awardsArray.push({
+        category: "Best Playmaker",
+        winner: awards.best_playmaker.player_name || 'Unknown',
+        team: awards.best_playmaker.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_playmaker.total_assists)} Assists`
+      });
+    }
+    if (awards.best_defender) {
+      awardsArray.push({
+        category: "Best Defender",
+        winner: awards.best_defender.player_name || 'Unknown',
+        team: awards.best_defender.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_defender.total_steals)} Steals`
+      });
+    }
+    if (awards.best_rebounder) {
+      awardsArray.push({
+        category: "Best Rebounder",
+        winner: awards.best_rebounder.player_name || 'Unknown',
+        team: awards.best_rebounder.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_rebounder.total_rebounds)} Rebounds`
+      });
+    }
+    if (awards.best_blocker) {
+      awardsArray.push({
+        category: "Best Blocker",
+        winner: awards.best_blocker.player_name || 'Unknown',
+        team: awards.best_blocker.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_blocker.total_blocks)} Blocks`
+      });
+    }
+  } else {
+    // Volleyball - using totals instead of averages
+    if (awards.mvp) {
+      awardsArray.push({
+        category: "Most Valuable Player",
+        winner: awards.mvp.player_name || 'Unknown',
+        team: awards.mvp.team_name || 'Unknown',
+        stat: `${safeNumber(awards.mvp.total_kills)} Kills, ${safeNumber(awards.mvp.efficiency)} Eff`
+      });
+    }
+    if (awards.best_blocker) {
+      awardsArray.push({
+        category: "Best Blocker",
+        winner: awards.best_blocker.player_name || 'Unknown',
+        team: awards.best_blocker.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_blocker.total_blocks)} Blocks`
+      });
+    }
+    if (awards.best_setter) {
+      awardsArray.push({
+        category: "Best Setter",
+        winner: awards.best_setter.player_name || 'Unknown',
+        team: awards.best_setter.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_setter.total_assists)} Assists`
+      });
+    }
+    if (awards.best_libero) {
+      awardsArray.push({
+        category: "Best Libero",
+        winner: awards.best_libero.player_name || 'Unknown',
+        team: awards.best_libero.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_libero.total_digs)} Digs`
+      });
+    }
+    if (awards.best_server) {
+      awardsArray.push({
+        category: "Best Server",
+        winner: awards.best_server.player_name || 'Unknown',
+        team: awards.best_server.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_server.total_aces)} Aces`
+      });
+    }
+    if (awards.best_spiker) {
+      awardsArray.push({
+        category: "Best Spiker",
+        winner: awards.best_spiker.player_name || 'Unknown',
+        team: awards.best_spiker.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_spiker.total_kills)} Kills`
+      });
+    }
+  }
+  
+  return awardsArray.filter(a => a.winner && a.winner !== 'Unknown');
+};
+
 
   // Edit handlers
   const handleEditEvent = (event) => {
@@ -1979,129 +1961,107 @@ const AdminEvents = ({ sidebarOpen }) => {
                               </div>
                             )}
 
-                            {awardsTab === "mvp" && (
-                              <div className="awards_standings_tab_content">
-                                {!mvpData ? (
-                                  <div className="bracket-no-brackets">
-                                    <p>No MVP data available. Make sure player statistics have been recorded for completed matches.</p>
-                                  </div>
-                                ) : (
-                                  <div className="awards_standings_mvp_section">
-                                    <div className="awards_standings_mvp_header">
-                                      <div className="awards_standings_mvp_crown">
-                                        <FaCrown />
-                                      </div>
-                                      <h2>Tournament Most Valuable Player</h2>
-                                    </div>
-                                    
-                                    <div className="awards_standings_mvp_card">
-                                      <div className="awards_standings_mvp_info">
-                                        <div className="awards_standings_mvp_name_section">
-                                          <h3>{mvpData.player_name || 'Unknown Player'}</h3>
-                                          <span className="awards_standings_mvp_team">{mvpData.team_name || 'Unknown Team'}</span>
-                                          <span className="awards_standings_mvp_jersey">#{mvpData.jersey_number || 'N/A'}</span>
-                                        </div>
-                                        
-                                        <div className="awards_standings_mvp_stats_grid">
-                                          <div className="awards_standings_stat_card">
-                                            <div className="awards_standings_stat_value">{mvpData.games_played || 0}</div>
-                                            <div className="awards_standings_stat_label">Games Played</div>
-                                          </div>
 
-                                          {selectedBracket.sport_type === "basketball" ? (
-                                            <>
-                                              <div className="awards_standings_stat_card awards_standings_highlight">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.ppg)}</div>
-                                                <div className="awards_standings_stat_label">PPG</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.apg)}</div>
-                                                <div className="awards_standings_stat_label">APG</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.rpg)}</div>
-                                                <div className="awards_standings_stat_label">RPG</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.spg)}</div>
-                                                <div className="awards_standings_stat_label">SPG</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.bpg)}</div>
-                                                <div className="awards_standings_stat_label">BPG</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card awards_standings_highlight">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.mvp_score, 2)}</div>
-                                                <div className="awards_standings_stat_label">MVP Score</div>
-                                              </div>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <div className="awards_standings_stat_card awards_standings_highlight">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.kpg)}</div>
-                                                <div className="awards_standings_stat_label">K/G</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.apg)}</div>
-                                                <div className="awards_standings_stat_label">A/G</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.dpg)}</div>
-                                                <div className="awards_standings_stat_label">D/G</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.bpg)}</div>
-                                                <div className="awards_standings_stat_label">B/G</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.acepg)}</div>
-                                                <div className="awards_standings_stat_label">Ace/G</div>
-                                              </div>
-                                              <div className="awards_standings_stat_card awards_standings_highlight">
-                                                <div className="awards_standings_stat_value">{safeNumber(mvpData.mvp_score, 2)}</div>
-                                                <div className="awards_standings_stat_label">MVP Score</div>
-                                              </div>
-                                            </>
-                                          )}
-                                        </div>
+{awardsTab === "mvp" && (
+  <div className="awards_standings_tab_content">
+    {!mvpData ? (
+      <div className="bracket-no-brackets">
+        <p>No MVP data available. Make sure player statistics have been recorded for completed matches.</p>
+      </div>
+    ) : (
+      <div className="awards_standings_mvp_section">
+        <div className="awards_standings_mvp_header">
+          <div className="awards_standings_mvp_crown">
+            <FaCrown />
+          </div>
+          <h2>Tournament Most Valuable Player</h2>
+        </div>
+        
+        <div className="awards_standings_mvp_card">
+          <div className="awards_standings_mvp_info">
+            <div className="awards_standings_mvp_name_section">
+              <h3>{mvpData.player_name || 'Unknown Player'}</h3>
+              <span className="awards_standings_mvp_team">{mvpData.team_name || 'Unknown Team'}</span>
+              <span className="awards_standings_mvp_jersey">#{mvpData.jersey_number || 'N/A'}</span>
+            </div>
+            
+            <div className="awards_standings_mvp_stats_grid">
+              <div className="awards_standings_stat_card">
+                <div className="awards_standings_stat_value">{mvpData.games_played || 0}</div>
+                <div className="awards_standings_stat_label">Games Played</div>
+              </div>
 
-                                        {selectedBracket.sport_type === "volleyball" && (
-                                          <div className="awards_standings_percentage_section">
-                                            <h4>Performance Percentages</h4>
-                                            <div className="awards_standings_percentage_grid">
-                                              <div className="awards_standings_percentage_card">
-                                                <div className="awards_standings_percentage_bar">
-                                                  <div 
-                                                    className="awards_standings_percentage_fill"
-                                                    style={{ width: `${Math.min(Math.max(mvpData.hitting_percentage || 0, 0), 100)}%` }}
-                                                  ></div>
-                                                </div>
-                                                <div className="awards_standings_percentage_label">
-                                                  <span>Hitting %</span>
-                                                  <strong>{safeNumber(mvpData.hitting_percentage)}%</strong>
-                                                </div>
-                                              </div>
-                                              <div className="awards_standings_percentage_card">
-                                                <div className="awards_standings_percentage_bar">
-                                                  <div 
-                                                    className="awards_standings_percentage_fill"
-                                                    style={{ width: `${Math.min(Math.max(mvpData.service_percentage || 0, 0), 100)}%` }}
-                                                  ></div>
-                                                </div>
-                                                <div className="awards_standings_percentage_label">
-                                                  <span>Service %</span>
-                                                  <strong>{safeNumber(mvpData.service_percentage)}%</strong>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+              {selectedBracket.sport_type === "basketball" ? (
+                <>
+                  <div className="awards_standings_stat_card awards_standings_highlight">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_points)}</div>
+                    <div className="awards_standings_stat_label">Points</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_assists)}</div>
+                    <div className="awards_standings_stat_label">Assists</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_rebounds)}</div>
+                    <div className="awards_standings_stat_label">Rebounds</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_steals)}</div>
+                    <div className="awards_standings_stat_label">Steals</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_blocks)}</div>
+                    <div className="awards_standings_stat_label">Blocks</div>
+                  </div>
+                  <div className="awards_standings_stat_card awards_standings_highlight">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.mvp_score, 2)}</div>
+                    <div className="awards_standings_stat_label">MVP Score</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="awards_standings_stat_card awards_standings_highlight">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_kills)}</div>
+                    <div className="awards_standings_stat_label">Kills</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_assists)}</div>
+                    <div className="awards_standings_stat_label">Assists</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_digs)}</div>
+                    <div className="awards_standings_stat_label">Digs</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_blocks)}</div>
+                    <div className="awards_standings_stat_label">Blocks</div>
+                  </div>
+                  <div className="awards_standings_stat_card">
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_aces)}</div>
+                    <div className="awards_standings_stat_label">Aces</div>
+                  </div>
+                  <div className="awards_standings_stat_card awards_standings_highlight">
+  <div className="awards_standings_stat_value">
+    {mvpData.efficiency !== null && mvpData.efficiency !== undefined 
+      ? Number(mvpData.efficiency).toFixed(1)
+      : '0.0'
+    }
+  </div>
+  <div className="awards_standings_stat_label">Efficiency</div>
+</div>
+                </>
+              )}
+            </div>
+            
+            {/* Performance Percentage section has been removed */}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+                            
 
                             {awardsTab === "awards" && (
                               <div className="awards_standings_tab_content">
