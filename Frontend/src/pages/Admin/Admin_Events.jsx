@@ -1993,25 +1993,26 @@ const getAwardsForDisplay = () => {
 
               {selectedBracket.sport_type === "basketball" ? (
                 <>
+                  {/* BASKETBALL - Show per-game averages */}
                   <div className="awards_standings_stat_card awards_standings_highlight">
-                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_points)}</div>
-                    <div className="awards_standings_stat_label">Points</div>
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.ppg)}</div>
+                    <div className="awards_standings_stat_label">PPG</div>
                   </div>
                   <div className="awards_standings_stat_card">
-                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_assists)}</div>
-                    <div className="awards_standings_stat_label">Assists</div>
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.apg)}</div>
+                    <div className="awards_standings_stat_label">APG</div>
                   </div>
                   <div className="awards_standings_stat_card">
-                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_rebounds)}</div>
-                    <div className="awards_standings_stat_label">Rebounds</div>
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.rpg)}</div>
+                    <div className="awards_standings_stat_label">RPG</div>
                   </div>
                   <div className="awards_standings_stat_card">
-                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_steals)}</div>
-                    <div className="awards_standings_stat_label">Steals</div>
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.spg)}</div>
+                    <div className="awards_standings_stat_label">SPG</div>
                   </div>
                   <div className="awards_standings_stat_card">
-                    <div className="awards_standings_stat_value">{safeNumber(mvpData.total_blocks)}</div>
-                    <div className="awards_standings_stat_label">Blocks</div>
+                    <div className="awards_standings_stat_value">{safeNumber(mvpData.bpg)}</div>
+                    <div className="awards_standings_stat_label">BPG</div>
                   </div>
                   <div className="awards_standings_stat_card awards_standings_highlight">
                     <div className="awards_standings_stat_value">{safeNumber(mvpData.mvp_score, 2)}</div>
@@ -2020,6 +2021,7 @@ const getAwardsForDisplay = () => {
                 </>
               ) : (
                 <>
+                  {/* VOLLEYBALL - Show totals */}
                   <div className="awards_standings_stat_card awards_standings_highlight">
                     <div className="awards_standings_stat_value">{safeNumber(mvpData.total_kills)}</div>
                     <div className="awards_standings_stat_label">Kills</div>
@@ -2041,19 +2043,17 @@ const getAwardsForDisplay = () => {
                     <div className="awards_standings_stat_label">Aces</div>
                   </div>
                   <div className="awards_standings_stat_card awards_standings_highlight">
-  <div className="awards_standings_stat_value">
-    {mvpData.efficiency !== null && mvpData.efficiency !== undefined 
-      ? Number(mvpData.efficiency).toFixed(1)
-      : '0.0'
-    }
-  </div>
-  <div className="awards_standings_stat_label">Efficiency</div>
-</div>
+                    <div className="awards_standings_stat_value">
+                      {mvpData.efficiency !== null && mvpData.efficiency !== undefined 
+                        ? Number(mvpData.efficiency).toFixed(1)
+                        : '0.0'
+                      }
+                    </div>
+                    <div className="awards_standings_stat_label">Efficiency</div>
+                  </div>
                 </>
               )}
             </div>
-            
-            {/* Performance Percentage section has been removed */}
           </div>
         </div>
       </div>

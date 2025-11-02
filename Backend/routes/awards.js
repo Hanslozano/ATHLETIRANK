@@ -55,6 +55,7 @@ router.get("/brackets/:bracketId/champion", async (req, res) => {
 });
 
 // GET MVP and awards for a bracket - UPDATED FOR VOLLEYBALL TOTALS AND EFFICIENCY
+// GET MVP and awards for a bracket - FIXED: Basketball uses per-game averages, volleyball uses totals
 router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
   try {
     const { bracketId } = req.params;
@@ -99,11 +100,12 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         SUM(ps.blocks) as total_blocks,
         SUM(ps.fouls) as total_fouls,
         SUM(ps.turnovers) as total_turnovers,
-        AVG(ps.points) as ppg,
-        AVG(ps.assists) as apg,
-        AVG(ps.rebounds) as rpg,
-        AVG(ps.steals) as spg,
-        AVG(ps.blocks) as bpg
+        -- PER-GAME AVERAGES for basketball
+        ROUND(AVG(ps.points), 1) as ppg,
+        ROUND(AVG(ps.assists), 1) as apg,
+        ROUND(AVG(ps.rebounds), 1) as rpg,
+        ROUND(AVG(ps.steals), 1) as spg,
+        ROUND(AVG(ps.blocks), 1) as bpg
       FROM player_stats ps
       JOIN players p ON ps.player_id = p.id
       JOIN teams t ON p.team_id = t.id
@@ -120,7 +122,7 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         p.team_id,
         t.name as team_name,
         COUNT(DISTINCT ps.match_id) as games_played,
-        -- TOTAL COUNTS (not averages)
+        -- TOTAL COUNTS for volleyball (not averages)
         SUM(ps.kills) as total_kills,
         SUM(ps.volleyball_assists) as total_assists,
         SUM(ps.digs) as total_digs,
@@ -175,7 +177,7 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
     let awards = {};
     
     if (sportType === 'basketball') {
-      // Basketball logic remains the same
+      // Basketball logic - use per-game averages for MVP calculation
       const championPlayers = allPlayerStats.filter(p => p.team_id === championTeamId);
       const playersWithScores = championPlayers.map(player => ({
         ...player,
@@ -184,13 +186,16 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       playersWithScores.sort((a, b) => b.mvp_score - a.mvp_score);
       mvpData = playersWithScores[0];
       
-      const sortedByAssists = [...allPlayerStats].sort((a, b) => b.total_assists - a.total_assists);
-      const sortedBySteals = [...allPlayerStats].sort((a, b) => b.total_steals - a.total_steals);
-      const sortedByRebounds = [...allPlayerStats].sort((a, b) => b.total_rebounds - a.total_rebounds);
-      const sortedByBlocks = [...allPlayerStats].sort((a, b) => b.total_blocks - a.total_blocks);
+      // For basketball awards, use per-game averages for sorting
+      const sortedByAssists = [...allPlayerStats].sort((a, b) => b.apg - a.apg);
+      const sortedBySteals = [...allPlayerStats].sort((a, b) => b.spg - a.spg);
+      const sortedByRebounds = [...allPlayerStats].sort((a, b) => b.rpg - a.rpg);
+      const sortedByBlocks = [...allPlayerStats].sort((a, b) => b.bpg - a.bpg);
+      const sortedByPoints = [...allPlayerStats].sort((a, b) => b.ppg - a.ppg);
       
       awards = {
         mvp: mvpData,
+        best_scorer: sortedByPoints[0],
         best_playmaker: sortedByAssists[0],
         best_defender: sortedBySteals[0],
         best_rebounder: sortedByRebounds[0],
@@ -198,7 +203,7 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       };
       
     } else {
-      // Volleyball - updated to use totals
+      // Volleyball - use totals for MVP calculation
       const championPlayers = allPlayerStats.filter(p => p.team_id === championTeamId);
       
       // Calculate MVP scores for champion team using totals
@@ -212,7 +217,7 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       playersWithScores.sort((a, b) => b.mvp_score - a.mvp_score);
       mvpData = playersWithScores[0];
       
-      // Calculate awards using TOTAL counts instead of averages
+      // Calculate awards using TOTAL counts for volleyball
       const sortedByBlocks = [...allPlayerStats].sort((a, b) => {
         if (b.total_blocks !== a.total_blocks) {
           return b.total_blocks - a.total_blocks;
@@ -249,7 +254,7 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         best_setter: sortedByAssists[0],
         best_libero: sortedByDigs[0],
         best_server: sortedByAces[0],
-        best_spiker: sortedByKills[0] // Added best spiker award
+        best_spiker: sortedByKills[0]
       };
     }
     
