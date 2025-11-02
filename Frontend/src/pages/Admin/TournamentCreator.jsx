@@ -415,6 +415,11 @@ const getPositionLimits = (teamSize, sport) => {
 };
 
   const handleAddTeam = async () => {
+    if (createdTeams.length >= 10) {
+    setValidationError("Maximum 10 teams allowed per tournament. Please remove a team before adding a new one.");
+    return;
+  }
+
     const error = validateTeam();
     if (error) {
       setValidationError(error);
@@ -461,6 +466,11 @@ const getPositionLimits = (teamSize, sport) => {
       setValidationError("You need at least 2 teams to create brackets");
       return;
     }
+
+     if (createdTeams.length > 10) {
+    setValidationError("Maximum 10 teams allowed per tournament");
+    return;
+  }
 
     // Validate sport consistency for each bracket
     if (eventData.numberOfBrackets === 1) {
@@ -516,6 +526,10 @@ const getPositionLimits = (teamSize, sport) => {
 
   // Handle selecting existing team with bracket assignment
   const handleSelectExistingTeam = (teamId, bracketId = null) => {
+     if (createdTeams.length >= 10) {
+    setValidationError("Maximum 10 teams allowed per tournament. Please remove a team before adding a new one.");
+    return;
+  }
     const team = teams.find(t => t.id === teamId);
     if (team && !createdTeams.find(t => t.id === team.id)) {
       setCreatedTeams(prev => [...prev, team]);
@@ -952,7 +966,7 @@ const handleCreateAllBrackets = async () => {
                 <div className="bracket-form-container">
                   <h2>Step 2: Add Teams</h2>
                   <p className="step-description">
-                    Create new teams or select from existing teams (minimum 2 teams required)
+                   Create new teams or select from existing teams (minimum 2 teams, maximum 10 teams required)
                     {eventData.numberOfBrackets > 1 && (
                       <span style={{color: '#fbbf24', display: 'block', marginTop: '5px'}}>
                         Since you have multiple brackets, please assign each team to a bracket after adding them.
@@ -979,7 +993,22 @@ const handleCreateAllBrackets = async () => {
                   {/* Created/Selected Teams Summary */}
                   {createdTeams.length > 0 && (
                     <div className="created-teams-summary">
-                      <h3>Selected Teams ({createdTeams.length})</h3>
+                      <h3>Selected Teams ({createdTeams.length}/10)</h3>
+                      {createdTeams.length >= 10 && (
+  <div style={{
+    background: 'rgba(251, 191, 36, 0.1)',
+    border: '1px solid rgba(251, 191, 36, 0.3)',
+    borderRadius: '6px',
+    padding: '10px',
+    marginBottom: '15px',
+    color: '#fbbf24',
+    fontSize: '14px',
+    textAlign: 'center'
+  }}>
+    ⚠️ Maximum team limit reached (10/10). Remove a team to add another.
+  </div>
+)}
+
                       <div className="teams-summary-grid">
                         {createdTeams.map(team => (
                           <div key={team.id} className="team-summary-card">
@@ -1151,8 +1180,9 @@ const handleCreateAllBrackets = async () => {
                           ))}
                           
                           {/* Add More Players Button */}
+                      {/* Add More Players Button */}
                           {currentTeam.players.length < 15 && (
-                            <div className="add-players-section">
+                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px', marginBottom: '15px' }}>
                               <button
                                 type="button"
                                 className="add-player-btn"
@@ -1163,8 +1193,7 @@ const handleCreateAllBrackets = async () => {
                                 Add More Players ({15 - currentTeam.players.length} slots available)
                               </button>
                             </div>
-                          )}
-                          
+                          )}      
                           {/* Information message */}
                           <div style={{
   background: 'rgba(59, 130, 246, 0.1)',
@@ -1186,9 +1215,9 @@ const handleCreateAllBrackets = async () => {
                         <button 
                           onClick={handleAddTeam}
                           className="bracket-submit-btn"
-                          disabled={loading || validPlayerCount < 12 || validPlayerCount > 15}
+                          disabled={loading || validPlayerCount < 12 || validPlayerCount > 15 || createdTeams.length >= 10}
                         >
-                          {loading ? "Adding..." : "Add Team"}
+                         {loading ? "Adding..." : createdTeams.length >= 10 ? "Team Limit Reached (10/10)" : "Add Team"}
                         </button>
                         <button
                           type="button"
@@ -1274,6 +1303,7 @@ const handleCreateAllBrackets = async () => {
                                             handleSelectExistingTeam(team.id, bracketId);
                                           }
                                         }}
+                                         disabled={createdTeams.length >= 10}
                                         className="bracket-assignment-select"
                                         style={{
                                           padding: '8px 12px',
@@ -1282,11 +1312,13 @@ const handleCreateAllBrackets = async () => {
                                           background: '#1a2332',
                                           color: '#e2e8f0',
                                           fontSize: '16px',
-                                          width: '100%'
+                                          width: '100%',
+                                          opacity: createdTeams.length >= 10 ? 0.5 : 1,  // ADD THIS
+    cursor: createdTeams.length >= 10 ? 'not-allowed' : 'pointer'  // ADD THIS
                                         }}
                                       >
-                                        <option value="">Select bracket first</option>
-                                        {getBracketOptions().map(bracket => (
+                                         <option value="">{createdTeams.length >= 10 ? "Team limit reached" : "Select bracket first"}</option>  // CHANGE THIS
+  {createdTeams.length < 10 && getBracketOptions().map(bracket => (
                                           <option key={bracket.id} value={bracket.id}>
                                             {bracket.name}
                                           </option>
@@ -1298,11 +1330,12 @@ const handleCreateAllBrackets = async () => {
                                     <td>
                                       <button
                                         className="add-team-btn"
-                                        onClick={() => handleSelectExistingTeam(team.id)}
-                                        title="Add Team"
-                                        style={{ fontSize: '16px' }}
-                                      >
-                                        Add Team
+  onClick={() => handleSelectExistingTeam(team.id)}
+  disabled={createdTeams.length >= 10}  // ADD THIS
+  title={createdTeams.length >= 10 ? "Maximum team limit reached" : "Add Team"}  // ADD THIS
+  style={{ fontSize: '16px' }}
+>
+ {createdTeams.length >= 10 ? "Limit Reached" : "Add Team"}   
                                       </button>
                                     </td>
                                   )}
@@ -1408,19 +1441,18 @@ const handleCreateAllBrackets = async () => {
     <option value="round_robin">Round Robin</option>
   </select>
   
-  {/* Add description for each type */}
-  {bracket.bracketType === 'single' && (
-    <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
-      Single game knockout - one loss eliminates a team
+ {bracket.bracketType === 'single' && (
+    <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
+      One loss eliminates a team from the tournament
     </small>
   )}
   {bracket.bracketType === 'double' && (
-    <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
-      Teams get a second chance - must lose twice to be eliminated
+    <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
+      Teams must lose twice to be eliminated from the tournament
     </small>
   )}
   {bracket.bracketType === 'round_robin' && (
-    <small style={{ color: '#10b981', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+    <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
       All teams play each other once - winner determined by standings
     </small>
   )}
@@ -1730,32 +1762,25 @@ const handleCreateAllBrackets = async () => {
           transform: scale(1.1);
         }
 
-        .add-players-section {
-          margin-top: 15px;
-          padding: 15px;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.3);
-          border-radius: 6px;
-          text-align: center;
-        }
-
         .add-player-btn {
-          background: #10b981;
-          color: white;
-          border: none;
-          padding: 12px 20px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-        }
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 15px;
+}
 
-        .add-player-btn:hover {
-          background: #059669;
-          transform: translateY(-1px);
-        }
+.add-player-btn:hover {
+  background: #1976d2;
+  transform: translateY(-1px);
+}
+
 
         .admin-teams-count-success {
           color: #10b981;
