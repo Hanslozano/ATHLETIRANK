@@ -1,3 +1,4 @@
+
 /* CSS Variables - Using your theme colors */
 :root {
   --stats-primary: #3b82f6;
@@ -37,8 +38,8 @@
 .stats-players-section {
   background-color: #0f172a !important;
   padding-top: 0;
+  overflow: hidden; /* Add this */
 }
-
 .stats-brackets-section .stats-section-header {
   padding-top: 32px;
 }
@@ -289,10 +290,9 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* REMOVED HOVER EFFECTS FOR STATS CARDS */
 .stats-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
-  border-color: rgba(59, 130, 246, 0.5);
+  /* Removed transform and box-shadow changes */
 }
 
 .stats-card::before {
@@ -377,6 +377,20 @@
   z-index: 1;
 }
 
+/* Content Animation Classes */
+.stats-content-animate {
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.stats-content-animate.fadeIn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stats-content-animate.fadeOut {
+  opacity: 0;
+  transform: translateY(10px);
+}
 
 /* View Mode Buttons - Styled like Events page */
 .stats-view-mode-container {
@@ -468,6 +482,7 @@
   padding: 32px;
   max-width: 100%;
   overflow-x: hidden;
+  overflow-y: hidden; /* Add this */
 }
 
 /* Match-by-Match View - Special Background */
@@ -475,6 +490,7 @@
   background: #0f172a !important;
   padding: 0;
   border-radius: 0 var(--stats-radius) var(--stats-radius) var(--stats-radius);
+   overflow: hidden; /* Add this */
 }
 
 /* Ensure match cards in match-by-match view have proper contrast */
@@ -1525,4 +1541,37 @@
   color: var(--stats-text-secondary);
   font-size: 14px;
   border: 1px solid var(--stats-border-color);
+}
+
+/* Round Filter Buttons */
+.stats-round-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stats-round-filter-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid #2d3748;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stats-round-filter-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.stats-round-filter-btn.active {
+  border: 2px solid #3b82f6;
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }

@@ -20,11 +20,16 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [cameFromAdminEvents, setCameFromAdminEvents] = useState(false);
+  const [selectedRoundFilter, setSelectedRoundFilter] = useState('all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMatchForModal, setSelectedMatchForModal] = useState(null);
   
   const [sortConfig, setSortConfig] = useState({ key: 'overall_score', direction: 'desc' });
+
+  // Animation state
+  const [contentAnimation, setContentAnimation] = useState('fadeIn');
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,6 +52,19 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     avg_digs: 0,
     avg_total_errors: 0
   });
+
+  // Animation trigger function
+  const triggerContentAnimation = () => {
+    setIsAnimating(true);
+    setContentAnimation('fadeOut');
+    
+    setTimeout(() => {
+      setContentAnimation('fadeIn');
+      setTimeout(() => {
+        setIsAnimating(false);
+      }, 300);
+    }, 200);
+  };
 
   // Get current sport type
   const getCurrentSportType = () => {
@@ -125,6 +143,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     const loadDataForStatsView = async () => {
       if (selectedEvent && selectedBracket && statsViewMode) {
         setLoading(true);
+        triggerContentAnimation();
         try {
           if (statsViewMode === "players") {
             await loadAllPlayersData(selectedEvent.id, selectedBracket.id);
@@ -221,6 +240,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     setSelectedBracket(null);
     setLoading(true);
     setCurrentPage(1);
+    triggerContentAnimation();
     try {
       const bracketRes = await fetch(`http://localhost:5000/api/stats/events/${event.id}/brackets`);
       const bracketData = await bracketRes.json();
@@ -307,6 +327,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
   const handleBracketSelect = async (bracket) => {
     setSelectedBracket(bracket);
     setLoading(true);
+    triggerContentAnimation();
     try {
       // Load data based on current view mode
       if (statsViewMode === "players") {
@@ -683,9 +704,10 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
   };
 
   // Reset to page 1 when filters or items per page changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, itemsPerPage]);
+ useEffect(() => {
+  setCurrentPage(1);
+  setSelectedRoundFilter('all');
+}, [searchTerm, itemsPerPage]);
 
   // Render Basketball Players Table Headers
   const renderBasketballPlayerHeaders = () => {
@@ -984,7 +1006,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     const sportType = getCurrentSportType();
     
     return (
-      <div className="stats-table-container" style={{
+      <div className={`stats-table-container stats-content-animate ${contentAnimation}`} style={{
         padding: '0 20px'
       }}>
         <div className="stats-table-controls">
@@ -1131,7 +1153,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
     const sportType = getCurrentSportType();
     
     return (
-      <div className="stats-table-container" style={{
+      <div className={`stats-table-container stats-content-animate ${contentAnimation}`} style={{
         padding: '0 20px'
       }}>
         <div className="stats-table-controls">
@@ -1476,7 +1498,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
             )}
 
             {/* Content based on statsViewMode */}
-            <div className="stats-tab-content">
+            <div className={`stats-tab-content stats-content-animate ${contentAnimation}`}>
               {/* Players View */}
               {statsViewMode === "players" && selectedEvent && selectedBracket && (
                 <div className="stats-players-section">
@@ -1531,21 +1553,35 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
               {statsViewMode === "matches" && selectedEvent && selectedBracket && (
                 <div className="stats-brackets-section">
                   <div className="stats-section-header" style={{
-                    marginBottom: '24px',
-                    padding: '0 20px'
-                  }}>
-                    <h2 className="stats-section-title">
-                      Match Statistics
-                    </h2>
-                  </div>
+  marginBottom: '24px',
+  padding: '0 20px',
+  display: 'flex',
+  justifyContent: 'flex-end',
+  alignItems: 'center'
+}}>
+  <div className="stats-selection-group" style={{ minWidth: '200px' }}>
+    <select
+      value={selectedRoundFilter}
+      onChange={(e) => setSelectedRoundFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+      className="stats-selection-dropdown"
+    >
+      <option value="all">All Rounds</option>
+      {[...new Set(matches.filter(m => m.team1_name && m.team2_name && m.team1_name !== 'TBD' && m.team2_name !== 'TBD').map(m => m.round_number))].sort((a, b) => a - b).map(round => (
+        <option key={round} value={round}>
+          {formatRoundDisplay({ round_number: round, bracket_type: matches.find(m => m.round_number === round)?.bracket_type })}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
                   
                   {loading ? (
-                    <p className="stats-loading-text">Loading brackets and matches...</p>
-                  ) : matches.length === 0 ? (
-                    <div className="stats-empty-state">
-                      <p>No matches available for this bracket.</p>
-                    </div>
-                  ) : (
+  <p className="stats-loading-text">Loading brackets and matches...</p>
+) : matches.filter(m => m.team1_name && m.team2_name && m.team1_name !== 'TBD' && m.team2_name !== 'TBD').length === 0 ? (
+  <div className="stats-empty-state">
+    <p>No completed matches available for this bracket.</p>
+  </div>
+) : (
                     <div className="stats-brackets-list">
                       <div className="stats-bracket-section">
                         <div 
@@ -1607,14 +1643,22 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                           </div>
                         </div>
           
-                        {matches.length > 0 ? (
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-                            gap: '20px',
-                            padding: '0 20px'
-                          }}>
-                            {matches.map((match) => (
+                        {matches.filter(m => {
+  const isValidMatch = m.team1_name && m.team2_name && m.team1_name !== 'TBD' && m.team2_name !== 'TBD';
+  const matchesRound = selectedRoundFilter === 'all' || m.round_number === selectedRoundFilter;
+  return isValidMatch && matchesRound;
+}).length > 0 ? (
+  <div style={{
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+    gap: '20px',
+    padding: '0 20px'
+  }}>
+    {matches.filter(m => {
+      const isValidMatch = m.team1_name && m.team2_name && m.team1_name !== 'TBD' && m.team2_name !== 'TBD';
+      const matchesRound = selectedRoundFilter === 'all' || m.round_number === selectedRoundFilter;
+      return isValidMatch && matchesRound;
+    }).map((match) => (
                               <div 
                                 key={match.id}
                                 onClick={() => handleMatchSelect(match)}
@@ -1771,7 +1815,7 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
                             ))}
                           </div>
                         ) : (
-                          <p className="stats-no-matches">No matches available for this bracket.</p>
+                          <p className="stats-no-matches">No matches available for the selected round.</p>
                         )}
                       </div>
                     </div>
