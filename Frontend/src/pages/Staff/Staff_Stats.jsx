@@ -94,6 +94,7 @@ const StaffStats = ({ sidebarOpen }) => {
     blocks: [0, 0, 0, 0],
     fouls: [0, 0, 0, 0],
     turnovers: [0, 0, 0, 0],
+    technical_fouls: [0, 0, 0, 0], // ADDED: Technical fouls tracking
     isStarting: false,
     isOnCourt: false
   };
@@ -124,6 +125,7 @@ const StaffStats = ({ sidebarOpen }) => {
     { key: 'steals', label: 'STL', color: 'bg-yellow-600 hover:bg-yellow-700', points: 0 },
     { key: 'blocks', label: 'BLK', color: 'bg-red-600 hover:bg-red-700', points: 0 },
     { key: 'fouls', label: 'FOUL', color: 'bg-gray-600 hover:bg-gray-700', points: 0 },
+    { key: 'technical_fouls', label: 'TECH', color: 'bg-red-800 hover:bg-red-900', points: 0 }, // ADDED: Technical foul button
     { key: 'turnovers', label: 'TO', color: 'bg-pink-600 hover:bg-pink-700', points: 0 }
   ];
 
@@ -330,6 +332,30 @@ const StaffStats = ({ sidebarOpen }) => {
     };
   }, []);
 
+  // ============================================
+  // NEW FUNCTION: Check if player is fouled out
+  // ============================================
+  const isPlayerFouledOut = (player) => {
+    if (selectedGame?.sport_type !== "basketball") return false;
+    
+    const totalFouls = player.fouls ? player.fouls.reduce((a, b) => a + b, 0) : 0;
+    const overtimeFouls = player.overtime_fouls ? player.overtime_fouls.reduce((a, b) => a + b, 0) : 0;
+    const totalTechnicalFouls = player.technical_fouls ? player.technical_fouls.reduce((a, b) => a + b, 0) : 0;
+    const overtimeTechnicalFouls = player.overtime_technical_fouls ? player.overtime_technical_fouls.reduce((a, b) => a + b, 0) : 0;
+    
+    const allFouls = totalFouls + overtimeFouls;
+    const allTechnicalFouls = totalTechnicalFouls + overtimeTechnicalFouls;
+    
+    return allFouls >= 5 || allTechnicalFouls >= 2;
+  };
+
+  // ============================================
+  // NEW FUNCTION: Check if player should be disabled
+  // ============================================
+  const isPlayerDisabled = (player) => {
+    return isPlayerFouledOut(player);
+  };
+
   // Function to calculate current score for QuickScore
   const calculateQuickScoreCurrentScore = (player) => {
     if (selectedGame?.sport_type === 'basketball') {
@@ -355,10 +381,18 @@ const StaffStats = ({ sidebarOpen }) => {
     }
   };
 
-  // QuickScore stat click handler
+  // QuickScore stat click handler - UPDATED with foul check
   const handleQuickScoreStatClick = (playerId, statKey) => {
     const playerIndex = playerStats.findIndex(p => p.player_id === playerId);
     if (playerIndex === -1) return;
+
+    const player = playerStats[playerIndex];
+    
+    // Check if player is fouled out before allowing stat changes
+    if (isPlayerDisabled(player)) {
+      alert(`⚠️ ${player.player_name} has fouled out and cannot record more stats!`);
+      return;
+    }
 
     const newStats = [...playerStats];
     let currentValue;
@@ -464,7 +498,7 @@ const StaffStats = ({ sidebarOpen }) => {
     }
   };
 
-  // QuickScore Component
+  // QuickScore Component - UPDATED with disabled state
   const QuickScoreBar = () => {
     if (!selectedGame) return null;
 
@@ -495,28 +529,51 @@ const StaffStats = ({ sidebarOpen }) => {
         {isQuickScoreExpanded && (
           <div className="quick-score-content">
             <div className="quick-score-players-grid">
-              {quickScorePlayers.map((player) => (
-                <button
-                  key={player.player_id}
-                  onClick={() => setSelectedQuickScorePlayer(
-                    selectedQuickScorePlayer?.player_id === player.player_id ? null : player
-                  )}
-                  className={`quick-score-player-card ${
-                    selectedQuickScorePlayer?.player_id === player.player_id ? 'selected' : ''
-                  }`}
-                >
-                  <div className="quick-score-player-content">
-                    <div className="quick-score-player-number">#{player.jersey_number}</div>
-                    <div className="quick-score-player-name">{player.player_name}</div>
-                    <div className="quick-score-player-position">{player.position}</div>
-                    <div className="quick-score-player-team">{player.team_name}</div>
-                    <div className="quick-score-player-points">
-                      {calculateQuickScoreCurrentScore(player)}
+              {quickScorePlayers.map((player) => {
+                const isDisabled = isPlayerDisabled(player);
+                const totalFouls = player.fouls ? player.fouls.reduce((a, b) => a + b, 0) : 0;
+                const overtimeFouls = player.overtime_fouls ? player.overtime_fouls.reduce((a, b) => a + b, 0) : 0;
+                const totalTechnicalFouls = player.technical_fouls ? player.technical_fouls.reduce((a, b) => a + b, 0) : 0;
+                const overtimeTechnicalFouls = player.overtime_technical_fouls ? player.overtime_technical_fouls.reduce((a, b) => a + b, 0) : 0;
+                
+                const allFouls = totalFouls + overtimeFouls;
+                const allTechnicalFouls = totalTechnicalFouls + overtimeTechnicalFouls;
+
+                return (
+                  <button
+                    key={player.player_id}
+                    onClick={() => {
+                      if (isDisabled) {
+                        alert(`⚠️ ${player.player_name} has fouled out and cannot record more stats!\n\nFouls: ${allFouls}/5\nTechnical Fouls: ${allTechnicalFouls}/2`);
+                        return;
+                      }
+                      setSelectedQuickScorePlayer(
+                        selectedQuickScorePlayer?.player_id === player.player_id ? null : player
+                      );
+                    }}
+                    className={`quick-score-player-card ${
+                      selectedQuickScorePlayer?.player_id === player.player_id ? 'selected' : ''
+                    } ${isDisabled ? 'disabled' : ''}`}
+                    disabled={isDisabled}
+                  >
+                    <div className="quick-score-player-content">
+                      <div className="quick-score-player-number">#{player.jersey_number}</div>
+                      <div className="quick-score-player-name">{player.player_name}</div>
+                      <div className="quick-score-player-position">{player.position}</div>
+                      <div className="quick-score-player-team">{player.team_name}</div>
+                      <div className="quick-score-player-points">
+                        {calculateQuickScoreCurrentScore(player)}
+                      </div>
+                      <div className="quick-score-player-points-label">points this {periodName.toLowerCase()}</div>
+                      {isDisabled && (
+                        <div className="quick-score-fouled-out-badge">
+                          FOULED OUT
+                        </div>
+                      )}
                     </div>
-                    <div className="quick-score-player-points-label">points this {periodName.toLowerCase()}</div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Stat Buttons - Appears when player selected */}
@@ -541,20 +598,30 @@ const StaffStats = ({ sidebarOpen }) => {
                       'bg-teal-600': '#0d9488',
                       'bg-yellow-600': '#ca8a04',
                       'bg-red-600': '#dc2626',
-                      'bg-red-800': '#991b1b',  // ADDED for reception errors
+                      'bg-red-800': '#991b1b',
                       'bg-gray-600': '#4b5563',
                       'bg-pink-600': '#db2777'
                     };
                     const bgColor = colorMap[stat.color.split(' ')[0]] || '#4b5563';
                     
+                    const isDisabled = isPlayerDisabled(selectedQuickScorePlayer);
+                    
                     return (
                       <button
                         key={stat.key}
-                        onClick={() => handleQuickScoreStatClick(selectedQuickScorePlayer.player_id, stat.key)}
-                        className="quick-score-stat-button"
-                        style={{
-                          background: `linear-gradient(135deg, ${bgColor}, ${bgColor}dd)`
+                        onClick={() => {
+                          if (isDisabled) {
+                            alert(`⚠️ ${selectedQuickScorePlayer.player_name} has fouled out and cannot record more stats!`);
+                            return;
+                          }
+                          handleQuickScoreStatClick(selectedQuickScorePlayer.player_id, stat.key);
                         }}
+                        className={`quick-score-stat-button ${isDisabled ? 'disabled' : ''}`}
+                        style={{
+                          background: `linear-gradient(135deg, ${bgColor}, ${bgColor}dd)`,
+                          opacity: isDisabled ? 0.5 : 1
+                        }}
+                        disabled={isDisabled}
                       >
                         <div>{stat.label}</div>
                         <div className="quick-score-stat-count">
@@ -563,6 +630,11 @@ const StaffStats = ({ sidebarOpen }) => {
                             : (selectedQuickScorePlayer[stat.key]?.[currentQuarter] || 0)
                           }
                         </div>
+                        {isDisabled && (
+                          <div className="quick-score-stat-disabled-overlay">
+                            DISABLED
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -931,12 +1003,6 @@ const StaffStats = ({ sidebarOpen }) => {
     
     if (attempts === 0) return "0.00%";
     return (((kills - errors) / attempts) * 100).toFixed(2) + "%";
-  };
-
-  const isPlayerFouledOut = (player) => {
-    const totalFouls = player.fouls ? player.fouls.reduce((a, b) => a + b, 0) : 0;
-    const overtimeFouls = player.overtime_fouls ? player.overtime_fouls.reduce((a, b) => a + b, 0) : 0;
-    return (totalFouls + overtimeFouls) >= 5;
   };
 
   const groupGamesByRound = (games) => {
@@ -1466,6 +1532,7 @@ const StaffStats = ({ sidebarOpen }) => {
       overtime_steals: [...(player.overtime_steals || []), 0],
       overtime_blocks: [...(player.overtime_blocks || []), 0],
       overtime_fouls: [...(player.overtime_fouls || []), 0],
+      overtime_technical_fouls: [...(player.overtime_technical_fouls || []), 0], // ADDED: Technical fouls overtime
       overtime_turnovers: [...(player.overtime_turnovers || []), 0]
     }));
 
@@ -1503,6 +1570,7 @@ const StaffStats = ({ sidebarOpen }) => {
       overtime_steals: player.overtime_steals ? player.overtime_steals.filter((_, index) => index !== overtimeIndex) : [],
       overtime_blocks: player.overtime_blocks ? player.overtime_blocks.filter((_, index) => index !== overtimeIndex) : [],
       overtime_fouls: player.overtime_fouls ? player.overtime_fouls.filter((_, index) => index !== overtimeIndex) : [],
+      overtime_technical_fouls: player.overtime_technical_fouls ? player.overtime_technical_fouls.filter((_, index) => index !== overtimeIndex) : [], // ADDED: Technical fouls overtime
       overtime_turnovers: player.overtime_turnovers ? player.overtime_turnovers.filter((_, index) => index !== overtimeIndex) : []
     }));
 
@@ -1538,8 +1606,24 @@ const StaffStats = ({ sidebarOpen }) => {
     setCurrentQuarter(quarterIndex);
   };
 
-  // FIXED: Adjust player stat function to properly handle volleyball scoring rules
+  // FIXED: Adjust player stat function to properly handle volleyball scoring rules - UPDATED with foul check
   const adjustPlayerStat = (playerIndex, statName, increment) => {
+    const player = playerStats[playerIndex];
+    
+    // Check if player is fouled out before allowing stat changes
+    if (isPlayerDisabled(player)) {
+      const totalFouls = player.fouls ? player.fouls.reduce((a, b) => a + b, 0) : 0;
+      const overtimeFouls = player.overtime_fouls ? player.overtime_fouls.reduce((a, b) => a + b, 0) : 0;
+      const totalTechnicalFouls = player.technical_fouls ? player.technical_fouls.reduce((a, b) => a + b, 0) : 0;
+      const overtimeTechnicalFouls = player.overtime_technical_fouls ? player.overtime_technical_fouls.reduce((a, b) => a + b, 0) : 0;
+      
+      const allFouls = totalFouls + overtimeFouls;
+      const allTechnicalFouls = totalTechnicalFouls + overtimeTechnicalFouls;
+      
+      alert(`⚠️ ${player.player_name} has fouled out and cannot record more stats!\n\nFouls: ${allFouls}/5\nTechnical Fouls: ${allTechnicalFouls}/2`);
+      return;
+    }
+
     const newStats = [...playerStats];
     let currentValue;
     
@@ -1694,6 +1778,7 @@ const StaffStats = ({ sidebarOpen }) => {
           overtime_steals: [],
           overtime_blocks: [],
           overtime_fouls: [],
+          overtime_technical_fouls: [], // ADDED: Technical fouls overtime
           overtime_turnovers: []
         })),
         ...team2Players.map((p) => ({
@@ -1713,6 +1798,7 @@ const StaffStats = ({ sidebarOpen }) => {
           overtime_steals: [],
           overtime_blocks: [],
           overtime_fouls: [],
+          overtime_technical_fouls: [], // ADDED: Technical fouls overtime
           overtime_turnovers: []
         })),
       ];
@@ -1747,6 +1833,7 @@ const StaffStats = ({ sidebarOpen }) => {
                 mergedPlayer.two_points_made = found.two_points_made ? [found.two_points_made, 0, 0, 0] : [0, 0, 0, 0];
                 mergedPlayer.three_points_made = found.three_points_made ? [found.three_points_made, 0, 0, 0] : [0, 0, 0, 0];
                 mergedPlayer.free_throws_made = found.free_throws_made ? [found.free_throws_made, 0, 0, 0] : [0, 0, 0, 0];
+                mergedPlayer.technical_fouls = found.technical_fouls ? [found.technical_fouls, 0, 0, 0] : [0, 0, 0, 0]; // ADDED: Technical fouls
                 
                 mergedPlayer.assists = found.assists ? [found.assists, 0, 0, 0] : [0, 0, 0, 0];
                 mergedPlayer.rebounds = found.rebounds ? [found.rebounds, 0, 0, 0] : [0, 0, 0, 0];
@@ -1769,6 +1856,7 @@ const StaffStats = ({ sidebarOpen }) => {
                   mergedPlayer.overtime_steals = found.overtime_steals || [];
                   mergedPlayer.overtime_blocks = found.overtime_blocks || [];
                   mergedPlayer.overtime_fouls = found.overtime_fouls || [];
+                  mergedPlayer.overtime_technical_fouls = found.overtime_technical_fouls || []; // ADDED: Technical fouls overtime
                   mergedPlayer.overtime_turnovers = found.overtime_turnovers || [];
                 }
               } else {
@@ -1950,6 +2038,8 @@ const StaffStats = ({ sidebarOpen }) => {
                  (p.overtime_blocks?.reduce((a, b) => a + b, 0) || 0),
           fouls: (p.fouls?.reduce((a, b) => a + b, 0) || 0) + 
                 (p.overtime_fouls?.reduce((a, b) => a + b, 0) || 0),
+          technical_fouls: (p.technical_fouls?.reduce((a, b) => a + b, 0) || 0) + 
+                         (p.overtime_technical_fouls?.reduce((a, b) => a + b, 0) || 0), // ADDED: Technical fouls
           turnovers: (p.turnovers?.reduce((a, b) => a + b, 0) || 0) + 
                     (p.overtime_turnovers?.reduce((a, b) => a + b, 0) || 0),
           overtime_periods: overtimePeriods,
@@ -1961,6 +2051,7 @@ const StaffStats = ({ sidebarOpen }) => {
           overtime_steals: p.overtime_steals || [],
           overtime_blocks: p.overtime_blocks || [],
           overtime_fouls: p.overtime_fouls || [],
+          overtime_technical_fouls: p.overtime_technical_fouls || [], // ADDED: Technical fouls overtime
           overtime_turnovers: p.overtime_turnovers || [],
           kills: p.kills?.reduce((a, b) => a + b, 0) || 0,
           kills_per_set: p.kills || [0, 0, 0, 0, 0],
@@ -2229,7 +2320,7 @@ const StaffStats = ({ sidebarOpen }) => {
     );
   };
 
-  // Player table to handle overtime stats
+  // Player table to handle overtime stats - UPDATED with disabled state
   const renderPlayerTable = (teamId, teamName) => {
     const teamPlayers = getSortedTeamPlayers(teamId);
     const isBasketball = selectedGame.sport_type === "basketball";
@@ -2293,6 +2384,7 @@ const StaffStats = ({ sidebarOpen }) => {
                     <th className="col-stat">STL</th>
                     <th className="col-stat">BLK</th>
                     <th className="col-stat">Fouls</th>
+                    <th className="col-stat">Tech</th>
                     <th className="col-stat">TO</th>
                   </>
                 ) : (
@@ -2319,22 +2411,23 @@ const StaffStats = ({ sidebarOpen }) => {
                 const isStarter = startingPlayers[teamKey].includes(player.player_id);
                 const positionTaken = isBasketball && player.position && player.position !== "N/A" && 
                   takenPositions.has(player.position) && !isStarter;
+                const isDisabled = isPlayerDisabled(player);
                 
                 return (
-                  <tr key={player.player_id} className={player.isOnCourt ? 'on-court' : ''}>
+                  <tr key={player.player_id} className={`${player.isOnCourt ? 'on-court' : ''} ${isDisabled ? 'fouled-out' : ''}`}>
                     <td className="col-start">
                       <input
                         type="checkbox"
                         checked={isStarter}
                         onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
-                        disabled={positionTaken}
-                        title={positionTaken ? `Position ${player.position} is already taken` : ''}
+                        disabled={positionTaken || isDisabled}
+                        title={positionTaken ? `Position ${player.position} is already taken` : isDisabled ? 'Player has fouled out' : ''}
                       />
                     </td>
                     <td className="col-player">
                       {player.player_name}
-                      {isPlayerFouledOut(player) && (
-                        <span className="stats-fouled-out">FO</span>
+                      {isDisabled && (
+                        <span className="stats-fouled-out">FOULED OUT</span>
                       )}
                       {positionTaken && (
                         <span className="stats-position-taken" title={`Position ${player.position} is already taken`}>
@@ -2345,8 +2438,9 @@ const StaffStats = ({ sidebarOpen }) => {
                     <td className="col-number">#{player.jersey_number}</td>
                     <td className="col-position">{player.position}</td>
                     <td className="col-status">
-                      <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'}`}>
+                      <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
                         {player.isOnCourt ? 'On Court' : 'Bench'}
+                        {isDisabled && ' (FO)'}
                       </span>
                     </td>
                     
@@ -2362,7 +2456,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2373,7 +2471,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2382,7 +2484,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2393,7 +2499,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "three_points_made", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2402,7 +2512,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2413,7 +2527,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2422,7 +2540,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "assists", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2433,7 +2555,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "assists", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2442,7 +2568,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2453,7 +2583,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2462,7 +2596,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "steals", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "steals", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2473,7 +2611,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "steals", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "steals", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2482,7 +2624,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "blocks", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "blocks", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2493,7 +2639,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "blocks", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "blocks", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2502,7 +2652,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "fouls", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "fouls", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2513,7 +2667,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "fouls", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "fouls", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2522,7 +2680,39 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "technical_fouls", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
+                                <FaMinus />
+                              </button>
+                            )}
+                            <span className="stats-value">
+                              {isOvertime 
+                                ? (player.overtime_technical_fouls?.[currentOvertime] || 0)
+                                : (player.technical_fouls?.[currentQuarter] || 0)
+                              }
+                            </span>
+                            {!hideButtons && (
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "technical_fouls", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
+                                <FaPlus />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            {!hideButtons && (
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2533,7 +2723,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "turnovers", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2699,22 +2893,23 @@ const StaffStats = ({ sidebarOpen }) => {
                 const isStarter = startingPlayers[teamKey].includes(player.player_id);
                 const positionTaken = isBasketball && player.position && player.position !== "N/A" && 
                   takenPositions.has(player.position) && !isStarter;
+                const isDisabled = isPlayerDisabled(player);
                 
                 return (
-                  <tr key={player.player_id} className="bench-player">
+                  <tr key={player.player_id} className={`bench-player ${isDisabled ? 'fouled-out' : ''}`}>
                     <td className="col-start">
                       <input
                         type="checkbox"
                         checked={isStarter}
                         onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
-                        disabled={positionTaken}
-                        title={positionTaken ? `Position ${player.position} is already taken` : ''}
+                        disabled={positionTaken || isDisabled}
+                        title={positionTaken ? `Position ${player.position} is already taken` : isDisabled ? 'Player has fouled out' : ''}
                       />
                     </td>
                     <td className="col-player">
                       {player.player_name}
-                      {isPlayerFouledOut(player) && (
-                        <span className="stats-fouled-out">FO</span>
+                      {isDisabled && (
+                        <span className="stats-fouled-out">FOULED OUT</span>
                       )}
                       {positionTaken && (
                         <span className="stats-position-taken" title={`Position ${player.position} is already taken`}>
@@ -2725,8 +2920,9 @@ const StaffStats = ({ sidebarOpen }) => {
                     <td className="col-number">#{player.jersey_number}</td>
                     <td className="col-position">{player.position}</td>
                     <td className="col-status">
-                      <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'}`}>
+                      <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
                         {player.isOnCourt ? 'On Court' : 'Bench'}
+                        {isDisabled && ' (FO)'}
                       </span>
                     </td>
                     
@@ -2742,7 +2938,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2753,7 +2953,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2762,7 +2966,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "three_points_made", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2773,7 +2981,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "three_points_made", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "three_points_made", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2782,7 +2994,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2793,7 +3009,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "free_throws_made", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2802,7 +3022,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "assists", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "assists", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2813,7 +3037,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "assists", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "assists", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2822,7 +3050,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "rebounds", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2833,7 +3065,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "rebounds", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2842,7 +3078,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "steals", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "steals", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2853,7 +3093,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "steals", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "steals", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2862,7 +3106,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "blocks", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "blocks", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2873,7 +3121,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "blocks", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "blocks", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2882,7 +3134,11 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "fouls", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "fouls", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2893,7 +3149,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "fouls", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "fouls", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
@@ -2902,7 +3162,39 @@ const StaffStats = ({ sidebarOpen }) => {
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "technical_fouls", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
+                                <FaMinus />
+                              </button>
+                            )}
+                            <span className="stats-value">
+                              {isOvertime 
+                                ? (player.overtime_technical_fouls?.[currentOvertime] || 0)
+                                : (player.technical_fouls?.[currentQuarter] || 0)
+                              }
+                            </span>
+                            {!hideButtons && (
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "technical_fouls", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
+                                <FaPlus />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            {!hideButtons && (
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "turnovers", false)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaMinus />
                               </button>
                             )}
@@ -2913,7 +3205,11 @@ const StaffStats = ({ sidebarOpen }) => {
                               }
                             </span>
                             {!hideButtons && (
-                              <button onClick={() => adjustPlayerStat(globalIndex, "turnovers", true)} className="stats-control-button">
+                              <button 
+                                onClick={() => adjustPlayerStat(globalIndex, "turnovers", true)} 
+                                className="stats-control-button"
+                                disabled={isDisabled}
+                              >
                                 <FaPlus />
                               </button>
                             )}
