@@ -2046,16 +2046,16 @@ const getAwardsForDisplay = () => {
                     <div className="awards_standings_stat_value">{safeNumber(mvpData.total_receptions)}</div>
                     <div className="awards_standings_stat_label">Receptions</div>
                   </div>
-                  
                   <div className="awards_standings_stat_card awards_standings_highlight">
                     <div className="awards_standings_stat_value">
-                      {mvpData.overall_score !== null && mvpData.overall_score !== undefined 
-                        ? Number(mvpData.overall_score).toFixed(1)
+                      {mvpData.efficiency !== null && mvpData.efficiency !== undefined 
+                        ? Number(mvpData.efficiency).toFixed(1)
                         : '0.0'
                       }
                     </div>
                     <div className="awards_standings_stat_label">Overall</div>
                   </div>
+                  
                 </>
               )}
             </div>
