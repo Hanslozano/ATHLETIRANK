@@ -54,8 +54,9 @@ router.get("/brackets/:bracketId/champion", async (req, res) => {
   }
 });
 
-// GET MVP and awards for a bracket - UPDATED FOR VOLLEYBALL TOTALS AND EFFICIENCY
+
 // GET MVP and awards for a bracket - FIXED: Basketball uses per-game averages, volleyball uses totals
+// GET MVP and awards for a bracket - FIXED: MVP from all players, not just champion team
 router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
   try {
     const { bracketId } = req.params;
@@ -70,12 +71,6 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
     
     if (bracketInfo.length === 0) {
       return res.status(404).json({ error: "Bracket not found" });
-    }
-    
-    if (!bracketInfo[0].winner_team_id) {
-      return res.status(400).json({ 
-        error: "Tournament not yet completed. MVP and awards can only be calculated after tournament completion." 
-      });
     }
     
     const sportType = bracketInfo[0].sport_type;
@@ -128,6 +123,7 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         SUM(ps.digs) as total_digs,
         SUM(ps.volleyball_blocks) as total_blocks,
         SUM(ps.service_aces) as total_aces,
+        SUM(ps.receptions) as total_receptions,
         SUM(ps.attack_attempts) as total_attack_attempts,
         SUM(ps.attack_errors) as total_attack_errors,
         SUM(ps.serve_errors) as total_serve_errors,
@@ -139,6 +135,13 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
            (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
           NULLIF(COUNT(DISTINCT ps.match_id), 0), 2
         ) as efficiency,
+        -- Calculate overall score for volleyball
+        ROUND(
+          (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
+           SUM(ps.volleyball_assists) + SUM(ps.digs) + SUM(ps.receptions) - 
+           (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+          NULLIF(COUNT(DISTINCT ps.match_id), 0), 2
+        ) as overall_score,
         -- Percentages for display
         CASE 
           WHEN SUM(ps.attack_attempts) > 0 
@@ -177,12 +180,13 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
     let awards = {};
     
     if (sportType === 'basketball') {
-      // Basketball logic - use per-game averages for MVP calculation
-      const championPlayers = allPlayerStats.filter(p => p.team_id === championTeamId);
-      const playersWithScores = championPlayers.map(player => ({
+      // Basketball logic - MVP from ALL players, not just champion team
+      const playersWithScores = allPlayerStats.map(player => ({
         ...player,
         mvp_score: calculateBasketballMVPScore(player, player.games_played)
       }));
+      
+      // Sort by MVP score to find the highest overall
       playersWithScores.sort((a, b) => b.mvp_score - a.mvp_score);
       mvpData = playersWithScores[0];
       
@@ -203,17 +207,15 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       };
       
     } else {
-      // Volleyball - use totals for MVP calculation
-      const championPlayers = allPlayerStats.filter(p => p.team_id === championTeamId);
-      
-      // Calculate MVP scores for champion team using totals
-      const playersWithScores = championPlayers.map(player => ({
+      // Volleyball - MVP from ALL players, not just champion team
+      // Calculate MVP scores for ALL players using totals
+      const playersWithScores = allPlayerStats.map(player => ({
         ...player,
         mvp_score: calculateVolleyballMVPScore(player, player.games_played),
         total_errors: (player.total_attack_errors || 0) + (player.total_serve_errors || 0) + (player.total_reception_errors || 0)
       }));
       
-      // Sort by MVP score
+      // Sort by MVP score to find the highest overall
       playersWithScores.sort((a, b) => b.mvp_score - a.mvp_score);
       mvpData = playersWithScores[0];
       
@@ -247,6 +249,13 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         }
         return (b.hitting_percentage || 0) - (a.hitting_percentage || 0);
       });
+
+      const sortedByReceptions = [...allPlayerStats].sort((a, b) => {
+        if (b.total_receptions !== a.total_receptions) {
+          return b.total_receptions - a.total_receptions;
+        }
+        return (b.reception_percentage || 0) - (a.reception_percentage || 0);
+      });
       
       awards = {
         mvp: mvpData,
@@ -254,7 +263,8 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         best_setter: sortedByAssists[0],
         best_libero: sortedByDigs[0],
         best_server: sortedByAces[0],
-        best_spiker: sortedByKills[0]
+        best_spiker: sortedByKills[0],
+        best_receiver: sortedByReceptions[0]
       };
     }
     
