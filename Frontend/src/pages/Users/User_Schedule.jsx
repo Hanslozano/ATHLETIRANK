@@ -277,12 +277,16 @@ const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
         }
         
         return {
-          ...match,
-          date: finalDate,
-          time: finalTime,
-          sport_type: scheduleData?.sport_type || match.sport_type,
-          scheduleData: scheduleData
-        };
+  ...match,
+  date: finalDate,
+  time: finalTime,
+  sport_type: scheduleData?.sport_type || match.sport_type,
+  score_team1: match.score_team1 || 0,
+  score_team2: match.score_team2 || 0,
+  status: match.status,
+  winner_id: match.winner_id,
+  scheduleData: scheduleData
+};
       });
       
       const sortedMatches = enhancedMatches.sort((a, b) => {
@@ -403,7 +407,13 @@ const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
     setPlayerStats([]);
   };
 
-  const getScheduleStatus = (date, time) => {
+  const getScheduleStatus = (match) => {
+    if (match.status === 'completed') return 'completed';
+    if (match.status === 'ongoing') return 'upcoming';
+    
+    const date = match.date;
+    const time = match.time;
+    
     if (!date || !time || date === 'Date TBD' || time === 'Time TBD') return 'scheduled';
     
     try {
@@ -788,7 +798,7 @@ const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
                   <div className="stats-matches-grid">
                     {paginatedMatches.map(match => {
                       const matchDateTime = formatScheduleDateTime(match.date, match.time);
-                      const status = getScheduleStatus(match.date, match.time);
+                      const status = getScheduleStatus(match);
                       
                       return (
                         <div key={match.id} className={`stats-match-card stats-match-card-compact ${status}`}>
