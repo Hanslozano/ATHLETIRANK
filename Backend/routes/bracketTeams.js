@@ -3,18 +3,23 @@ const router = express.Router();
 const db = require("../config/database");
 
 // POST - Assign team to bracket
+// POST - Assign team to bracket
 router.post("/", async (req, res) => {
-  const { bracket_id, team_id } = req.body;
+  // Accept both formats for compatibility
+  const { bracket_id, team_id, bracketId, teamId } = req.body;
   
-  if (!bracket_id || !team_id) {
-    return res.status(400).json({ error: "bracket_id and team_id are required" });
+  const finalBracketId = bracket_id || bracketId;
+  const finalTeamId = team_id || teamId;
+  
+  if (!finalBracketId || !finalTeamId) {
+    return res.status(400).json({ error: "bracketId and teamId are required" });
   }
 
   try {
     // Check if this team is already assigned to this bracket
     const [existing] = await db.pool.query(
       "SELECT id FROM bracket_teams WHERE bracket_id = ? AND team_id = ?",
-      [bracket_id, team_id]
+      [finalBracketId, finalTeamId]
     );
 
     if (existing.length > 0) {
@@ -24,19 +29,19 @@ router.post("/", async (req, res) => {
     // Insert the assignment
     const [result] = await db.pool.query(
       "INSERT INTO bracket_teams (bracket_id, team_id) VALUES (?, ?)",
-      [bracket_id, team_id]
+      [finalBracketId, finalTeamId]
     );
 
     res.status(201).json({
       id: result.insertId,
-      bracket_id,
-      team_id,
+      bracket_id: finalBracketId,
+      team_id: finalTeamId,
       message: "Team assigned to bracket successfully"
     });
 
   } catch (err) {
     console.error("Error assigning team to bracket:", err);
-    res.status(500).json({ error: "Database error" });
+    res.status(500).json({ error: "Database error: " + err.message });
   }
 });
 
