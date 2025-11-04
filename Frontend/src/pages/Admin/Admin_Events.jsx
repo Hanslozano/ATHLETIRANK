@@ -3390,66 +3390,163 @@ const closeEditTeamModal = () => {
 
                     {/* Add New Player Form */}
                     {/* Add New Player Form */}
-                    <div style={{ background: 'var(--background-secondary)', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-                      <h4 style={{ marginBottom: '15px', color: 'var(--text-primary)' }}>
-                        <FaUserPlus style={{ marginRight: '8px' }} /> Add New Player
-                      </h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Name *</label>
-                          <input
-                            type="text"
-                            value={editTeamModal.newPlayer.name}
-                            onChange={(e) => setEditTeamModal(prev => ({
-                              ...prev,
-                              newPlayer: { ...prev.newPlayer, name: e.target.value }
-                            }))}
-                            placeholder="Player name"
-                            style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Position *</label>
-                          <select
-                            value={editTeamModal.newPlayer.position}
-                            onChange={(e) => setEditTeamModal(prev => ({
-                              ...prev,
-                              newPlayer: { ...prev.newPlayer, position: e.target.value }
-                            }))}
-                            style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                          >
-                            <option value="">Select Position</option>
-                            {getPositionsForSport(editTeamModal.bracket.sport_type).map(position => (
-                              <option key={position} value={position}>{position}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Jersey Number *</label>
-                          <input
-                            type="number"
-                            value={editTeamModal.newPlayer.jersey_number}
-                            onChange={(e) => setEditTeamModal(prev => ({
-                              ...prev,
-                              newPlayer: { ...prev.newPlayer, jersey_number: e.target.value }
-                            }))}
-                            placeholder="e.g., 23"
-                            style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                          />
-                        </div>
-                        <button
-                          onClick={handleAddPlayer}
-                          className="bracket-view-btn"
-                          style={{ 
-                            padding: '8px 16px',
-                            background: 'var(--success-color)',
-                            height: 'fit-content'
-                          }}
-                        >
-                          <FaPlus /> Add
-                        </button>
-                      </div>
-                    </div>
+                  <div style={{ 
+  background: '#1a2332', 
+  padding: '16px 24px', 
+  borderRadius: '12px', 
+  marginBottom: '24px',
+  border: '1px solid #2d3748'
+}}>
+  <div style={{ display: 'flex', alignItems: 'end', gap: '16px' }}>
+    {/* Name Input */}
+    <div style={{ flex: 1 }}>
+      <label style={{ 
+        display: 'block', 
+        marginBottom: '8px', 
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#e2e8f0'
+      }}>
+        Name *
+      </label>
+      <input
+        type="text"
+        value={editTeamModal.newPlayer.name}
+        onChange={(e) => setEditTeamModal(prev => ({
+          ...prev,
+          newPlayer: { ...prev.newPlayer, name: e.target.value }
+        }))}
+        placeholder="Player name"
+        style={{ 
+          width: '100%', 
+          padding: '12px 16px', 
+          border: '2px solid #2d3748', 
+          borderRadius: '8px',
+          background: '#0f172a',
+          color: '#e2e8f0',
+          fontSize: '14px',
+          outline: 'none',
+          transition: 'border-color 0.2s ease'
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+      />
+    </div>
+
+    {/* Position Select */}
+    <div style={{ flex: 1 }}>
+      <label style={{ 
+        display: 'block', 
+        marginBottom: '8px', 
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#e2e8f0'
+      }}>
+        Position *
+      </label>
+      <select
+        value={editTeamModal.newPlayer.position}
+        onChange={(e) => setEditTeamModal(prev => ({
+          ...prev,
+          newPlayer: { ...prev.newPlayer, position: e.target.value }
+        }))}
+        style={{ 
+          width: '100%', 
+          padding: '12px 16px', 
+          border: '2px solid #2d3748', 
+          borderRadius: '8px',
+          background: '#0f172a',
+          color: '#e2e8f0',
+          fontSize: '14px',
+          outline: 'none',
+          cursor: 'pointer',
+          transition: 'border-color 0.2s ease'
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+      >
+        <option value="" style={{ background: '#1a2332' }}>Select Position</option>
+        {getPositionsForSport(editTeamModal.bracket.sport_type).map(position => (
+          <option key={position} value={position} style={{ background: '#1a2332' }}>
+            {position}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {/* Jersey Number Input */}
+    <div style={{ flex: 1 }}>
+      <label style={{ 
+        display: 'block', 
+        marginBottom: '8px', 
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#e2e8f0'
+      }}>
+        Jersey Number *
+      </label>
+      <input
+        type="number"
+        value={editTeamModal.newPlayer.jersey_number}
+        onChange={(e) => setEditTeamModal(prev => ({
+          ...prev,
+          newPlayer: { ...prev.newPlayer, jersey_number: e.target.value }
+        }))}
+        placeholder="e.g., 23"
+        min="0"
+        max="99"
+        style={{ 
+          width: '100%', 
+          padding: '12px 16px', 
+          border: '2px solid #2d3748', 
+          borderRadius: '8px',
+          background: '#0f172a',
+          color: '#e2e8f0',
+          fontSize: '14px',
+          outline: 'none',
+          transition: 'border-color 0.2s ease'
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+      />
+    </div>
+
+    {/* Add Button */}
+    <button
+      onClick={handleAddPlayer}
+      disabled={!editTeamModal.newPlayer.name || !editTeamModal.newPlayer.position || !editTeamModal.newPlayer.jersey_number}
+      style={{ 
+        padding: '12px 24px',
+        background: (!editTeamModal.newPlayer.name || !editTeamModal.newPlayer.position || !editTeamModal.newPlayer.jersey_number) 
+          ? '#475569' 
+          : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: (!editTeamModal.newPlayer.name || !editTeamModal.newPlayer.position || !editTeamModal.newPlayer.jersey_number) 
+          ? 'not-allowed' 
+          : 'pointer',
+        fontSize: '14px',
+        fontWeight: '600',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        opacity: (!editTeamModal.newPlayer.name || !editTeamModal.newPlayer.position || !editTeamModal.newPlayer.jersey_number) 
+          ? 0.6 
+          : 1,
+        transition: 'all 0.2s ease',
+        boxShadow: (!editTeamModal.newPlayer.name || !editTeamModal.newPlayer.position || !editTeamModal.newPlayer.jersey_number)
+          ? 'none'
+          : '0 4px 12px rgba(16, 185, 129, 0.3)',
+        whiteSpace: 'nowrap',
+        height: '48px',
+        marginTop: '30px'
+      }}
+    >
+      <FaPlus /> Add Player
+    </button>
+  </div>
+</div>
 
                     {/* Players List Table */}
                     <div className="awards_standings_table_container">
@@ -3521,100 +3618,183 @@ const closeEditTeamModal = () => {
                       </table>
                     </div>
 
-                    {/* Edit Player Modal (Inline) */}
                     {editTeamModal.editingPlayer && (
-                      <div style={{ 
-                        position: 'fixed',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        background: 'var(--background-card)',
-                        padding: '24px',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-color)',
-                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-                        zIndex: 10000,
-                        minWidth: '500px'
-                      }}>
-                        <h4 style={{ marginBottom: '20px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <FaEdit /> Edit Player
-                        </h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                          <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Name *</label>
-                            <input
-                              type="text"
-                              value={editTeamModal.editingPlayer.name}
-                              onChange={(e) => setEditTeamModal(prev => ({
-                                ...prev,
-                                editingPlayer: { ...prev.editingPlayer, name: e.target.value }
-                              }))}
-                              style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--border-color)', borderRadius: '6px', background: 'var(--background-secondary)', color: 'var(--text-primary)' }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Position *</label>
-                            <select
-                              value={editTeamModal.editingPlayer.position}
-                              onChange={(e) => setEditTeamModal(prev => ({
-                                ...prev,
-                                editingPlayer: { ...prev.editingPlayer, position: e.target.value }
-                              }))}
-                              style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--border-color)', borderRadius: '6px', background: 'var(--background-secondary)', color: 'var(--text-primary)' }}
-                            >
-                              {getPositionsForSport(editTeamModal.bracket.sport_type).map(position => (
-                                <option key={position} value={position}>{position}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Jersey Number *</label>
-                            <input
-                              type="number"
-                              value={editTeamModal.editingPlayer.jersey_number}
-                              onChange={(e) => setEditTeamModal(prev => ({
-                                ...prev,
-                                editingPlayer: { ...prev.editingPlayer, jersey_number: e.target.value }
-                              }))}
-                              style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--border-color)', borderRadius: '6px', background: 'var(--background-secondary)', color: 'var(--text-primary)' }}
-                            />
-                          </div>
-                          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
-                            <button
-                              onClick={handleCancelEditPlayer}
-                              style={{ 
-                                padding: '10px 20px',
-                                background: 'var(--background-secondary)',
-                                color: 'var(--text-primary)',
-                                border: '2px solid var(--border-color)',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontWeight: '600'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={handleUpdatePlayer}
-                              style={{ 
-                                padding: '10px 20px',
-                                background: 'var(--success-color)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontWeight: '600',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                              }}
-                            >
-                              <FaSave /> Save Changes
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+  <div style={{ 
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    background: '#1a2332',
+    padding: '28px',
+    borderRadius: '12px',
+    border: '2px solid #2d3748',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+    zIndex: 10000,
+    minWidth: '600px'
+  }}>
+    <h4 style={{ 
+      marginBottom: '24px', 
+      color: '#e2e8f0', 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '10px',
+      fontSize: '18px',
+      fontWeight: '700'
+    }}>
+      <FaEdit style={{ color: '#3b82f6' }} /> Edit Player
+    </h4>
+    
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+      {/* Name Input */}
+      <div>
+        <label style={{ 
+          display: 'block', 
+          marginBottom: '8px', 
+          fontSize: '13px', 
+          fontWeight: '600',
+          color: '#e2e8f0'
+        }}>
+          Name *
+        </label>
+        <input
+          type="text"
+          value={editTeamModal.editingPlayer.name}
+          onChange={(e) => setEditTeamModal(prev => ({
+            ...prev,
+            editingPlayer: { ...prev.editingPlayer, name: e.target.value }
+          }))}
+          style={{ 
+            width: '100%', 
+            padding: '12px 16px', 
+            border: '2px solid #2d3748', 
+            borderRadius: '8px', 
+            background: '#0f172a', 
+            color: '#e2e8f0', 
+            fontSize: '14px',
+            outline: 'none'
+          }}
+        />
+      </div>
+
+      {/* Position Select */}
+      <div>
+        <label style={{ 
+          display: 'block', 
+          marginBottom: '8px', 
+          fontSize: '13px', 
+          fontWeight: '600',
+          color: '#e2e8f0'
+        }}>
+          Position *
+        </label>
+        <select
+          value={editTeamModal.editingPlayer.position}
+          onChange={(e) => setEditTeamModal(prev => ({
+            ...prev,
+            editingPlayer: { ...prev.editingPlayer, position: e.target.value }
+          }))}
+          style={{ 
+            width: '100%', 
+            padding: '12px 16px', 
+            border: '2px solid #2d3748', 
+            borderRadius: '8px', 
+            background: '#0f172a', 
+            color: '#e2e8f0', 
+            fontSize: '14px',
+            cursor: 'pointer',
+            outline: 'none'
+          }}
+        >
+          {getPositionsForSport(editTeamModal.bracket.sport_type).map(position => (
+            <option key={position} value={position} style={{ background: '#1a2332' }}>
+              {position}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Jersey Number Input */}
+      <div>
+        <label style={{ 
+          display: 'block', 
+          marginBottom: '8px', 
+          fontSize: '13px', 
+          fontWeight: '600',
+          color: '#e2e8f0'
+        }}>
+          Jersey Number *
+        </label>
+        <input
+          type="number"
+          value={editTeamModal.editingPlayer.jersey_number}
+          onChange={(e) => setEditTeamModal(prev => ({
+            ...prev,
+            editingPlayer: { ...prev.editingPlayer, jersey_number: e.target.value }
+          }))}
+          min="0"
+          max="99"
+          style={{ 
+            width: '100%', 
+            padding: '12px 16px', 
+            border: '2px solid #2d3748', 
+            borderRadius: '8px', 
+            background: '#0f172a', 
+            color: '#e2e8f0', 
+            fontSize: '14px',
+            outline: 'none'
+          }}
+        />
+      </div>
+    </div>
+
+    {/* Action Buttons */}
+    <div style={{ 
+      display: 'flex', 
+      gap: '12px', 
+      justifyContent: 'flex-end', 
+      marginTop: '24px',
+      paddingTop: '20px',
+      borderTop: '1px solid #2d3748'
+    }}>
+      <button
+        onClick={handleCancelEditPlayer}
+        style={{ 
+          padding: '12px 24px',
+          background: '#2d3748',
+          color: '#e2e8f0',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleUpdatePlayer}
+        style={{ 
+          padding: '12px 24px',
+          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+          transition: 'all 0.2s ease'
+        }}
+      >
+          <FaSave /> Save Changes
+        </button>
+      </div>
+    </div>
+  )}
                   </>
                 )}
               </div>
