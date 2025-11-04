@@ -1036,7 +1036,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                       gap: '12px',
                       marginBottom: '16px',
                       padding: '16px 20px',
-                      background: '#0a0f1c', 
+                       background: '#101620ff',  // NEW COLOR
                       borderRadius: '10px',
                      border: '1px solid #2d3748',
                       cursor: 'pointer',

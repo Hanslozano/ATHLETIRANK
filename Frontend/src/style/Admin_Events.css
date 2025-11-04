@@ -31,7 +31,7 @@
 /* Main tabs container with distinct lighter background */
 .bracket-tabs {
   display: flex !important;
-  background: #1a2332 !important;
+  background: #101620ff !important;  /* NEW COLOR */
   border-bottom: 2px solid var(--border-color) !important;
   padding: 0 20px !important;
 }
@@ -111,7 +111,7 @@
 
 .awards_standings_tabs {
   display: flex;
-  background: #1a2332 !important;
+  background: #101620ff !important;  /* NEW COLOR */
   border-bottom: 2px solid var(--border-color);
 }
 
