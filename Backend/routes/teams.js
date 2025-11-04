@@ -22,6 +22,7 @@ router.get("/", async (req, res) => {
 });
 
 // ✅ GET single team by ID
+// GET single team by ID
 router.get("/:id", async (req, res) => {
   try {
     const [teams] = await db.pool.query("SELECT id, name, sport FROM teams WHERE id = ?", [req.params.id]);
@@ -30,17 +31,26 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Team not found" });
     }
 
-    const [players] = await db.pool.query("SELECT * FROM players WHERE team_id = ?", [req.params.id]);
+    const [players] = await db.pool.query("SELECT id, name, position, jersey_number FROM players WHERE team_id = ? ORDER BY id", [req.params.id]);
     
     const teamWithPlayers = {
-      ...teams[0],
-      players: players
+      id: teams[0].id,
+      name: teams[0].name,
+      sport: teams[0].sport,
+      players: players.map(p => ({
+        id: p.id,
+        name: p.name,
+        position: p.position,
+        jersey_number: p.jersey_number,
+        jerseyNumber: p.jersey_number  // Add both formats for compatibility
+      }))
     };
 
+    console.log("Returning team data:", teamWithPlayers);  // Debug log
     res.json(teamWithPlayers);
   } catch (err) {
     console.error("Error fetching team:", err);
-    res.status(500).json({ error: "Database error" });
+    res.status(500).json({ error: "Database error: " + err.message });
   }
 });
 

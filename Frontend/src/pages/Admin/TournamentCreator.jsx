@@ -31,6 +31,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
     }
   }, [validationError]);
 
+    const [editingTeamId, setEditingTeamId] = useState(null);
+
   // Add this useEffect to fetch teams already in brackets from database
   useEffect(() => {
     const fetchTeamsInBrackets = async () => {
@@ -57,7 +59,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
 
     fetchTeamsInBrackets();
   }, [currentStep]);
-  
+
   const [teamsInBracketsFromDB, setTeamsInBracketsFromDB] = useState([]);
   
   // Step 1: Event Data
@@ -287,7 +289,7 @@ const getPositionLimits = (teamSize, sport) => {
     setCurrentTeam(prev => ({ ...prev, [name]: value }));
 
     // When sport is selected, create exactly 12 empty player slots
-    if (name === "sport" && value) {
+   if (name === "sport" && value && !editingTeamId) {
       setCurrentTeam(prev => ({
         ...prev,
         players: Array.from({ length: 12 }, (_, index) => ({ 
@@ -412,29 +414,134 @@ const getPositionLimits = (teamSize, sport) => {
   }
   
   return null;
+  };
+
+  const handleEditTeam = (teamId) => {
+  const teamToEdit = createdTeams.find(t => t.id === teamId);
+  if (!teamToEdit) {
+    setValidationError("Team not found");
+    return;
+  }
+  
+  console.log("Editing team:", teamToEdit);
+  console.log("Team players:", teamToEdit.players);
+  
+  // Set editing state and mode first
+  setEditingTeamId(teamId);
+  setTeamMode("create");
+  
+  // Clear validation error
+  setValidationError("");
+  
+  // Show loading state
+  setLoading(true);
+  
+  // Fetch the full team details from the database to ensure we have all player data
+  fetch(`http://localhost:5000/api/teams/${teamId}`)
+    .then(res => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then(fullTeamData => {
+      console.log("Full team data from API:", fullTeamData);
+      
+      if (!fullTeamData || !fullTeamData.players) {
+        throw new Error("Invalid team data received");
+      }
+      
+      const mappedPlayers = [];
+      const existingPlayers = fullTeamData.players || [];
+      
+      // Map existing players with proper field names
+      for (let i = 0; i < existingPlayers.length; i++) {
+        const p = existingPlayers[i];
+        const jerseyNum = p.jersey_number || p.jerseyNumber || "";
+        
+        mappedPlayers.push({
+          name: p.name || "",
+          position: p.position || "",
+          jerseyNumber: jerseyNum.toString()
+        });
+      }
+      
+      // Fill remaining slots with empty players up to 12
+      while (mappedPlayers.length < 12) {
+        mappedPlayers.push({ name: "", position: "", jerseyNumber: "" });
+      }
+      
+      console.log("Mapped players for editing:", mappedPlayers);
+      
+      // Set team data
+      setCurrentTeam({
+        teamName: fullTeamData.name,
+        sport: fullTeamData.sport,
+        players: mappedPlayers
+      });
+      
+      setLoading(false);
+      
+      // Scroll to form after data is loaded
+      setTimeout(() => {
+        const formElement = document.querySelector('.bracket-form');
+        if (formElement) {
+          formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
+    })
+    .catch(err => {
+      console.error("Error fetching team details:", err);
+      setValidationError(`Failed to load team details: ${err.message}`);
+      setLoading(false);
+      setEditingTeamId(null);
+    });
 };
 
-  const handleAddTeam = async () => {
-    if (createdTeams.length >= 10) {
+const handleAddTeam = async () => {
+  if (createdTeams.length >= 10 && !editingTeamId) {
     setValidationError("Maximum 10 teams allowed per tournament. Please remove a team before adding a new one.");
     return;
   }
 
-    const error = validateTeam();
-    if (error) {
-      setValidationError(error);
-      return;
-    }
+  const error = validateTeam();
+  if (error) {
+    setValidationError(error);
+    return;
+  }
 
-    // Trim all player data before submitting
-    const trimmedPlayers = currentTeam.players.map(player => ({
-      name: player.name.trim(),
-      position: player.position,
-      jerseyNumber: player.jerseyNumber.trim()
-    }));
+  // Trim all player data before submitting
+  const trimmedPlayers = currentTeam.players.map(player => ({
+    name: player.name.trim(),
+    position: player.position,
+    jerseyNumber: player.jerseyNumber.trim()
+  }));
 
-    setLoading(true);
-    try {
+  setLoading(true);
+  try {
+    if (editingTeamId) {
+      // Update existing team
+      const res = await fetch(`http://localhost:5000/api/teams/${editingTeamId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: currentTeam.teamName.trim(),
+          sport: currentTeam.sport,
+          players: trimmedPlayers
+        })
+      });
+      
+      if (res.ok) {
+        const updatedTeam = await res.json();
+        setCreatedTeams(prev => prev.map(t => t.id === editingTeamId ? updatedTeam : t));
+        setCurrentTeam({ teamName: "", sport: "", players: [] });
+        setEditingTeamId(null);
+        setValidationError("");
+      } else {
+        setValidationError("Failed to update team");
+      }
+    } else {
+      // Create new team
       const res = await fetch("http://localhost:5000/api/teams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -453,13 +560,14 @@ const getPositionLimits = (teamSize, sport) => {
       } else {
         setValidationError("Failed to create team");
       }
-    } catch (err) {
-      console.error("Error creating team:", err);
-      setValidationError("Error creating team");
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error("Error saving team:", err);
+    setValidationError("Error saving team");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleProceedToBracket = () => {
     if (createdTeams.length < 2) {
@@ -947,14 +1055,14 @@ const handleCreateAllBrackets = async () => {
                     </div>
 
                    <div className="bracket-form-actions">
-  <button 
-    onClick={handleContinueToTeams}
-    className="bracket-submit-btn"
-  >
-    Continue to Teams
-    <FaChevronRight style={{ marginLeft: '8px' }} />
-  </button>
-</div>
+                    <button 
+                      onClick={handleContinueToTeams}
+                      className="bracket-submit-btn"
+                    >
+                      Continue to Teams
+                      <FaChevronRight style={{ marginLeft: '8px' }} />
+                    </button>
+                  </div>
                   </div>
                 </div>
               </div>
@@ -995,19 +1103,19 @@ const handleCreateAllBrackets = async () => {
                     <div className="created-teams-summary">
                       <h3>Selected Teams ({createdTeams.length}/10)</h3>
                       {createdTeams.length >= 10 && (
-  <div style={{
-    background: 'rgba(251, 191, 36, 0.1)',
-    border: '1px solid rgba(251, 191, 36, 0.3)',
-    borderRadius: '6px',
-    padding: '10px',
-    marginBottom: '15px',
-    color: '#fbbf24',
-    fontSize: '14px',
-    textAlign: 'center'
-  }}>
-    ⚠️ Maximum team limit reached (10/10). Remove a team to add another.
-  </div>
-)}
+                        <div style={{
+                          background: 'rgba(251, 191, 36, 0.1)',
+                          border: '1px solid rgba(251, 191, 36, 0.3)',
+                          borderRadius: '6px',
+                          padding: '10px',
+                          marginBottom: '15px',
+                          color: '#fbbf24',
+                          fontSize: '14px',
+                          textAlign: 'center'
+                        }}>
+                          ⚠️ Maximum team limit reached (10/10). Remove a team to add another.
+                        </div>
+                      )}
 
                       <div className="teams-summary-grid">
                         {createdTeams.map(team => (
@@ -1015,13 +1123,22 @@ const handleCreateAllBrackets = async () => {
                             <div className="team-summary-content">
                               <div className="team-info-top">
                                 <strong>{team.name}</strong>
-                                <button
-                                  className="remove-team-btn"
-                                  onClick={() => handleRemoveTeam(team.id)}
-                                  title="Remove team"
-                                >
-                                  ×
-                                </button>
+                                <div className="team-actions">
+                                  <button
+                                    className="edit-team-btn"
+                                    onClick={() => handleEditTeam(team.id)}
+                                    title="Edit team"
+                                  >
+                                    ✎
+                                  </button>
+                                  <button
+                                    className="remove-team-btn"
+                                    onClick={() => handleRemoveTeam(team.id)}
+                                    title="Remove team"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
                               </div>
                               <span style={{ color: '#ffffffff', fontSize: '16px' }}>{capitalize(team.sport)}</span>
                               <span>{team.players?.length || 0} players</span>
@@ -1060,6 +1177,20 @@ const handleCreateAllBrackets = async () => {
                   {/* Create New Team Mode */}
                   {teamMode === "create" && (
                     <div className="bracket-form">
+                      {editingTeamId && (
+                        <div className="editing-banner">
+                          <span>✎ Editing Team</span>
+                          <button 
+                            onClick={() => {
+                              setEditingTeamId(null);
+                              setCurrentTeam({ teamName: "", sport: "", players: [] });
+                            }}
+                            className="cancel-edit-btn"
+                          >
+                            Cancel Edit
+                          </button>
+                        </div>
+                      )}
                       <div className="bracket-form-group">
                         <label htmlFor="teamName">Team Name *</label>
                         <input
@@ -1073,23 +1204,28 @@ const handleCreateAllBrackets = async () => {
                         />
                       </div>
 
-                      <div className="bracket-form-group">
-                        <label htmlFor="sport">Sport *</label>
-                        <select
-                          id="sport"
-                          name="sport"
-                          value={currentTeam.sport}
-                          onChange={handleTeamInputChange}
-                          style={{ fontSize: '16px' }}
-                        >
+                     <div className="bracket-form-group">
+                      <label htmlFor="sport">Sport *</label>
+                      <select
+                        id="sport"
+                        name="sport"
+                        value={currentTeam.sport}
+                        onChange={handleTeamInputChange}
+                        disabled={editingTeamId !== null}
+                        style={{ fontSize: '16px', opacity: editingTeamId !== null ? 0.6 : 1 }}
+                      >
                           <option value="">Select a sport</option>
                           {Object.keys(positions).map((sport) => (
                             <option key={sport} value={sport}>{sport}</option>
                           ))}
-                        </select>
+                      </select>
+                        {editingTeamId && (
+                          <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                            Sport cannot be changed when editing a team
+                          </small>
+                        )}
                       </div>
-
-                      {/* Players Section */}
+                    {/* Players Section */}
                       {currentTeam.sport && (
                         <div className="admin-teams-players-section">
                           <div className="admin-teams-players-header">
@@ -1138,7 +1274,7 @@ const handleCreateAllBrackets = async () => {
                                 <input
                                   type="text"
                                   placeholder="Jersey #"
-                                  value={player.jersey_number || player.jerseyNumber}
+                                  value={player.jerseyNumber || player.jersey_number || ""}
                                   onChange={(e) => handlePlayerChange(index, "jerseyNumber", e.target.value)}
                                   className="admin-teams-jersey-input"
                                   style={{ fontSize: '16px' }}
@@ -1196,18 +1332,18 @@ const handleCreateAllBrackets = async () => {
                           )}      
                           {/* Information message */}
                           <div style={{
-  background: 'rgba(59, 130, 246, 0.1)',
-  border: '1px solid rgba(59, 130, 246, 0.3)',
-  borderRadius: '6px',
-  padding: '12px',
-  marginTop: '15px',
-  fontSize: '14px',
-  color: '#93c5fd'
-}}>
-  <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate jersey numbers allowed. Player names must contain only letters and spaces. 
-  <br />
-  <strong>Position Limits:</strong> Maximum 3 players per position. Not all positions need to be filled.
-</div>
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                            borderRadius: '6px',
+                            padding: '12px',
+                            marginTop: '15px',
+                            fontSize: '14px',
+                            color: '#93c5fd'
+                          }}>
+                            <strong>Note:</strong> Minimum 12 players required, maximum 15 players allowed. No duplicate jersey numbers allowed. Player names must contain only letters and spaces. 
+                            <br />
+                            <strong>Position Limits:</strong> Maximum 3 players per position. Not all positions need to be filled.
+                          </div>
                         </div>
                       )}
 
@@ -1215,14 +1351,19 @@ const handleCreateAllBrackets = async () => {
                         <button 
                           onClick={handleAddTeam}
                           className="bracket-submit-btn"
-                          disabled={loading || validPlayerCount < 12 || validPlayerCount > 15 || createdTeams.length >= 10}
+                          disabled={loading || validPlayerCount < 12 || validPlayerCount > 15 || (createdTeams.length >= 10 && !editingTeamId)}
                         >
-                         {loading ? "Adding..." : createdTeams.length >= 10 ? "Team Limit Reached (10/10)" : "Add Team"}
+                          {loading ? (editingTeamId ? "Updating..." : "Adding...") : 
+                          editingTeamId ? "Update Team" :
+                          createdTeams.length >= 10 ? "Team Limit Reached (10/10)" : "Add Team"}
                         </button>
                         <button
                           type="button"
                           className="bracket-cancel-btn"
-                          onClick={() => setCurrentTeam({ teamName: "", sport: "", players: [] })}
+                          onClick={() => {
+                            setCurrentTeam({ teamName: "", sport: "", players: [] });
+                            setEditingTeamId(null);
+                          }}
                         >
                           Clear Form
                         </button>
@@ -1314,11 +1455,11 @@ const handleCreateAllBrackets = async () => {
                                           fontSize: '16px',
                                           width: '100%',
                                           opacity: createdTeams.length >= 10 ? 0.5 : 1,  // ADD THIS
-    cursor: createdTeams.length >= 10 ? 'not-allowed' : 'pointer'  // ADD THIS
+                                          cursor: createdTeams.length >= 10 ? 'not-allowed' : 'pointer'  // ADD THIS
                                         }}
                                       >
                                          <option value="">{createdTeams.length >= 10 ? "Team limit reached" : "Select bracket first"}</option>  // CHANGE THIS
-  {createdTeams.length < 10 && getBracketOptions().map(bracket => (
+                                          {createdTeams.length < 10 && getBracketOptions().map(bracket => (
                                           <option key={bracket.id} value={bracket.id}>
                                             {bracket.name}
                                           </option>
@@ -1330,12 +1471,12 @@ const handleCreateAllBrackets = async () => {
                                     <td>
                                       <button
                                         className="add-team-btn"
-  onClick={() => handleSelectExistingTeam(team.id)}
-  disabled={createdTeams.length >= 10}  // ADD THIS
-  title={createdTeams.length >= 10 ? "Maximum team limit reached" : "Add Team"}  // ADD THIS
-  style={{ fontSize: '16px' }}
->
- {createdTeams.length >= 10 ? "Limit Reached" : "Add Team"}   
+                                          onClick={() => handleSelectExistingTeam(team.id)}
+                                          disabled={createdTeams.length >= 10}  // ADD THIS
+                                          title={createdTeams.length >= 10 ? "Maximum team limit reached" : "Add Team"}  // ADD THIS
+                                          style={{ fontSize: '16px' }}
+                                        >
+                                        {createdTeams.length >= 10 ? "Limit Reached" : "Add Team"}   
                                       </button>
                                     </td>
                                   )}
@@ -1420,43 +1561,43 @@ const handleCreateAllBrackets = async () => {
                               <option key={sport} value={sport}>{sport}</option>
                             ))}
                           </select>
-                          {bracket.selectedTeamIds.length > 0 && (
+                          {bracket.selectedTeamIds.length > 0 && bracket.sport && (
                             <small style={{ color: '#10b981', fontSize: '14px', marginTop: '5px', display: 'block' }}>
-                              Sport auto-detected from assigned teams
+                              ✓ Sport auto-detected from assigned teams: {capitalize(bracket.sport)}
                             </small>
                           )}
                         </div>
 
                         <div className="bracket-form-group">
-  <label htmlFor={`bracketType-${bracket.id}`}>Bracket Type *</label>
-  <select 
-    id={`bracketType-${bracket.id}`}
-    name="bracketType"
-    value={bracket.bracketType}
-    onChange={(e) => handleBracketInputChange(bracket.id, 'bracketType', e.target.value)}
-    style={{ fontSize: '16px' }}
-  >
-    <option value="single">Single Elimination</option>
-    <option value="double">Double Elimination</option>
-    <option value="round_robin">Round Robin</option>
-  </select>
-  
- {bracket.bracketType === 'single' && (
-    <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
-      One loss eliminates a team from the tournament
-    </small>
-  )}
-  {bracket.bracketType === 'double' && (
-    <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
-      Teams must lose twice to be eliminated from the tournament
-    </small>
-  )}
-  {bracket.bracketType === 'round_robin' && (
-    <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
-      All teams play each other once - winner determined by standings
-    </small>
-  )}
-</div>
+                          <label htmlFor={`bracketType-${bracket.id}`}>Bracket Type *</label>
+                          <select 
+                            id={`bracketType-${bracket.id}`}
+                            name="bracketType"
+                            value={bracket.bracketType}
+                            onChange={(e) => handleBracketInputChange(bracket.id, 'bracketType', e.target.value)}
+                            style={{ fontSize: '16px' }}
+                          >
+                            <option value="single">Single Elimination</option>
+                            <option value="double">Double Elimination</option>
+                            <option value="round_robin">Round Robin</option>
+                          </select>
+                          
+                        {bracket.bracketType === 'single' && (
+                            <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
+                              One loss eliminates a team from the tournament
+                            </small>
+                          )}
+                          {bracket.bracketType === 'double' && (
+                            <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
+                              Teams must lose twice to be eliminated from the tournament
+                            </small>
+                          )}
+                          {bracket.bracketType === 'round_robin' && (
+                            <small style={{ color: '#94a3b8', fontSize: '14px', marginTop: '5px', display: 'block' }}>
+                              All teams play each other once - winner determined by standings
+                            </small>
+                          )}
+                        </div>
                         <div className="bracket-form-group">
                           <label>Assigned Teams</label>
                           {bracket.selectedTeamIds.length === 0 ? (
@@ -1565,16 +1706,16 @@ const handleCreateAllBrackets = async () => {
                       Back to Teams
                     </button>
                     <button 
-  onClick={handleCreateAllBrackets}
-  className="bracket-submit-btn"
-  disabled={loading}
->
-  {loading 
-    ? "Creating Tournament..." 
-    : eventData.numberOfBrackets === 1 
-      ? "Create Tournament" 
-      : "Create Tournament"}
-</button>
+                      onClick={handleCreateAllBrackets}
+                      className="bracket-submit-btn"
+                      disabled={loading}
+                    >
+                      {loading 
+                        ? "Creating Tournament..." 
+                        : eventData.numberOfBrackets === 1 
+                          ? "Create Tournament" 
+                          : "Create Tournament"}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1614,41 +1755,41 @@ const handleCreateAllBrackets = async () => {
 
                   <div className="bracket-form-actions" style={{ marginTop: '30px', gap: '15px' }}>
                      <button 
-  onClick={() => {
-    // Store context in sessionStorage for AdminEvents to load
-    if (createdEvent && createdBrackets.length > 0) {
-      sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
-        selectedEvent: createdEvent,
-        selectedBracket: createdBrackets[0], // Navigate to first bracket
-        contentTab: 'matches', // Go to Manage Matches tab
-        bracketViewType: 'list' // Set to list view
-      }));
-    }
-    window.location.href = '/AdminDashboard/events';
-  }}
-  className="bracket-submit-btn"
-  style={{ 
-    width: '100%', 
-    background: '#3b82f6',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px'
-  }}
->
-  Go to Event Schedules
-  <FaChevronRight />
-</button>
-                     <button 
-  onClick={handleStartNew}
-  className="bracket-submit-btn"
-  style={{ 
-    width: '100%',
-    background: '#10b981'  // Green color for success action
-  }}
->
-  Create Another Tournament
-</button>
+                      onClick={() => {
+                        // Store context in sessionStorage for AdminEvents to load
+                        if (createdEvent && createdBrackets.length > 0) {
+                          sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
+                            selectedEvent: createdEvent,
+                            selectedBracket: createdBrackets[0], // Navigate to first bracket
+                            contentTab: 'matches', // Go to Manage Matches tab
+                            bracketViewType: 'list' // Set to list view
+                          }));
+                        }
+                        window.location.href = '/AdminDashboard/events';
+                      }}
+                      className="bracket-submit-btn"
+                      style={{ 
+                        width: '100%', 
+                        background: '#3b82f6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      Go to Event Schedules
+                      <FaChevronRight />
+                    </button>
+                                        <button 
+                      onClick={handleStartNew}
+                      className="bracket-submit-btn"
+                      style={{ 
+                        width: '100%',
+                        background: '#10b981'  // Green color for success action
+                      }}
+                    >
+                      Create Another Tournament
+                    </button>
                     </div>
                 </div>
               </div>
@@ -1657,7 +1798,7 @@ const handleCreateAllBrackets = async () => {
         </div>
       </div>
 
-      <style jsx>{`
+     <style jsx>{`
         .validation-message-animated {
           animation: slideInDown 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
@@ -1763,23 +1904,23 @@ const handleCreateAllBrackets = async () => {
         }
 
         .add-player-btn {
-  background: #2196f3;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  margin-top: 15px;
-}
+          background: #2196f3;
+          color: white;
+          border: none;
+          padding: 12px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          margin-top: 15px;
+        }
 
-.add-player-btn:hover {
-  background: #1976d2;
-  transform: translateY(-1px);
-}
+        .add-player-btn:hover {
+          background: #1976d2;
+          transform: translateY(-1px);
+        }
 
 
         .admin-teams-count-success {
@@ -2437,6 +2578,70 @@ const handleCreateAllBrackets = async () => {
 
         .summary-item:last-child {
           border-bottom: none;
+        }
+
+        .team-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .edit-team-btn {
+          background: #10b981;
+          color: white;
+          border: none;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          font-size: 16px;
+          font-weight: bold;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          padding: 0;
+        }
+
+        .edit-team-btn:hover {
+          background: #059669;
+          transform: scale(1.1);
+        }
+
+        .editing-banner {
+          background: linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(21, 101, 192, 0.2) 100%);
+          border: 2px solid rgba(33, 150, 243, 0.4);
+          border-radius: 8px;
+          padding: 12px 16px;
+          margin-bottom: 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          color: #64b5f6;
+          font-weight: 600;
+          font-size: 16px;
+        }
+
+        .editing-banner span {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .cancel-edit-btn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: #e2e8f0;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.2s ease;
+        }
+
+        .cancel-edit-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
         }
 
         @media (max-width: 768px) {
