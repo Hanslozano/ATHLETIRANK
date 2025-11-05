@@ -530,64 +530,21 @@ const getAwardsForDisplay = () => {
   const awardsArray = [];
   
   if (selectedBracket.sport_type === "basketball") {
-    if (awards.mvp) {
-      awardsArray.push({
-        category: "Most Valuable Player",
-        winner: awards.mvp.player_name || 'Unknown',
-        team: awards.mvp.team_name || 'Unknown',
-        stat: `${safeNumber(awards.mvp.total_points)} Points`
-      });
-    }
-    if (awards.best_playmaker) {
-      awardsArray.push({
-        category: "Best Playmaker",
-        winner: awards.best_playmaker.player_name || 'Unknown',
-        team: awards.best_playmaker.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_playmaker.total_assists)} Assists`
-      });
-    }
-    if (awards.best_defender) {
-      awardsArray.push({
-        category: "Best Defender",
-        winner: awards.best_defender.player_name || 'Unknown',
-        team: awards.best_defender.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_defender.total_steals)} Steals`
-      });
-    }
-    if (awards.best_rebounder) {
-      awardsArray.push({
-        category: "Best Rebounder",
-        winner: awards.best_rebounder.player_name || 'Unknown',
-        team: awards.best_rebounder.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_rebounder.total_rebounds)} Rebounds`
-      });
-    }
-    if (awards.best_blocker) {
-      awardsArray.push({
-        category: "Best Blocker",
-        winner: awards.best_blocker.player_name || 'Unknown',
-        team: awards.best_blocker.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_blocker.total_blocks)} Blocks`
+    // Basketball: Show Mythical 5 (top 5 players after MVP based on MVP score)
+    if (awards.mythical_five && awards.mythical_five.length > 0) {
+      awards.mythical_five.forEach((player, index) => {
+        awardsArray.push({
+          rank: index + 1,
+          category: "MYTHICAL 5",
+          winner: player.player_name || 'Unknown',
+          team: player.team_name || 'Unknown',
+          stat: `${safeNumber(player.ppg)} PPG, ${safeNumber(player.rpg)} RPG, ${safeNumber(player.apg)} APG`,
+          overall: safeNumber(player.mvp_score, 1)
+        });
       });
     }
   } else {
-    // Volleyball - using totals instead of averages
-    if (awards.mvp) {
-      awardsArray.push({
-        category: "Most Valuable Player",
-        winner: awards.mvp.player_name || 'Unknown',
-        team: awards.mvp.team_name || 'Unknown',
-        stat: `${safeNumber(awards.mvp.total_kills)} Kills, ${safeNumber(awards.mvp.efficiency)} Eff`
-      });
-    }
-    if (awards.best_blocker) {
-      awardsArray.push({
-        category: "Best Blocker",
-        winner: awards.best_blocker.player_name || 'Unknown',
-        team: awards.best_blocker.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_blocker.total_blocks)} Blocks`
-      });
-    }
+    // Volleyball Awards (6 position-based awards)
     if (awards.best_setter) {
       awardsArray.push({
         category: "Best Setter",
@@ -601,30 +558,37 @@ const getAwardsForDisplay = () => {
         category: "Best Libero",
         winner: awards.best_libero.player_name || 'Unknown',
         team: awards.best_libero.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_libero.total_digs)} Digs`
+        stat: `${safeNumber(awards.best_libero.total_digs)} Digs, ${safeNumber(awards.best_libero.total_receptions)} Receptions`
       });
     }
-    if (awards.best_server) {
+    if (awards.best_outside_hitter) {
       awardsArray.push({
-        category: "Best Server",
-        winner: awards.best_server.player_name || 'Unknown',
-        team: awards.best_server.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_server.total_aces)} Aces`
+        category: "Best Outside Hitter",
+        winner: awards.best_outside_hitter.player_name || 'Unknown',
+        team: awards.best_outside_hitter.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_outside_hitter.total_kills)} Kills, ${safeNumber(awards.best_outside_hitter.total_aces)} Aces, ${safeNumber(awards.best_outside_hitter.total_blocks)} Blocks`
       });
     }
-    if (awards.best_spiker) {
+    if (awards.best_opposite_hitter) {
       awardsArray.push({
-        category: "Best Spiker",
-        winner: awards.best_spiker.player_name || 'Unknown',
-        team: awards.best_spiker.team_name || 'Unknown',
-        stat: `${safeNumber(awards.best_spiker.total_kills)} Kills`
+        category: "Best Opposite Hitter",
+        winner: awards.best_opposite_hitter.player_name || 'Unknown',
+        team: awards.best_opposite_hitter.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_opposite_hitter.total_kills)} Kills, ${safeNumber(awards.best_opposite_hitter.total_blocks)} Blocks, ${safeNumber(awards.best_opposite_hitter.total_aces)} Aces`
+      });
+    }
+    if (awards.best_middle_blocker) {
+      awardsArray.push({
+        category: "Best Middle Blocker",
+        winner: awards.best_middle_blocker.player_name || 'Unknown',
+        team: awards.best_middle_blocker.team_name || 'Unknown',
+        stat: `${safeNumber(awards.best_middle_blocker.total_blocks)} Blocks, ${safeNumber(awards.best_middle_blocker.total_kills)} Kills`
       });
     }
   }
   
   return awardsArray.filter(a => a.winner && a.winner !== 'Unknown');
 };
-
 
   // Edit handlers
   const handleEditEvent = (event) => {
@@ -1350,22 +1314,25 @@ const closeEditTeamModal = () => {
         <div className="dashboard-main">
           <div className="bracket-content">
             {/* Tabs */}
-            <div className="bracket-tabs">
-              <button
-                className={`bracket-tab-button ${activeTab === "events" ? "bracket-tab-active" : ""}`}
-                onClick={() => setActiveTab("events")}
-              >
-                Manage Events & Brackets
-              </button>
-              {selectedBracket && (
-                <button
-                  className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
-                  onClick={() => setActiveTab("results")}
-                >
-                  {selectedBracket.name} - Manage Matches
-                </button>
-              )}
-            </div>
+           <div className="bracket-tabs">
+  <button
+    className={`bracket-tab-button ${activeTab === "events" ? "bracket-tab-active" : ""}`}
+    onClick={() => setActiveTab("events")}
+  >
+    Manage Events & Brackets
+  </button>
+  {selectedBracket && (
+    <>
+      <span className="bracket-tab-separator">/</span>
+      <button
+        className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
+        onClick={() => setActiveTab("results")}
+      >
+        {selectedBracket.name} - Manage Matches
+      </button>
+    </>
+  )}
+</div>
 
             {/* Events Selection Tab */}
             {activeTab === "events" && (
@@ -2004,9 +1971,9 @@ const closeEditTeamModal = () => {
                                   onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
                                   onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
                                 >
-                                  <option value="standings">🏆 Team Standings</option>
-                                  <option value="mvp">👑 Tournament MVP</option>
-                                  <option value="awards">🏅 Awards</option>
+                                <option value="standings">🏆 Team Standings</option>
+                                <option value="mvp">👑 Tournament MVP{selectedBracket.sport_type === "basketball" ? " & Mythical 5" : ""}</option>
+                                <option value="awards">{selectedBracket.sport_type === "basketball" ? "🏅 Mythical Five" : "🏅 Volleyball Awards"}</option>
                                 </select>
                               </div>
                             </div>
@@ -2192,7 +2159,79 @@ const closeEditTeamModal = () => {
               )}
             </div>
           </div>
+          
         </div>
+        {/* Mythical 5 Section - Only for Basketball */}
+{selectedBracket.sport_type === "basketball" && awards.mythical_five && awards.mythical_five.length > 0 && (
+  <div style={{ marginTop: '40px' }}>
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '12px',
+      marginBottom: '24px'
+    }}>
+      <FaMedal style={{ color: '#fbbf24', fontSize: '28px' }} />
+      <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>
+        Mythical Five
+      </h2>
+    </div>
+
+    <div className="awards_standings_table_container">
+      <table className="awards_standings_table">
+        <thead>
+          <tr>
+            <th style={{ width: '60px', textAlign: 'center' }}>RANK</th>
+            <th>PLAYER</th>
+            <th>TEAM</th>
+            <th style={{ textAlign: 'center' }}>G</th>
+            <th style={{ textAlign: 'center' }}>PPG</th>
+            <th style={{ textAlign: 'center' }}>RPG</th>
+            <th style={{ textAlign: 'center' }}>APG</th>
+            <th style={{ textAlign: 'center' }}>SPG</th>
+            <th style={{ textAlign: 'center' }}>BPG</th>
+            <th style={{ textAlign: 'center', background: 'rgba(59, 130, 246, 0.1)' }}>OVERALL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {awards.mythical_five.map((player, index) => (
+            <tr key={index} style={{ 
+              background: index < 3 ? 'rgba(251, 191, 36, 0.05)' : 'transparent'
+            }}>
+              <td style={{ textAlign: 'center', fontWeight: '700', fontSize: '18px' }}>
+                {index === 0 && <span style={{ color: '#fbbf24' }}>🥇</span>}
+                {index === 1 && <span style={{ color: '#94a3b8' }}>🥈</span>}
+                {index === 2 && <span style={{ color: '#cd7f32' }}>🥉</span>}
+                {index > 2 && <span style={{ color: 'var(--text-muted)' }}>{index + 1}</span>}
+              </td>
+              <td style={{ fontWeight: '700', fontSize: '16px' }}>
+                {player.player_name || 'Unknown'}
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '400' }}>
+                  #{player.jersey_number || 'N/A'} • {player.position || 'N/A'}
+                </div>
+              </td>
+              <td style={{ fontWeight: '600' }}>{player.team_name || 'Unknown'}</td>
+              <td style={{ textAlign: 'center' }}>{player.games_played || 0}</td>
+              <td style={{ textAlign: 'center', fontWeight: '600' }}>{safeNumber(player.ppg)}</td>
+              <td style={{ textAlign: 'center' }}>{safeNumber(player.rpg)}</td>
+              <td style={{ textAlign: 'center' }}>{safeNumber(player.apg)}</td>
+              <td style={{ textAlign: 'center' }}>{safeNumber(player.spg)}</td>
+              <td style={{ textAlign: 'center' }}>{safeNumber(player.bpg)}</td>
+              <td style={{ 
+                textAlign: 'center', 
+                fontWeight: '700', 
+                fontSize: '16px',
+                color: '#3b82f6',
+                background: 'rgba(59, 130, 246, 0.1)'
+              }}>
+                {safeNumber(player.mvp_score, 1)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
       </div>
     )}
   </div>
@@ -2200,48 +2239,145 @@ const closeEditTeamModal = () => {
                             
 
                             {awardsTab === "awards" && (
-                              <div className="awards_standings_tab_content">
-                                {!awards || getAwardsForDisplay().length === 0 ? (
-                                  <div className="bracket-no-brackets">
-                                    <p>No awards data available. Make sure player statistics have been recorded for completed matches.</p>
-                                  </div>
-                                ) : (
-                                  <div className="awards_standings_awards_section">
-                                    <h2>Tournament Awards</h2>
-                                    <div className="awards_standings_table_container">
-                                      <table className="awards_standings_table">
-                                        <thead>
-                                          <tr>
-                                            <th style={{ width: '60px', textAlign: 'center' }}></th>
-                                            <th>Award Category</th>
-                                            <th>Winner</th>
-                                            <th>Team</th>
-                                            <th>Statistics</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {getAwardsForDisplay().map((award, index) => (
-                                            <tr key={index}>
-                                              <td style={{ textAlign: 'center' }}>
-                                                {index === 0 ? (
-                                                  <FaCrown style={{ color: '#fbbf24', fontSize: '24px' }} />
-                                                ) : (
-                                                  <FaStar style={{ color: '#3b82f6', fontSize: '20px' }} />
-                                                )}
-                                              </td>
-                                              <td style={{ fontWeight: '600' }}>{award.category}</td>
-                                              <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>{award.winner}</td>
-                                              <td>{award.team}</td>
-                                              <td style={{ color: '#3b82f6', fontWeight: '600' }}>{award.stat}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+  <div className="awards_standings_tab_content">
+    {!awards || getAwardsForDisplay().length === 0 ? (
+      <div className="bracket-no-brackets">
+        <p>No awards data available. Make sure player statistics have been recorded for completed matches.</p>
+      </div>
+    ) : (
+      <div className="awards_standings_awards_section">
+        {selectedBracket.sport_type === "basketball" ? (
+          <>
+            <h2>Mythical Five</h2>
+            <div className="awards_standings_table_container">
+              <table className="awards_standings_table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '60px', textAlign: 'center' }}>RANK</th>
+                    <th>PLAYER</th>
+                    <th>TEAM</th>
+                    <th style={{ textAlign: 'center' }}>G</th>
+                    <th style={{ textAlign: 'center' }}>PPG</th>
+                    <th style={{ textAlign: 'center' }}>RPG</th>
+                    <th style={{ textAlign: 'center' }}>APG</th>
+                    <th style={{ textAlign: 'center', background: 'rgba(59, 130, 246, 0.1)' }}>OVERALL AVG</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getAwardsForDisplay().map((award, index) => (
+                    <tr key={index}>
+                      <td style={{ textAlign: 'center', fontWeight: '700', fontSize: '18px' }}>
+                        {index === 0 && <FaCrown style={{ color: '#fbbf24', fontSize: '24px' }} />}
+                        {index > 0 && (
+                          <span style={{ 
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                            color: 'white',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            letterSpacing: '0.5px'
+                          }}>
+                            #{index + 1}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>
+                        {award.winner}
+                        {index === 0 && (
+                          <span style={{ 
+                            marginLeft: '10px',
+                            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                            color: '#1a2332',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px'
+                          }}>
+                            MVP
+                          </span>
+                        )}
+                        {index > 0 && (
+                          <span style={{ 
+                            marginLeft: '10px',
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                            color: 'white',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px'
+                          }}>
+                            MYTHICAL 5
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ fontWeight: '600' }}>{award.team}</td>
+                      <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        -
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: '600' }}>
+                        {award.stat.split(',')[0].trim()}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {award.stat.split(',')[1]?.trim() || '-'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {award.stat.split(',')[2]?.trim() || '-'}
+                      </td>
+                      <td style={{ 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        fontSize: '16px',
+                        color: '#3b82f6',
+                        background: 'rgba(59, 130, 246, 0.1)'
+                      }}>
+                        {award.overall || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2>Volleyball Awards</h2>
+            <div className="awards_standings_table_container">
+              <table className="awards_standings_table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '60px', textAlign: 'center' }}></th>
+                    <th>Award Category</th>
+                    <th>Winner</th>
+                    <th>Team</th>
+                    <th>Statistics</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getAwardsForDisplay().map((award, index) => (
+                    <tr key={index}>
+                      <td style={{ textAlign: 'center' }}>
+                        <FaStar style={{ color: '#3b82f6', fontSize: '20px' }} />
+                      </td>
+                      <td style={{ fontWeight: '600' }}>{award.category}</td>
+                      <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>
+                        {award.winner}
+                      </td>
+                      <td>{award.team}</td>
+                      <td style={{ color: '#3b82f6', fontWeight: '600' }}>{award.stat}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    )}
+  </div>
+)}
                           </>
                         )}
                       </div>

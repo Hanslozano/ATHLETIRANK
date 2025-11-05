@@ -19,17 +19,20 @@ function calculateBasketballMVPScore(stats, gamesPlayed) {
 // Helper function to calculate volleyball MVP score
 // Formula: MVP = (A + K + B + D + R) - (SE + AE + RE)
 function calculateVolleyballMVPScore(stats, gamesPlayed) {
-  const A = stats.total_aces || 0;           // Service Aces
-  const K = stats.total_kills || 0;          // Attack Kills
-  const B = stats.total_blocks || 0;         // Block Points
-  const D = stats.total_digs || 0;           // Dig Success
-  const R = stats.total_receptions || 0;     // Receive Success
-  const SE = stats.total_serve_errors || 0;  // Service Errors
-  const AE = stats.total_attack_errors || 0; // Attack Errors
-  const RE = stats.total_reception_errors || 0; // Receive Errors
+  const K = stats.total_kills || 0;          
+  const B = stats.total_blocks || 0;         
+  const A = stats.total_aces || 0;           
+  const VA = stats.total_assists || 0;       // Volleyball Assists
+  const D = stats.total_digs || 0;           
+  const AE = stats.total_attack_errors || 0; 
+  const SE = stats.total_serve_errors || 0;  
+  const RE = stats.total_reception_errors || 0;
   
-  // MVP Score = (A + K + B + D + R) - (SE + AE + RE)
-  return (A + K + B + D + R) - (SE + AE + RE);
+  // CORRECT FORMULA: (Positive - Errors) / Games
+  // This matches the "Overall" score shown in your leaderboard
+  const efficiency = ((K + B + A + VA + D) - (AE + SE + RE)) / gamesPlayed;
+  
+  return efficiency;
 }
 
 // GET tournament champion and winner team
@@ -110,48 +113,63 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
       HAVING games_played > 0
     ` : `
-      SELECT 
-        p.id as player_id,
-        p.name as player_name,
-        p.jersey_number,
-        p.position,
-        p.team_id,
-        t.name as team_name,
-        COUNT(DISTINCT ps.match_id) as games_played,
-        SUM(ps.service_aces) as total_aces,
-        SUM(ps.kills) as total_kills,
-        SUM(ps.volleyball_blocks) as total_blocks,
-        SUM(ps.digs) as total_digs,
-        SUM(ps.receptions) as total_receptions,
-        SUM(ps.volleyball_assists) as total_assists,
-        SUM(ps.serve_errors) as total_serve_errors,
-        SUM(ps.attack_errors) as total_attack_errors,
-        SUM(ps.reception_errors) as total_reception_errors,
-        SUM(ps.attack_attempts) as total_attack_attempts,
-        SUM(ps.serves) as total_serves,
-        CASE 
-          WHEN SUM(ps.attack_attempts) > 0 
-          THEN ROUND((SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100, 1)
-          ELSE 0 
-        END as hitting_percentage,
-        CASE 
-          WHEN (SUM(ps.serves) + SUM(ps.serve_errors)) > 0 
-          THEN ROUND(SUM(ps.serves) / (SUM(ps.serves) + SUM(ps.serve_errors)) * 100, 1)
-          ELSE 0 
-        END as service_percentage,
-        CASE 
-          WHEN (SUM(ps.receptions) + SUM(ps.reception_errors)) > 0 
-          THEN ROUND(SUM(ps.receptions) / (SUM(ps.receptions) + SUM(ps.reception_errors)) * 100, 1)
-          ELSE 0 
-        END as reception_percentage
-      FROM player_stats ps
-      JOIN players p ON ps.player_id = p.id
-      JOIN teams t ON p.team_id = t.id
-      JOIN matches m ON ps.match_id = m.id
-      WHERE m.bracket_id = ? AND m.status = 'completed'
-      GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
-      HAVING games_played > 0
-    `;
+  SELECT 
+    p.id as player_id,
+    p.name as player_name,
+    p.jersey_number,
+    p.position,
+    p.team_id,
+    t.name as team_name,
+    COUNT(DISTINCT ps.match_id) as games_played,
+    SUM(ps.service_aces) as total_aces,
+    SUM(ps.kills) as total_kills,
+    SUM(ps.volleyball_blocks) as total_blocks,
+    SUM(ps.digs) as total_digs,
+    SUM(ps.receptions) as total_receptions,
+    SUM(ps.volleyball_assists) as total_assists,
+    SUM(ps.serve_errors) as total_serve_errors,
+    SUM(ps.attack_errors) as total_attack_errors,
+    SUM(ps.reception_errors) as total_reception_errors,
+    SUM(ps.attack_attempts) as total_attack_attempts,
+    SUM(ps.serves) as total_serves,
+    -- ✅ ADD THIS: Calculate efficiency (MVP score)
+    ROUND(
+      (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
+       SUM(ps.volleyball_assists) + SUM(ps.digs) - 
+       (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+      NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
+    ) as efficiency,
+    -- ✅ ADD THIS: Same calculation as overall_score
+    ROUND(
+      (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
+       SUM(ps.volleyball_assists) + SUM(ps.digs) - 
+       (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+      NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
+    ) as overall_score,
+    CASE 
+      WHEN SUM(ps.attack_attempts) > 0 
+      THEN ROUND((SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100, 1)
+      ELSE 0 
+    END as hitting_percentage,
+    CASE 
+      WHEN (SUM(ps.serves) + SUM(ps.serve_errors)) > 0 
+      THEN ROUND(SUM(ps.serves) / (SUM(ps.serves) + SUM(ps.serve_errors)) * 100, 1)
+      ELSE 0 
+    END as service_percentage,
+    CASE 
+      WHEN (SUM(ps.receptions) + SUM(ps.reception_errors)) > 0 
+      THEN ROUND(SUM(ps.receptions) / (SUM(ps.receptions) + SUM(ps.reception_errors)) * 100, 1)
+      ELSE 0 
+    END as reception_percentage
+  FROM player_stats ps
+  JOIN players p ON ps.player_id = p.id
+  JOIN teams t ON p.team_id = t.id
+  JOIN matches m ON ps.match_id = m.id
+  WHERE m.bracket_id = ? AND m.status = 'completed'
+  GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
+  HAVING games_played > 0
+`;
+
     
     const [allPlayerStats] = await db.pool.query(statsQuery, [bracketId]);
     
@@ -166,60 +184,52 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
     let awards = {};
     
     if (sportType === 'basketball') {
-      // Basketball: Calculate MVP score using document formula
+      // Basketball: Calculate MVP score and get top 6 players
       const playersWithScores = allPlayerStats.map(player => ({
         ...player,
         mvp_score: calculateBasketballMVPScore(player, player.games_played)
       }));
       
+      // Sort by MVP score descending
       playersWithScores.sort((a, b) => b.mvp_score - a.mvp_score);
+      
+      // MVP is the top player
       mvpData = playersWithScores[0];
       
-      // Basketball Mythical 5 Awards (from document)
-      // 1. MVP - Overall best performer
-      // 2. Best Playmaker - Assists (assists per game)
-      // 3. Best Defender - Steals (steals per game)
-      // 4. Best Rebounder - Rebounds (rebounds per game)
-      // 5. Best Blocker - Blocks (blocks per game)
-      
-      const sortedByAssists = [...allPlayerStats].sort((a, b) => b.apg - a.apg);
-      const sortedBySteals = [...allPlayerStats].sort((a, b) => b.spg - a.spg);
-      const sortedByRebounds = [...allPlayerStats].sort((a, b) => b.rpg - a.rpg);
-      const sortedByBlocks = [...allPlayerStats].sort((a, b) => b.bpg - a.bpg);
+      // Mythical 5 are the next 5 players (positions 2-6)
+      const mythicalFive = playersWithScores.slice(1, 6);
       
       awards = {
         mvp: mvpData,
-        best_playmaker: sortedByAssists[0],  // Assists
-        best_defender: sortedBySteals[0],     // Steals
-        best_rebounder: sortedByRebounds[0],  // Rebounds
-        best_blocker: sortedByBlocks[0]       // Blocks
+        mythical_five: mythicalFive
       };
       
     } else {
-      // Volleyball: Calculate MVP using document formula
-      const playersWithScores = allPlayerStats.map(player => {
-        const mvpScore = calculateVolleyballMVPScore(player, player.games_played);
-        return {
-          ...player,
-          mvp_score: mvpScore,
-          efficiency: mvpScore, // Use MVP score as efficiency
-          overall_score: mvpScore,
-          total_errors: (player.total_attack_errors || 0) + 
-                       (player.total_serve_errors || 0) + 
-                       (player.total_reception_errors || 0)
-        };
-      });
+      // Volleyball - MVP from ALL players
+      // Calculate MVP scores for ALL players using totals
+     const playersWithScores = allPlayerStats.map(player => ({
+  ...player,
+  // Use the efficiency from the SQL query (already calculated correctly)
+  mvp_score: player.efficiency || player.overall_score || 0,
+  overall_score: player.efficiency || player.overall_score || 0,
+  total_errors: (player.total_attack_errors || 0) + 
+               (player.total_serve_errors || 0) + 
+               (player.total_reception_errors || 0)
+}));
+
+// Sort by efficiency/overall_score (highest first)
+playersWithScores.sort((a, b) => {
+  const scoreA = a.overall_score || a.efficiency || 0;
+  const scoreB = b.overall_score || b.efficiency || 0;
+  return scoreB - scoreA;
+});
       
-      playersWithScores.sort((a, b) => b.mvp_score - a.mvp_score);
+      
+      // ✅ SET MVP as the top player
       mvpData = playersWithScores[0];
       
       // Volleyball Awards (from document):
-      // Best Setter - Assist (playmaking efficiency)
-      // Best Libero - Dig + Reception (Defensive efficiency)
-      // Best Outside Hitter - Kill + Ace + Block (Offensive Scoring)
-      // Best Opposite Hitter - Kill + Block + Ace (attacking power)
-      // Best Middle Blocker - Block + Kill (blocking)
-      
+      // Volleyball Awards (from document):
       // Best Setter - Total Assists
       const sortedByAssists = [...playersWithScores].sort((a, b) => 
         b.total_assists - a.total_assists

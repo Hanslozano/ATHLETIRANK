@@ -31,9 +31,12 @@
 /* Main tabs container with distinct lighter background */
 .bracket-tabs {
   display: flex !important;
-  background: #101620ff !important;  /* NEW COLOR */
-  border-bottom: 2px solid var(--border-color) !important;
-  padding: 0 20px !important;
+  align-items: center !important;
+  background: #171f2c !important;
+  border-bottom: 1px solid #1e293b !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: visible !important;  /* ADD THIS */
 }
 
 .bracket-tab-button {
@@ -47,6 +50,7 @@
   font-size: 16px;
   border-bottom: 3px solid transparent;
   white-space: nowrap;
+  line-height: normal;  /* ADD THIS */
 }
 
 .bracket-tab-button:hover {
@@ -105,13 +109,23 @@
   margin-bottom: 20px;
 }
 
+.bracket-tab-separator {
+  color: #64748b;
+  font-size: 18px;
+  padding: 0 8px;  /* Reduced from 16px to 8px */
+  user-select: none;
+  line-height: 1;
+  align-self: center;
+}
+
 /* ============================================
    CONTENT TABS (Awards & Standings)
    ============================================ */
 
 .awards_standings_tabs {
   display: flex;
-  background: #101620ff !important;  /* NEW COLOR */
+  background: #171f2c !important;
+ /* NEW COLOR */
   border-bottom: 2px solid var(--border-color);
 }
 
