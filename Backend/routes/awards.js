@@ -61,6 +61,7 @@ router.get("/brackets/:bracketId/champion", async (req, res) => {
 });
 
 // GET MVP and awards for a bracket
+// GET MVP and awards for a bracket
 router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
   try {
     const { bracketId } = req.params;
@@ -113,63 +114,60 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
       HAVING games_played > 0
     ` : `
-  SELECT 
-    p.id as player_id,
-    p.name as player_name,
-    p.jersey_number,
-    p.position,
-    p.team_id,
-    t.name as team_name,
-    COUNT(DISTINCT ps.match_id) as games_played,
-    SUM(ps.service_aces) as total_aces,
-    SUM(ps.kills) as total_kills,
-    SUM(ps.volleyball_blocks) as total_blocks,
-    SUM(ps.digs) as total_digs,
-    SUM(ps.receptions) as total_receptions,
-    SUM(ps.volleyball_assists) as total_assists,
-    SUM(ps.serve_errors) as total_serve_errors,
-    SUM(ps.attack_errors) as total_attack_errors,
-    SUM(ps.reception_errors) as total_reception_errors,
-    SUM(ps.attack_attempts) as total_attack_attempts,
-    SUM(ps.serves) as total_serves,
-    -- ✅ ADD THIS: Calculate efficiency (MVP score)
-    ROUND(
-      (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
-       SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-       (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
-      NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
-    ) as efficiency,
-    -- ✅ ADD THIS: Same calculation as overall_score
-    ROUND(
-      (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
-       SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-       (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
-      NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
-    ) as overall_score,
-    CASE 
-      WHEN SUM(ps.attack_attempts) > 0 
-      THEN ROUND((SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100, 1)
-      ELSE 0 
-    END as hitting_percentage,
-    CASE 
-      WHEN (SUM(ps.serves) + SUM(ps.serve_errors)) > 0 
-      THEN ROUND(SUM(ps.serves) / (SUM(ps.serves) + SUM(ps.serve_errors)) * 100, 1)
-      ELSE 0 
-    END as service_percentage,
-    CASE 
-      WHEN (SUM(ps.receptions) + SUM(ps.reception_errors)) > 0 
-      THEN ROUND(SUM(ps.receptions) / (SUM(ps.receptions) + SUM(ps.reception_errors)) * 100, 1)
-      ELSE 0 
-    END as reception_percentage
-  FROM player_stats ps
-  JOIN players p ON ps.player_id = p.id
-  JOIN teams t ON p.team_id = t.id
-  JOIN matches m ON ps.match_id = m.id
-  WHERE m.bracket_id = ? AND m.status = 'completed'
-  GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
-  HAVING games_played > 0
-`;
-
+      SELECT 
+        p.id as player_id,
+        p.name as player_name,
+        p.jersey_number,
+        p.position,
+        p.team_id,
+        t.name as team_name,
+        COUNT(DISTINCT ps.match_id) as games_played,
+        SUM(ps.service_aces) as total_aces,
+        SUM(ps.kills) as total_kills,
+        SUM(ps.volleyball_blocks) as total_blocks,
+        SUM(ps.digs) as total_digs,
+        SUM(ps.receptions) as total_receptions,
+        SUM(ps.volleyball_assists) as total_assists,
+        SUM(ps.serve_errors) as total_serve_errors,
+        SUM(ps.attack_errors) as total_attack_errors,
+        SUM(ps.reception_errors) as total_reception_errors,
+        SUM(ps.attack_attempts) as total_attack_attempts,
+        SUM(ps.serves) as total_serves,
+        ROUND(
+          (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
+           SUM(ps.volleyball_assists) + SUM(ps.digs) - 
+           (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+          NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
+        ) as efficiency,
+        ROUND(
+          (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
+           SUM(ps.volleyball_assists) + SUM(ps.digs) - 
+           (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+          NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
+        ) as overall_score,
+        CASE 
+          WHEN SUM(ps.attack_attempts) > 0 
+          THEN ROUND((SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100, 1)
+          ELSE 0 
+        END as hitting_percentage,
+        CASE 
+          WHEN (SUM(ps.serves) + SUM(ps.serve_errors)) > 0 
+          THEN ROUND(SUM(ps.serves) / (SUM(ps.serves) + SUM(ps.serve_errors)) * 100, 1)
+          ELSE 0 
+        END as service_percentage,
+        CASE 
+          WHEN (SUM(ps.receptions) + SUM(ps.reception_errors)) > 0 
+          THEN ROUND(SUM(ps.receptions) / (SUM(ps.receptions) + SUM(ps.reception_errors)) * 100, 1)
+          ELSE 0 
+        END as reception_percentage
+      FROM player_stats ps
+      JOIN players p ON ps.player_id = p.id
+      JOIN teams t ON p.team_id = t.id
+      JOIN matches m ON ps.match_id = m.id
+      WHERE m.bracket_id = ? AND m.status = 'completed'
+      GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
+      HAVING games_played > 0
+    `;
     
     const [allPlayerStats] = await db.pool.query(statsQuery, [bracketId]);
     
@@ -206,58 +204,76 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       
     } else {
       // Volleyball - MVP from ALL players
-      // Calculate MVP scores for ALL players using totals
-     const playersWithScores = allPlayerStats.map(player => ({
-  ...player,
-  // Use the efficiency from the SQL query (already calculated correctly)
-  mvp_score: player.efficiency || player.overall_score || 0,
-  overall_score: player.efficiency || player.overall_score || 0,
-  total_errors: (player.total_attack_errors || 0) + 
-               (player.total_serve_errors || 0) + 
-               (player.total_reception_errors || 0)
-}));
+      const playersWithScores = allPlayerStats.map(player => ({
+        ...player,
+        mvp_score: player.efficiency || player.overall_score || 0,
+        overall_score: player.efficiency || player.overall_score || 0,
+        total_errors: (player.total_attack_errors || 0) + 
+                     (player.total_serve_errors || 0) + 
+                     (player.total_reception_errors || 0)
+      }));
 
-// Sort by efficiency/overall_score (highest first)
-playersWithScores.sort((a, b) => {
-  const scoreA = a.overall_score || a.efficiency || 0;
-  const scoreB = b.overall_score || b.efficiency || 0;
-  return scoreB - scoreA;
-});
+      // Sort by efficiency/overall_score (highest first)
+      playersWithScores.sort((a, b) => {
+        const scoreA = a.overall_score || a.efficiency || 0;
+        const scoreB = b.overall_score || b.efficiency || 0;
+        return scoreB - scoreA;
+      });
       
-      
-      // ✅ SET MVP as the top player
+      // MVP is the top player (no position restriction)
       mvpData = playersWithScores[0];
       
-      // Volleyball Awards (from document):
-      // Volleyball Awards (from document):
-      // Best Setter - Total Assists
-      const sortedByAssists = [...playersWithScores].sort((a, b) => 
-        b.total_assists - a.total_assists
+      // Position-based awards with filtering
+      // Helper function to normalize position names for comparison
+      const normalizePosition = (position) => {
+        if (!position) return '';
+        return position.toLowerCase().trim();
+      };
+      
+      // Best Setter - Only players with "Setter" position
+      const setters = playersWithScores.filter(p => 
+        normalizePosition(p.position) === 'setter'
+      );
+      const sortedSetters = setters.sort((a, b) => 
+        (b.total_assists || 0) - (a.total_assists || 0)
       );
       
-      // Best Libero - Digs + Receptions combined
-      const sortedByDefense = [...playersWithScores].sort((a, b) => {
+      // Best Libero - Only players with "Libero" or "Defensive Specialist" position
+      const liberos = playersWithScores.filter(p => {
+        const pos = normalizePosition(p.position);
+        return pos === 'libero' || pos === 'defensive specialist';
+      });
+      const sortedLiberos = liberos.sort((a, b) => {
         const defenseA = (a.total_digs || 0) + (a.total_receptions || 0);
         const defenseB = (b.total_digs || 0) + (b.total_receptions || 0);
         return defenseB - defenseA;
       });
       
-      // Best Outside Hitter - Kills + Aces + Blocks
-      const sortedByOutside = [...playersWithScores].sort((a, b) => {
+      // Best Outside Hitter - Only "Outside Hitter" position
+      const outsideHitters = playersWithScores.filter(p => 
+        normalizePosition(p.position) === 'outside hitter'
+      );
+      const sortedOutside = outsideHitters.sort((a, b) => {
         const scoreA = (a.total_kills || 0) + (a.total_aces || 0) + (a.total_blocks || 0);
         const scoreB = (b.total_kills || 0) + (b.total_aces || 0) + (b.total_blocks || 0);
         return scoreB - scoreA;
       });
       
-      // Best Opposite Hitter - Kills + Blocks + Aces
-      const sortedByOpposite = [...playersWithScores].sort((a, b) => {
+      // Best Opposite Hitter - Only "Opposite Hitter" position
+      const oppositeHitters = playersWithScores.filter(p => 
+        normalizePosition(p.position) === 'opposite hitter'
+      );
+      const sortedOpposite = oppositeHitters.sort((a, b) => {
         const scoreA = (a.total_kills || 0) + (a.total_blocks || 0) + (a.total_aces || 0);
         const scoreB = (b.total_kills || 0) + (b.total_blocks || 0) + (b.total_aces || 0);
         return scoreB - scoreA;
       });
       
-      // Best Middle Blocker - Blocks + Kills
-      const sortedByMiddle = [...playersWithScores].sort((a, b) => {
+      // Best Middle Blocker - Only "Middle Blocker" position
+      const middleBlockers = playersWithScores.filter(p => 
+        normalizePosition(p.position) === 'middle blocker'
+      );
+      const sortedMiddle = middleBlockers.sort((a, b) => {
         const scoreA = (a.total_blocks || 0) + (a.total_kills || 0);
         const scoreB = (b.total_blocks || 0) + (b.total_kills || 0);
         return scoreB - scoreA;
@@ -265,11 +281,11 @@ playersWithScores.sort((a, b) => {
       
       awards = {
         mvp: mvpData,
-        best_setter: sortedByAssists[0],
-        best_libero: sortedByDefense[0],
-        best_outside_hitter: sortedByOutside[0],
-        best_opposite_hitter: sortedByOpposite[0],
-        best_middle_blocker: sortedByMiddle[0]
+        best_setter: sortedSetters[0] || null,
+        best_libero: sortedLiberos[0] || null,
+        best_outside_hitter: sortedOutside[0] || null,
+        best_opposite_hitter: sortedOpposite[0] || null,
+        best_middle_blocker: sortedMiddle[0] || null
       };
     }
     
@@ -287,7 +303,6 @@ playersWithScores.sort((a, b) => {
     res.status(500).json({ error: "Failed to calculate MVP and awards: " + err.message });
   }
 });
-
 // GET team standings for a bracket
 router.get("/brackets/:bracketId/standings", async (req, res) => {
   try {

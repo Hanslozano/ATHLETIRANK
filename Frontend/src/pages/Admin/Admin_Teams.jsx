@@ -849,9 +849,21 @@ const TeamsPage = ({ sidebarOpen }) => {
                                   {team.name}
                                 </td>
                                 <td>
-                                  <span className={`bracket-sport-badge ${teamSport === 'Volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`} style={{ fontSize: '13px', padding: '8px 14px' }}>
-                                    {teamSport}
-                                  </span>
+                                  <span 
+  className="bracket-sport-badge"
+  style={{ 
+    fontSize: '13px', 
+    padding: '8px 14px',
+    background: teamSport === 'Volleyball' ? '#4ecdc4' : '#ff6b35',
+    color: 'white',
+    borderRadius: '16px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  }}
+>
+  {teamSport}
+</span>
                                 </td>
                                 <td style={{ fontSize: '15px', fontWeight: '600' }}>{team.players.length}</td>
                                <td>
@@ -1342,9 +1354,20 @@ const TeamsPage = ({ sidebarOpen }) => {
               gap: '20px',
               flexWrap: 'wrap'
             }}>
-              <span className={`bracket-sport-badge ${viewModal.team.sport === 'Volleyball' ? 'bracket-sport-volleyball' : 'bracket-sport-basketball'}`}>
-                {viewModal.team.sport}
-              </span>
+            <span 
+  style={{ 
+    padding: '6px 12px',
+    borderRadius: '16px',
+    fontSize: '13px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    background: viewModal.team.sport === 'Volleyball' ? '#4ecdc4' : '#ff6b35',
+    color: 'white'
+  }}
+>
+  {viewModal.team.sport}
+</span>
               <span style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: '600' }}>
                 <strong>{viewModal.team.players.length}</strong> Players
               </span>

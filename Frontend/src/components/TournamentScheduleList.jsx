@@ -165,12 +165,12 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
   
   const getStatusDisplay = (match, schedule) => {
     if (match.status === 'bye') return { text: 'BYE', icon: null };
-    if (match.status === 'completed') return { text: 'COMPLETED', icon: <CheckCircle style={{ width: '12px', height: '12px' }} /> };
+    if (match.status === 'completed') return { text: 'COMPLETED', icon: <CheckCircle style={{ width: '14px', height: '14px' }} /> };
     if (match.status === 'scheduled' && !schedule) {
-      return { text: 'PENDING', icon: <AlertCircle style={{ width: '12px', height: '12px' }} /> };
+      return { text: 'PENDING', icon: <AlertCircle style={{ width: '14px', height: '14px' }} /> };
     }
-    if (schedule) return { text: 'SCHEDULED', icon: <Calendar style={{ width: '12px', height: '12px' }} /> };
-    return { text: 'PENDING', icon: <AlertCircle style={{ width: '12px', height: '12px' }} /> };
+    if (schedule) return { text: 'SCHEDULED', icon: <Calendar style={{ width: '14px', height: '14px' }} /> };
+    return { text: 'PENDING', icon: <AlertCircle style={{ width: '14px', height: '14px' }} /> };
   };
 
   const isRoundRobin = matches.length > 0 && matches[0].bracket_type === 'round_robin';
@@ -649,16 +649,17 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
           {/* Status Badge */}
           <div style={{ minWidth: '130px', display: 'flex', justifyContent: 'center' }}>
             <div className={`match-status ${getStatusColor(match.status, schedule)}`} style={{ 
-              padding: '8px 16px', 
-              borderRadius: '20px', 
-              fontSize: '12px', 
+              padding: '10px 18px', 
+              borderRadius: '24px', 
+              fontSize: '13px', 
               fontWeight: '700', 
               textTransform: 'uppercase',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              minWidth: '120px',
-              justifyContent: 'center'
+              gap: '8px',
+              minWidth: '140px',
+              justifyContent: 'center',
+              letterSpacing: '0.3px'
             }}>
               {statusInfo.icon}
               {statusInfo.text}
@@ -1665,7 +1666,11 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
         .match-status { display: inline-block; } 
         .status-pending { background: #475569; color: #cbd5e1; }
         .status-scheduled { background: #f97316; color: white; } 
-        .status-completed { background: #10b981; color: white; } 
+        .status-completed { 
+          background: #10b981; 
+          color: white;
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        } 
         .status-bye { background: #94a3b8; color: white; }
       `}</style>
     </div>
