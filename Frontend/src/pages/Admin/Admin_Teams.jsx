@@ -1442,14 +1442,18 @@ const TeamsPage = ({ sidebarOpen }) => {
                             value={editingPlayer.player.name}
                             onChange={(e) => handleEditPlayerChange("name", e.target.value)}
                             placeholder="Player name"
-                            style={{ 
-                              width: '100%', 
-                              padding: '8px 12px', 
-                              border: '1px solid white', 
-                              borderRadius: '4px',
-                              background: 'rgba(255, 255, 255, 0.9)',
-                              color: 'var(--text-primary)'
-                            }}
+                           style={{ 
+  width: '100%', 
+  padding: '8px 12px', 
+  border: '2px solid #2d3748', 
+  borderRadius: '6px',
+  background: '#1a2332',
+  color: '#e2e8f0',
+  fontSize: '14px',
+  outline: 'none'
+}}
+onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+onBlur={(e) => e.target.style.borderColor = '#2d3748'}
                           />
                         </div>
                         <div>
@@ -1461,13 +1465,17 @@ const TeamsPage = ({ sidebarOpen }) => {
                             placeholder="Jersey #"
                             maxLength="10"
                             style={{ 
-                              width: '100%', 
-                              padding: '8px 12px', 
-                              border: '1px solid white', 
-                              borderRadius: '4px',
-                              background: 'rgba(255, 255, 255, 0.9)',
-                              color: 'var(--text-primary)'
-                            }}
+  width: '100%', 
+  padding: '8px 12px', 
+  border: '2px solid #2d3748',
+  borderRadius: '6px',
+  background: '#1a2332',
+  color: '#e2e8f0',
+  fontSize: '14px',
+  outline: 'none'
+}}
+onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+onBlur={(e) => e.target.style.borderColor = '#2d3748'}
                           />
                         </div>
                         <div>
@@ -1475,13 +1483,14 @@ const TeamsPage = ({ sidebarOpen }) => {
                           <select
                             value={editingPlayer.player.position}
                             onChange={(e) => handleEditPlayerChange("position", e.target.value)}
+                            
                             style={{ 
                               width: '100%', 
                               padding: '8px 12px', 
                               border: '1px solid white', 
                               borderRadius: '4px',
-                              background: 'rgba(255, 255, 255, 0.9)',
-                              color: 'var(--text-primary)'
+                              background: '#1a2332',
+                              color: '#e2e8f0'
                             }}
                           >
                             <option value="">Select position</option>

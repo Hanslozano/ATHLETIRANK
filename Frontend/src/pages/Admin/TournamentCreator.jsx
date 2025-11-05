@@ -3,6 +3,8 @@ import { FaCheckCircle, FaChevronRight, FaChevronLeft, FaPlus, FaTrash, FaChevro
 import "../../style/Admin_Events.css";
 import "../../style/Admin_TeamPage.css";
 import "../../style/Admin_BracketPage.css";
+import Papa from 'papaparse'; // Make sure papaparse is imported
+
 
 const TournamentCreator = ({ sidebarOpen }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -12,8 +14,13 @@ const TournamentCreator = ({ sidebarOpen }) => {
   const dashboardContentRef = React.useRef(null);
   
   // Scroll to validation message when error appears
-  useEffect(() => {
-    if (validationError) {
+ useEffect(() => {
+  if (validationError) {
+    // Only scroll to top for error messages, not success messages
+    const isSuccessMessage = validationError.includes("Successfully") || validationError.includes("successfully");
+    
+    if (!isSuccessMessage) {
+      // Scroll to top for errors
       setTimeout(() => {
         if (validationMessageRef.current) {
           validationMessageRef.current.scrollIntoView({ 
@@ -29,7 +36,9 @@ const TournamentCreator = ({ sidebarOpen }) => {
         }
       }, 100);
     }
-  }, [validationError]);
+    // For success messages, don't scroll - let them appear naturally in the Players section
+  }
+}, [validationError]);
 
     const [editingTeamId, setEditingTeamId] = useState(null);
 
@@ -61,7 +70,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
   }, [currentStep]);
 
   const [teamsInBracketsFromDB, setTeamsInBracketsFromDB] = useState([]);
-  
+  const [importingCSV, setImportingCSV] = useState(false);
+const fileInputRef = React.useRef(null);
   // Step 1: Event Data
   const [eventData, setEventData] = useState({
     name: "",
@@ -302,43 +312,138 @@ const getPositionLimits = (teamSize, sport) => {
     
     if (validationError) setValidationError("");
   };
+  // Handle CSV Import
+const handleCSVImport = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!currentTeam.sport) {
+    setValidationError("Please select a sport first before importing players.");
+    event.target.value = '';
+    return;
+  }
+
+  setImportingCSV(true);
+  setValidationError("");
+
+  try {
+    const text = await file.text();
+    const Papa = await import('papaparse');
+    
+    Papa.parse(text, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => {
+        const normalized = header.trim().toLowerCase();
+        if (normalized.includes('player') && normalized.includes('name')) return 'Player Name';
+        if (normalized.includes('jersey') && normalized.includes('number')) return 'Jersey Number';
+        if (normalized.includes('position')) return 'Position';
+        return header;
+      },
+      complete: (results) => {
+        const data = results.data;
+        
+        if (data.length === 0) {
+          setValidationError("CSV file is empty or invalid.");
+          setImportingCSV(false);
+          return;
+        }
+
+        const importedPlayers = data.slice(0, 15).map(row => {
+          const playerName = (row['Player Name'] || row['player name'] || row['name'] || '').trim();
+          const jerseyNumber = (row['Jersey Number'] || row['jersey number'] || row['number'] || '').toString().trim();
+          const position = (row['Position'] || row['position'] || '').trim();
+
+          return {
+            name: playerName,
+            jerseyNumber: jerseyNumber,
+            position: position
+          };
+        });
+
+        const validImports = importedPlayers.filter(p => p.name || p.jerseyNumber || p.position);
+        
+        if (validImports.length === 0) {
+          setValidationError("No valid player data found in CSV. Please check the file format.");
+          setImportingCSV(false);
+          return;
+        }
+
+        while (importedPlayers.length < 12) {
+          importedPlayers.push({ name: "", position: "", jerseyNumber: "" });
+        }
+
+        setCurrentTeam(prev => ({
+          ...prev,
+          players: importedPlayers
+        }));
+
+        setValidationError(`Successfully imported ${validImports.length} player(s) from CSV.`);
+        setImportingCSV(false);
+        event.target.value = '';
+      },
+      error: (error) => {
+        setValidationError(`Error parsing CSV: ${error.message}`);
+        setImportingCSV(false);
+        event.target.value = '';
+      }
+    });
+  } catch (err) {
+    setValidationError(`Error reading file: ${err.message}`);
+    setImportingCSV(false);
+    event.target.value = '';
+  }
+};
+
+// Download CSV Template
+const handleDownloadTemplate = () => {
+  const template = `Player Name,Jersey Number,Position
+John Doe,23,${currentTeam.sport === 'Basketball' ? 'Point Guard' : 'Setter'}
+Jane Smith,12,${currentTeam.sport === 'Basketball' ? 'Shooting Guard' : 'Outside Hitter'}`;
+  
+  const blob = new Blob([template], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `players_template_${currentTeam.sport.toLowerCase()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
 
   const handlePlayerChange = (index, field, value) => {
-    let finalValue = value;
-    
-    // For player names: remove any non-letter, non-space, non-hyphen characters
-    if (field === "name") {
-      finalValue = value.replace(/[^a-zA-Z\s-]/g, '');
+  let finalValue = value;
+  
+  // For player names: remove any non-letter, non-space, non-hyphen characters
+  if (field === "name") {
+    finalValue = value.replace(/[^a-zA-Z\s-]/g, '');
+    // Don't trim here - allow spaces between names
+  }
+  
+  // For jersey numbers: remove any non-digit characters
+  if (field === "jerseyNumber") {
+    finalValue = value.replace(/[^0-9]/g, '');
+  }
+  
+  const newPlayers = [...currentTeam.players];
+  
+  // NEW: If changing position, validate it's available
+  if (field === "position") {
+    if (!isPositionAvailable(finalValue, index)) {
+      setValidationError(`Cannot assign more than ${getPositionLimits(currentTeam.players.length, currentTeam.sport)[finalValue]} players to ${finalValue}`);
+      return;
     }
-    
-    // For jersey numbers: remove any non-digit characters
-    if (field === "jerseyNumber") {
-      finalValue = value.replace(/[^0-9]/g, '');
-    }
-    
-    // Trim whitespace from name and jersey number
-    if (field === "name" || field === "jerseyNumber") {
-      finalValue = finalValue.trim();
-    }
-    
-    const newPlayers = [...currentTeam.players];
-    
-    // NEW: If changing position, validate it's available
-    if (field === "position") {
-      if (!isPositionAvailable(finalValue, index)) {
-        setValidationError(`Cannot assign more than ${getPositionLimits(currentTeam.players.length, currentTeam.sport)[finalValue]} players to ${finalValue}`);
-        return;
-      }
-    }
-    
-    newPlayers[index][field] = finalValue;
-    setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
-    
-    // Clear validation error if it was about position limits
-    if (field === "position" && validationError && validationError.includes("Cannot assign more than")) {
-      setValidationError("");
-    }
-  };
+  }
+  
+  newPlayers[index][field] = finalValue;
+  setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
+  
+  // Clear validation error if it was about position limits
+  if (field === "position" && validationError && validationError.includes("Cannot assign more than")) {
+    setValidationError("");
+  }
+};
 
   // Add new player (up to 15 maximum)
   const handleAddPlayer = () => {
@@ -974,21 +1079,20 @@ const handleCreateAllBrackets = async () => {
             </div>
 
             {/* Validation Message */}
-            {validationError && (
-              <div 
-                ref={validationMessageRef}
-                className={`admin-teams-validation-message ${validationError.includes("successfully") ? "admin-teams-success" : "admin-teams-error"} validation-message-animated`}
-              >
-                {validationError}
-                <button 
-                  className="admin-teams-close-message"
-                  onClick={() => setValidationError("")}
-                >
-                  ×
-                </button>
-              </div>
-            )}
-
+           {validationError && !validationError.includes("Successfully") && !validationError.includes("successfully") && (
+  <div 
+    ref={validationMessageRef}
+    className={`admin-teams-validation-message admin-teams-error validation-message-animated`}
+  >
+    {validationError}
+    <button 
+      className="admin-teams-close-message"
+      onClick={() => setValidationError("")}
+    >
+      ×
+    </button>
+  </div>
+)}
             {/* Step 1: Create Event */}
             {currentStep === 1 && (
               <div className="bracket-create-section">
@@ -1227,20 +1331,65 @@ const handleCreateAllBrackets = async () => {
                       </div>
                     {/* Players Section */}
                       {currentTeam.sport && (
-                        <div className="admin-teams-players-section">
-                          <div className="admin-teams-players-header">
-                            <h3>Players ({currentTeam.players.length}/15)</h3>
-                            <div className="admin-teams-player-count">
-                              {validPlayerCount} / 12-15 players
-                              {validPlayerCount < 12 && (
-                                <span className="admin-teams-count-warning"> (Minimum 12 players required)</span>
-                              )}
-                              {validPlayerCount >= 12 && validPlayerCount <= 15 && (
-                                <span className="admin-teams-count-success"> ✓ Valid team size</span>
-                              )}
-                            </div>
-                          </div>
+  <div className="admin-teams-players-section">
+    <div className="admin-teams-players-header">
+      <h3>Players ({validPlayerCount}/{currentTeam.players.length})</h3>
+      <div className="admin-teams-player-count">
+        {validPlayerCount} / 12-15 players
+        {validPlayerCount < 12 && (
+          <span className="admin-teams-count-warning"> (Minimum 12 players required)</span>
+        )}
+        {validPlayerCount >= 12 && validPlayerCount <= 15 && (
+          <span className="admin-teams-count-success"> ✓ Valid team size</span>
+        )}
+      </div>
+    </div>
 
+    {/* Show only SUCCESS messages here (CSV import success) */}
+    {validationError && (validationError.includes("Successfully") || validationError.includes("successfully")) && (
+      <div 
+        className="admin-teams-validation-message admin-teams-success validation-message-animated"
+        style={{ marginTop: '15px', marginBottom: '15px' }}
+      >
+        {validationError}
+        <button 
+          className="admin-teams-close-message"
+          onClick={() => setValidationError("")}
+        >
+          ×
+        </button>
+      </div>
+    )}
+
+    <div className="csv-import-section">
+  <div className="csv-import-buttons">
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept=".csv"
+      onChange={handleCSVImport}
+      style={{ display: 'none' }}
+    />
+    <button
+      type="button"
+      className="csv-import-btn"
+      onClick={() => fileInputRef.current?.click()}
+      disabled={importingCSV}
+    >
+      {importingCSV ? "Importing..." : "📁 Import Players from CSV"}
+    </button>
+    <button
+      type="button"
+      className="csv-template-btn"
+      onClick={handleDownloadTemplate}
+    >
+      ⬇ Download CSV Template
+    </button>
+  </div>
+  <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px', display: 'block' }}>
+    CSV format: Player Name, Jersey Number, Position
+  </small>
+</div>
                           {/* NEW: Position Limits Display */}
                           <div className="position-limits-display">
                           <h4>Position Limits (Maximum 3 per position)</h4>
@@ -1935,13 +2084,13 @@ const handleCreateAllBrackets = async () => {
         }
 
         /* NEW: Position Limits Styles */
-        .position-limits-display {
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          padding: 15px;
-          margin-bottom: 20px;
-        }
+       .position-limits-display {
+  background: transparent; /* Remove background */
+  border: none; /* Remove border */
+  border-radius: 0;
+  padding: 0 0 15px 0; /* Keep bottom padding only */
+  margin-bottom: 20px;
+}
 
         .position-limits-display h4 {
           margin: 0 0 10px 0;
@@ -2704,7 +2853,66 @@ const handleCreateAllBrackets = async () => {
           .position-limits-grid {
             grid-template-columns: 1fr;
           }
+
+        
         }
+           .csv-import-section {
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+          }
+
+          .csv-import-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+          }
+
+          .csv-import-btn, .csv-template-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px; /* Change this to 18px or bigger */
+          }
+
+          .csv-import-btn {
+            background: #2196f3;
+            color: white;
+            flex: 1;
+            min-width: 200px;
+          }
+
+          .csv-import-btn:hover:not(:disabled) {
+            background: #1976d2;
+            transform: translateY(-1px);
+          }
+
+          .csv-import-btn:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+            opacity: 0.7;
+          }
+
+          .csv-template-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex: 1;
+            min-width: 200px;
+          }
+
+          .csv-template-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+          }
       `}</style>
     </div>
   );
