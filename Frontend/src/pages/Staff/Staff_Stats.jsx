@@ -64,6 +64,8 @@ const StaffStats = ({ sidebarOpen }) => {
     team2: true
   });
 
+
+
   // ============================================
   // 2. ADDED OFFLINE STATES
   // ============================================
@@ -77,6 +79,10 @@ const StaffStats = ({ sidebarOpen }) => {
     OFFLINE_DATA: 'staff_stats_offline_data',
     LAST_SYNC: 'staff_stats_last_sync'
   };
+
+  // SUCCESS PAGE STATES
+const [showSuccessPage, setShowSuccessPage] = useState(false);
+const [savedMatchData, setSavedMatchData] = useState(null);
 
   // QuickScore States
   const [isQuickScoreExpanded, setIsQuickScoreExpanded] = useState(true);
@@ -2096,13 +2102,24 @@ const StaffStats = ({ sidebarOpen }) => {
 
       // IF OFFLINE: Save to localStorage
       if (!isOnline) {
-        const saved = saveToLocalStorage(selectedGame.id, statsData, 'save_stats');
-        if (saved) {
-          alert(`📱 No connection detected.\n\nStatistics saved locally and will sync automatically when connection is restored.\n\nPending syncs: ${pendingSyncs.length + 1}`);
-        }
-        setLoading(false);
-        return;
-      }
+  const saved = saveToLocalStorage(selectedGame.id, statsData, 'save_stats');
+  if (saved) {
+    // Show success page for offline save
+    setSavedMatchData({
+      team1Name: selectedGame.team1_name,
+      team2Name: selectedGame.team2_name,
+      team1Score: team1TotalScore,
+      team2Score: team2TotalScore,
+      winnerName: winner_id === selectedGame.team1_id ? selectedGame.team1_name : selectedGame.team2_name,
+      overtimePeriods: overtimePeriods,
+      isOffline: true,
+      pendingSyncs: pendingSyncs.length + 1
+    });
+    setShowSuccessPage(true);
+  }
+  setLoading(false);
+  return;
+}
 
       // IF ONLINE: Save to server
       const statsRes = await fetch(
@@ -2131,39 +2148,42 @@ const StaffStats = ({ sidebarOpen }) => {
         throw new Error(`Failed to complete match: ${bracketRes.status}`);
       }
       
-      const bracketData = await bracketRes.json();
-      
-      let message = "✅ Statistics saved successfully!";
-      if (overtimePeriods > 0) {
-        message += ` Game went to ${overtimePeriods} overtime period${overtimePeriods > 1 ? 's' : ''}.`;
-      }
-      
-      if (bracketData.bracketReset) {
-        message = "🚨 BRACKET RESET! 🚨\n\nThe Loser's Bracket winner has defeated the Winner's Bracket winner!\nA Reset Final has been scheduled - both teams start fresh!";
-      } else if (bracketData.advanced) {
-        if (selectedGame.elimination_type === 'double') {
-          if (selectedGame.bracket_type === 'winner') {
-            message += " Winner advanced in winner's bracket!";
-          } else if (selectedGame.bracket_type === 'loser') {
-            message += " Winner advanced in loser's bracket!";
-          } else if (selectedGame.bracket_type === 'championship') {
-            message += selectedGame.round_number === 201 ? " Tournament champion determined!" : " Grand Final completed!";
-          }
-        } else {
-          message += " Winner advanced to next round!";
-        }
-      }
-      
-      alert(message);
-      
-      // Navigate back (keep your existing navigation code)
-      sessionStorage.setItem('staffEventsContext', JSON.stringify({
-        selectedEvent: selectedEvent,
-        selectedBracket: selectedBracket
-      }));
-      
-      // Navigate back to StaffEvents with the same context
-      navigate('/StaffDashboard/events');
+     const bracketData = await bracketRes.json();
+
+// Prepare success page data
+let advancementMessage = "";
+let isBracketReset = false;
+
+if (bracketData.bracketReset) {
+  isBracketReset = true;
+  advancementMessage = "The Loser's Bracket winner has defeated the Winner's Bracket winner! A Reset Final has been scheduled - both teams start fresh!";
+} else if (bracketData.advanced) {
+  if (selectedGame.elimination_type === 'double') {
+    if (selectedGame.bracket_type === 'winner') {
+      advancementMessage = "Winner advanced in winner's bracket!";
+    } else if (selectedGame.bracket_type === 'loser') {
+      advancementMessage = "Winner advanced in loser's bracket!";
+    } else if (selectedGame.bracket_type === 'championship') {
+      advancementMessage = selectedGame.round_number === 201 ? "Tournament champion determined!" : "Grand Final completed!";
+    }
+  } else {
+    advancementMessage = "Winner advanced to next round!";
+  }
+}
+
+// Show success page
+setSavedMatchData({
+  team1Name: selectedGame.team1_name,
+  team2Name: selectedGame.team2_name,
+  team1Score: team1TotalScore,
+  team2Score: team2TotalScore,
+  winnerName: winner_id === selectedGame.team1_id ? selectedGame.team1_name : selectedGame.team2_name,
+  overtimePeriods: overtimePeriods,
+  advancementMessage: advancementMessage,
+  isBracketReset: isBracketReset,
+  isOffline: false
+});
+setShowSuccessPage(true);
       
     } catch (err) {
       // If save fails, offer to save offline
@@ -2191,6 +2211,46 @@ const StaffStats = ({ sidebarOpen }) => {
       setOvertimePeriods(0);
     }
   };
+
+  // SUCCESS PAGE ACTION HANDLERS
+const handleReEditStatistics = () => {
+  setShowSuccessPage(false);
+  setSavedMatchData(null);
+};
+
+const handleBackToMatchList = () => {
+  sessionStorage.setItem('staffEventsContext', JSON.stringify({
+    selectedEvent: selectedEvent,
+    selectedBracket: selectedBracket
+  }));
+  navigate('/StaffDashboard/events');
+};
+
+const handleNextMatch = async () => {
+  try {
+    const res = await fetch(`http://localhost:5000/api/stats/${selectedBracket.id}/matches`);
+    const allMatches = await res.json();
+    const visibleMatches = allMatches.filter(m => m.status !== 'hidden');
+    
+    const pendingMatches = visibleMatches.filter(m => m.status === 'pending');
+    
+    if (pendingMatches.length > 0) {
+      pendingMatches.sort((a, b) => a.round_number - b.round_number);
+      const nextMatch = pendingMatches[0];
+      
+      setShowSuccessPage(false);
+      setSavedMatchData(null);
+      handleGameSelect(nextMatch);
+    } else {
+      alert("No more pending matches in this bracket!");
+      handleBackToMatchList();
+    }
+  } catch (err) {
+    console.error("Error finding next match:", err);
+    alert("Could not find next match. Returning to match list.");
+    handleBackToMatchList();
+  }
+};
 
   // Period navigation component to show overtime
   const renderPeriodNavigation = () => {
@@ -3375,20 +3435,148 @@ const StaffStats = ({ sidebarOpen }) => {
     );
   };
 
-  return (
-    <div className="admin-dashboard">
-      {/* ============================================ */}
-      {/* 7. ADDED ConnectionStatus COMPONENT */}
-      {/* ============================================ */}
-      <ConnectionStatus />
-      
-      <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="dashboard-header">
-          <h1>Match Scoring</h1>
-          <p>Record player statistics for matches</p>
-        </div>
+   return (
+      <div className="admin-dashboard">
+  {/* ============================================ */}
+  {/* 7. ADDED ConnectionStatus COMPONENT */}
+  {/* ============================================ */}
+  <ConnectionStatus />
+  
+  <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
+    <div className="dashboard-header">
+      <h1>Match Scoring</h1>
+      <p>Record player statistics for matches</p>
+    </div>
 
-        <div className="dashboard-main">
+    <div className="dashboard-main">
+      {/* SUCCESS PAGE */}
+      {showSuccessPage && savedMatchData ? (
+        <div className="bracket-content">
+          <div className="bracket-create-section">
+            <div className="bracket-form-container success-container">
+              <div className="success-icon">
+                <FaCheckCircle size={80} color="#4caf50" />
+              </div>
+              <h2>
+                {savedMatchData.isOffline 
+                  ? "Statistics Saved Offline!" 
+                  : savedMatchData.isBracketReset 
+                    ? "🚨 BRACKET RESET! 🚨"
+                    : "Statistics Saved Successfully!"}
+              </h2>
+              <p className="step-description">
+                {savedMatchData.isOffline 
+                  ? "Data will sync automatically when connection is restored"
+                  : savedMatchData.isBracketReset
+                    ? savedMatchData.advancementMessage
+                    : "Match statistics have been recorded"}
+              </p>
+              
+              <div className="tournament-summary">
+                <h3>Match Summary</h3>
+                <div className="summary-item" style={{ fontSize: '16px' }}>
+                  <strong>Teams:</strong> 
+                  <span>{savedMatchData.team1Name} vs {savedMatchData.team2Name}</span>
+                </div>
+                <div className="summary-item" style={{ fontSize: '16px' }}>
+                  <strong>Final Score:</strong> 
+                  <span>{savedMatchData.team1Score} - {savedMatchData.team2Score}</span>
+                </div>
+                <div className="summary-item" style={{ fontSize: '16px' }}>
+                  <strong>Winner:</strong> 
+                  <span style={{ color: '#10b981', fontWeight: '600' }}>
+                    {savedMatchData.winnerName} <FaTrophy style={{ color: '#ffd700', marginLeft: '5px' }} />
+                  </span>
+                </div>
+                {savedMatchData.overtimePeriods > 0 && (
+                  <div className="summary-item" style={{ fontSize: '16px' }}>
+                    <strong>Overtime:</strong> 
+                    <span>{savedMatchData.overtimePeriods} period{savedMatchData.overtimePeriods > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {savedMatchData.advancementMessage && !savedMatchData.isBracketReset && (
+                  <div className="summary-item" style={{ 
+                    fontSize: '16px', 
+                    borderTop: '2px solid rgba(255,255,255,0.1)', 
+                    paddingTop: '15px', 
+                    marginTop: '15px' 
+                  }}>
+                    <strong>Status:</strong> 
+                    <span style={{ color: '#3b82f6' }}>{savedMatchData.advancementMessage}</span>
+                  </div>
+                )}
+                {savedMatchData.isOffline && (
+                  <div className="summary-item" style={{ 
+                    fontSize: '16px', 
+                    background: 'rgba(251, 191, 36, 0.1)', 
+                    border: '1px solid rgba(251, 191, 36, 0.3)', 
+                    borderRadius: '6px', 
+                    padding: '12px', 
+                    marginTop: '15px' 
+                  }}>
+                    <strong>Pending Syncs:</strong> 
+                    <span style={{ color: '#fbbf24' }}>
+                      <FaCloudUploadAlt style={{ marginRight: '5px' }} />
+                      {savedMatchData.pendingSyncs} item{savedMatchData.pendingSyncs > 1 ? 's' : ''} waiting to sync
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="bracket-form-actions" style={{ marginTop: '30px', gap: '15px' }}>
+                <button 
+                  onClick={handleReEditStatistics}
+                  className="bracket-cancel-btn"
+                  style={{ 
+                    width: '100%', 
+                    fontSize: '16px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '8px' 
+                  }}
+                >
+                  <FaRedo />
+                  Re-edit Statistics
+                </button>
+                <button 
+                  onClick={handleBackToMatchList}
+                  className="bracket-submit-btn"
+                  style={{ 
+                    width: '100%', 
+                    background: '#3b82f6', 
+                    fontSize: '16px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '8px' 
+                  }}
+                >
+                  <FaArrowLeft />
+                  Back to Matches List
+                </button>
+                <button 
+                  onClick={handleNextMatch}
+                  className="bracket-submit-btn"
+                  style={{ 
+                    width: '100%', 
+                    background: '#10b981', 
+                    fontSize: '16px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '8px' 
+                  }}
+                >
+                  Next Match
+                  <FaArrowRight />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
           {!selectedGame && (
             <div className="quick-selectors">
               <div className="selector-group">
@@ -3420,7 +3608,7 @@ const StaffStats = ({ sidebarOpen }) => {
                       handleBracketSelect(bracket);
                     }}
                     className="selector-dropdown"
-                >
+                  >
                     <option value="">Choose a bracket...</option>
                     {brackets.map(b => (
                       <option key={b.id} value={b.id}>
@@ -3490,9 +3678,12 @@ const StaffStats = ({ sidebarOpen }) => {
                         {completedGames}/{totalGames} matches completed
                       </div>
                       <div className="stats-progress-bar">
-                        <div className="stats-progress-fill" style={{ 
-                          width: `${totalGames > 0 ? (completedGames / totalGames) * 100 : 0}%`
-                        }}></div>
+                        <div 
+                          className="stats-progress-fill" 
+                          style={{ 
+                            width: `${totalGames > 0 ? (completedGames / totalGames) * 100 : 0}%`
+                          }}
+                        ></div>
                       </div>
                     </div>
                     
@@ -3538,7 +3729,7 @@ const StaffStats = ({ sidebarOpen }) => {
                       </span>
                     )}
                   </h2>
-                 <button 
+                  <button 
                     onClick={() => {
                       if (cameFromStaffEvents) {
                         sessionStorage.setItem('staffEventsContext', JSON.stringify({
@@ -3553,7 +3744,7 @@ const StaffStats = ({ sidebarOpen }) => {
                     className="stats-back-button"
                   >
                     Back to Games
-                  </button>  
+                  </button>
                 </div>
                 <div className="stats-game-meta">
                   <span><strong>Sport:</strong> {selectedGame.sport_type}</span>
@@ -3623,9 +3814,11 @@ const StaffStats = ({ sidebarOpen }) => {
               )}
             </div>
           )}
-        </div>
-      </div>
+        </>
+      )}
     </div>
+  </div>
+</div>
   );
 };
 
