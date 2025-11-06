@@ -208,7 +208,15 @@ const StaffDashboard = ({ sidebarOpen }) => {
                           <div
                             key={event.id}
                             className="event-item"
-                            onClick={() => navigate("/StaffDashboard/events")}
+                            onClick={() => {
+                              // Navigate to events page and set context to show this event's brackets
+                              sessionStorage.setItem('staffEventsContext', JSON.stringify({
+                                selectedEvent: event,
+                                selectedBracket: null,
+                                activeTab: 'events'
+                              }));
+                              navigate("/StaffDashboard/events");
+                            }}
                           >
                             <div className="event-info">
                               <div className="event-name">{event.name}</div>

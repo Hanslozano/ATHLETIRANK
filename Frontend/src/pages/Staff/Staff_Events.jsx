@@ -83,45 +83,64 @@ const StaffEvents = ({ sidebarOpen }) => {
     fetchEvents();
   }, []);
 
-  // Restore context when returning from Stats page
-  useEffect(() => {
-    const storedContext = sessionStorage.getItem('staffEventsContext');
-    
-    if (storedContext) {
-      try {
-        const { 
-          selectedEvent: savedEvent, 
-          selectedBracket: savedBracket,
-          bracketViewType: savedViewType 
-        } = JSON.parse(storedContext);
-        
-        if (savedEvent && events.length > 0) {
-          const event = events.find(e => e.id === savedEvent.id);
+// Restore context when returning from Stats page or Dashboard
+    useEffect(() => {
+      const storedContext = sessionStorage.getItem('staffEventsContext');
+      
+      if (storedContext) {
+        try {
+          const { 
+            selectedEvent: savedEvent, 
+            selectedBracket: savedBracket,
+            bracketViewType: savedViewType,
+            activeTab: savedTab
+          } = JSON.parse(storedContext);
           
-          if (event) {
-            setSelectedEvent(event);
+          if (savedEvent && events.length > 0) {
+            const event = events.find(e => e.id === savedEvent.id);
             
-            // Restore bracket view type if available
-            if (savedViewType) {
-              setBracketViewType(savedViewType);
-            }
-            
-            if (savedBracket) {
-              const bracket = event.brackets?.find(b => b.id === savedBracket.id);
-              if (bracket) {
-                handleBracketSelect(event, bracket);
+            if (event) {
+              // If coming from dashboard with just an event (no bracket selected)
+              if (savedTab === 'events' && !savedBracket) {
+                // Check if event has brackets
+                if (event.brackets && event.brackets.length > 0) {
+                  // Auto-select the first bracket and show its matches
+                  const firstBracket = event.brackets[0];
+                  handleBracketSelect(event, firstBracket);
+                } else {
+                  // No brackets available, just show the events list
+                  setSelectedEvent(event);
+                  setActiveTab('events');
+                  setTimeout(() => {
+                    const element = document.querySelector('.awards_standings_table_container');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }, 100);
+                }
+              } else if (savedBracket) {
+                // Coming from stats page with a specific bracket selected
+                const bracket = event.brackets?.find(b => b.id === savedBracket.id);
+                if (bracket) {
+                  setSelectedEvent(event);
+                  
+                  if (savedViewType) {
+                    setBracketViewType(savedViewType);
+                  }
+                  
+                  handleBracketSelect(event, bracket);
+                }
               }
             }
+            
+            sessionStorage.removeItem('staffEventsContext');
           }
-          
+        } catch (err) {
+          console.error('Error restoring context:', err);
           sessionStorage.removeItem('staffEventsContext');
         }
-      } catch (err) {
-        console.error('Error restoring context:', err);
-        sessionStorage.removeItem('staffEventsContext');
       }
-    }
-  }, [events]);
+    }, [events]);
 
   // Filter events based on search term and status filter
   const filteredEvents = events.filter(event => {
