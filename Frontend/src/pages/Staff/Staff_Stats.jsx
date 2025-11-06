@@ -73,11 +73,74 @@ const StaffStats = ({ sidebarOpen }) => {
   const [showConnectionNotif, setShowConnectionNotif] = useState(false);
   const [pendingSyncs, setPendingSyncs] = useState([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
 
   const STORAGE_KEYS = {
     PENDING_SYNCS: 'staff_stats_pending_syncs',
     OFFLINE_DATA: 'staff_stats_offline_data',
     LAST_SYNC: 'staff_stats_last_sync'
+  };
+
+   const addToast = (message, type = 'success', playerName = '') => {
+    const id = Date.now();
+    const newToast = { id, message, type, playerName };
+    setToasts(prev => [...prev, newToast]);
+    
+    // Auto-remove toast after 2 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 2000);
+  };
+
+  const getStatLabel = (statKey) => {
+    const labels = {
+      two_points_made: '+2 Points',
+      three_points_made: '+3 Points',
+      free_throws_made: '+1 Free Throw',
+      assists: '+1 Assist',
+      rebounds: '+1 Rebound',
+      steals: '+1 Steal',
+      blocks: '+1 Block',
+      fouls: '+1 Foul',
+      technical_fouls: '+1 Technical Foul',
+      turnovers: '+1 Turnover',
+      kills: '+1 Kill',
+      service_aces: '+1 Ace',
+      volleyball_blocks: '+1 Block',
+      volleyball_assists: '+1 Assist',
+      digs: '+1 Dig',
+      receptions: '+1 Reception',
+      serve_errors: '+1 Serve Error',
+      attack_errors: '+1 Attack Error',
+      reception_errors: '+1 Reception Error'
+    };
+    return labels[statKey] || '+1 Stat';
+  };
+
+  const getStatColor = (statKey) => {
+    const colors = {
+      two_points_made: '#3b82f6',
+      three_points_made: '#9333ea',
+      free_throws_made: '#16a34a',
+      assists: '#0d9488',
+      rebounds: '#ea580c',
+      steals: '#ca8a04',
+      blocks: '#dc2626',
+      fouls: '#4b5563',
+      technical_fouls: '#991b1b',
+      turnovers: '#db2777',
+      kills: '#dc2626',
+      service_aces: '#ca8a04',
+      volleyball_blocks: '#9333ea',
+      volleyball_assists: '#3b82f6',
+      digs: '#16a34a',
+      receptions: '#0d9488',
+      serve_errors: '#db2777',
+      attack_errors: '#ea580c',
+      reception_errors: '#991b1b'
+    };
+    return colors[statKey] || '#3b82f6';
   };
 
   // SUCCESS PAGE STATES
@@ -309,6 +372,33 @@ const [savedMatchData, setSavedMatchData] = useState(null);
     );
   };
 
+    // ============================================
+  // TOAST NOTIFICATIONS COMPONENT
+  // ============================================
+  const ToastNotifications = () => {
+    if (toasts.length === 0) return null;
+
+    return (
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <div 
+            key={toast.id} 
+            className={`toast toast-${toast.type}`}
+            style={{
+              backgroundColor: getStatColor(toast.message.toLowerCase().replace(/[^a-z_]/g, '_').replace(/\+/g, '').replace(/\s/g, '_')),
+            }}
+          >
+            <div className="toast-content">
+              <div className="toast-player">{toast.playerName}</div>
+              <div className="toast-message">{toast.message}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+
   // ============================================
   // 5. ADDED CONNECTION MONITORING useEffect
   // ============================================
@@ -437,6 +527,8 @@ const hasMoreMatches = () => {
       newStats[playerIndex][statKey][currentQuarter] = newValue;
     }
     
+    addToast(getStatLabel(statKey), 'success', player.player_name);
+
     // Handle volleyball scoring
     if (selectedGame?.sport_type === "volleyball") {
       const player = newStats[playerIndex];
@@ -1668,6 +1760,10 @@ const hasMoreMatches = () => {
       currentValue = newStats[playerIndex][statName][currentQuarter] || 0;
       const newValue = Math.max(0, currentValue + (increment ? 1 : -1));
       newStats[playerIndex][statName][currentQuarter] = newValue;
+    }
+
+     if (increment) {
+      addToast(getStatLabel(statName), 'success', player.player_name);
     }
     
     // FIXED: Handle volleyball scoring - properly handle both increment and decrement for errors
@@ -3447,12 +3543,10 @@ const handleNextMatch = async () => {
     );
   };
 
-   return (
+    return (
       <div className="admin-dashboard">
-  {/* ============================================ */}
-  {/* 7. ADDED ConnectionStatus COMPONENT */}
-  {/* ============================================ */}
   <ConnectionStatus />
+  <ToastNotifications />
   
   <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
     <div className="dashboard-header">
@@ -3466,27 +3560,26 @@ const handleNextMatch = async () => {
         <div className="bracket-content">
           <div className="bracket-create-section">
             <div className="bracket-form-container success-container">
-              <div className="success-icon">
+              <div className="success-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                 <FaCheckCircle size={80} color="#4caf50" />
               </div>
-            <h2 style={{ textAlign: 'center' }}>
-              {savedMatchData.isOffline 
-                ? "Statistics Saved Offline!" 
-                : savedMatchData.isBracketReset 
-                  ? "🚨 BRACKET RESET! 🚨"
-                  : "Statistics Saved Successfully!"}
-            </h2>
-            <p className="step-description" style={{ textAlign: 'center' }}>
-              {savedMatchData.isOffline 
-                ? "Data will sync automatically when connection is restored"
-                : savedMatchData.isBracketReset
-                  ? savedMatchData.advancementMessage
-                  : "Match statistics have been recorded"}
-            </p>
+              <h2 style={{ textAlign: 'center' }}>
+                {savedMatchData.isOffline 
+                  ? "Statistics Saved Offline!" 
+                  : savedMatchData.isBracketReset 
+                    ? "🚨 BRACKET RESET! 🚨"
+                    : "Statistics Saved Successfully!"}
+              </h2>
+              <p className="step-description" style={{ textAlign: 'center' }}>
+                {savedMatchData.isOffline 
+                  ? "Data will sync automatically when connection is restored"
+                  : savedMatchData.isBracketReset
+                    ? savedMatchData.advancementMessage
+                    : "Match statistics have been recorded"}
+              </p>
 
-              
               <div className="tournament-summary">
-                <h3>Match Summary</h3>
+                <h3 style={{ textAlign: 'center' }}>Match Summary</h3>
                 <div className="summary-item" style={{ fontSize: '16px' }}>
                   <strong>Teams:</strong> 
                   <span>{savedMatchData.team1Name} vs {savedMatchData.team2Name}</span>
