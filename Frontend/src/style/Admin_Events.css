@@ -112,7 +112,8 @@
 .bracket-tab-separator {
   color: #64748b;
   font-size: 18px;
-  padding: 0 8px;  /* Reduced from 16px to 8px */
+  padding: 0;
+  margin: 0 8px;
   user-select: none;
   line-height: 1;
   align-self: center;

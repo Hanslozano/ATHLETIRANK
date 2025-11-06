@@ -1319,19 +1319,21 @@ const closeEditTeamModal = () => {
         <div className="dashboard-main">
           <div className="bracket-content">
             {/* Tabs */}
-           <div className="bracket-tabs">
+        <div className="bracket-tabs">
   <button
     className={`bracket-tab-button ${activeTab === "events" ? "bracket-tab-active" : ""}`}
     onClick={() => setActiveTab("events")}
+    style={{ paddingRight: 0 }}
   >
     Manage Events & Brackets
   </button>
   {selectedBracket && (
     <>
-      <span className="bracket-tab-separator">/</span>
+      <span className="bracket-tab-separator" style={{ margin: '0 12px' }}>/</span>
       <button
         className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
         onClick={() => setActiveTab("results")}
+        style={{ paddingLeft: 0 }}
       >
         {selectedBracket.name} - Manage Matches
       </button>
