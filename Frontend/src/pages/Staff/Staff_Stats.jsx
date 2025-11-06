@@ -354,7 +354,17 @@ const [savedMatchData, setSavedMatchData] = useState(null);
     
     return allFouls >= 5 || allTechnicalFouls >= 2;
   };
-
+const hasMoreMatches = () => {
+  if (!selectedBracket) return false;
+  
+  // You can make this async by using useEffect, but for simplicity:
+  // We'll check if there are any scheduled/pending matches
+  return games.some(m => 
+    m.bracket_id === selectedBracket.id && 
+    (m.status === 'pending' || m.status === 'scheduled') &&
+    m.id !== selectedGame?.id
+  );
+};
   // ============================================
   // NEW FUNCTION: Check if player should be disabled
   // ============================================
@@ -2232,7 +2242,10 @@ const handleNextMatch = async () => {
     const allMatches = await res.json();
     const visibleMatches = allMatches.filter(m => m.status !== 'hidden');
     
-    const pendingMatches = visibleMatches.filter(m => m.status === 'pending');
+    // Filter for both 'pending' AND 'scheduled' matches
+    const pendingMatches = visibleMatches.filter(m => 
+      m.status === 'pending' || m.status === 'scheduled'
+    );
     
     if (pendingMatches.length > 0) {
       pendingMatches.sort((a, b) => a.round_number - b.round_number);
@@ -2251,7 +2264,6 @@ const handleNextMatch = async () => {
     handleBackToMatchList();
   }
 };
-
   // Period navigation component to show overtime
   const renderPeriodNavigation = () => {
     const isBasketball = selectedGame.sport_type === "basketball";
@@ -3457,20 +3469,21 @@ const handleNextMatch = async () => {
               <div className="success-icon">
                 <FaCheckCircle size={80} color="#4caf50" />
               </div>
-              <h2>
-                {savedMatchData.isOffline 
-                  ? "Statistics Saved Offline!" 
-                  : savedMatchData.isBracketReset 
-                    ? "🚨 BRACKET RESET! 🚨"
-                    : "Statistics Saved Successfully!"}
-              </h2>
-              <p className="step-description">
-                {savedMatchData.isOffline 
-                  ? "Data will sync automatically when connection is restored"
-                  : savedMatchData.isBracketReset
-                    ? savedMatchData.advancementMessage
-                    : "Match statistics have been recorded"}
-              </p>
+            <h2 style={{ textAlign: 'center' }}>
+              {savedMatchData.isOffline 
+                ? "Statistics Saved Offline!" 
+                : savedMatchData.isBracketReset 
+                  ? "🚨 BRACKET RESET! 🚨"
+                  : "Statistics Saved Successfully!"}
+            </h2>
+            <p className="step-description" style={{ textAlign: 'center' }}>
+              {savedMatchData.isOffline 
+                ? "Data will sync automatically when connection is restored"
+                : savedMatchData.isBracketReset
+                  ? savedMatchData.advancementMessage
+                  : "Match statistics have been recorded"}
+            </p>
+
               
               <div className="tournament-summary">
                 <h3>Match Summary</h3>
@@ -3524,54 +3537,56 @@ const handleNextMatch = async () => {
               </div>
 
               <div className="bracket-form-actions" style={{ marginTop: '30px', gap: '15px' }}>
-                <button 
-                  onClick={handleReEditStatistics}
-                  className="bracket-cancel-btn"
-                  style={{ 
-                    width: '100%', 
-                    fontSize: '16px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: '8px' 
-                  }}
-                >
-                  <FaRedo />
-                  Re-edit Statistics
-                </button>
-                <button 
-                  onClick={handleBackToMatchList}
-                  className="bracket-submit-btn"
-                  style={{ 
-                    width: '100%', 
-                    background: '#3b82f6', 
-                    fontSize: '16px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: '8px' 
-                  }}
-                >
-                  <FaArrowLeft />
-                  Back to Matches List
-                </button>
-                <button 
-                  onClick={handleNextMatch}
-                  className="bracket-submit-btn"
-                  style={{ 
-                    width: '100%', 
-                    background: '#10b981', 
-                    fontSize: '16px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: '8px' 
-                  }}
-                >
-                  Next Match
-                  <FaArrowRight />
-                </button>
-              </div>
+  <button 
+    onClick={handleReEditStatistics}
+    className="bracket-cancel-btn"
+    style={{ 
+      width: '100%', 
+      fontSize: '16px', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      gap: '8px' 
+    }}
+  >
+    <FaRedo />
+    Re-edit Statistics
+  </button>
+  <button 
+    onClick={handleBackToMatchList}
+    className="bracket-submit-btn"
+    style={{ 
+      width: '100%', 
+      background: '#3b82f6', 
+      fontSize: '16px', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      gap: '8px' 
+    }}
+  >
+    <FaArrowLeft />
+    Back to Matches List
+  </button>
+  {hasMoreMatches() && (
+    <button 
+      onClick={handleNextMatch}
+      className="bracket-submit-btn"
+      style={{ 
+        width: '100%', 
+        background: '#10b981', 
+        fontSize: '16px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        gap: '8px' 
+      }}
+    >
+      Next Match
+      <FaArrowRight />
+    </button>
+  )}
+</div>
             </div>
           </div>
         </div>
