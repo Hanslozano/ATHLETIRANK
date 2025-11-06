@@ -474,67 +474,81 @@ const TeamsPage = ({ sidebarOpen }) => {
   };
 
   const handleEditPlayerChange = (field, value) => {
-    setEditingPlayer(prev => ({
-      ...prev,
-      player: {
-        ...prev.player,
-        [field]: value
-      }
-    }));
-  };
+  setEditingPlayer(prev => ({
+    ...prev,
+    player: {
+      ...prev.player,
+      [field]: value,
+      // If jerseyNumber is being changed, also update jersey_number for backend compatibility
+      ...(field === 'jerseyNumber' ? { jersey_number: value } : {})
+    }
+  }));
+};
 
   const saveEditedPlayer = async () => {
-    if (!editingPlayer.player.name.trim() || !editingPlayer.player.position || !editingPlayer.player.jerseyNumber) {
-      setValidationError("Please fill in all player details.");
-      setShowValidationMessage(true);
-      return;
-    }
+  if (!editingPlayer.player.name.trim() || !editingPlayer.player.position || 
+      !(editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number)) {
+    setValidationError("Please fill in all player details.");
+    setShowValidationMessage(true);
+    return;
+  }
 
-    try {
-      const res = await fetch(`http://localhost:5000/api/teams/${viewModal.team.id}/players/${editingPlayer.player.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingPlayer.player),
+  try {
+    const res = await fetch(`http://localhost:5000/api/teams/${viewModal.team.id}/players/${editingPlayer.player.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editingPlayer.player.name,
+        position: editingPlayer.player.position,
+        jerseyNumber: editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number,
+        jersey_number: editingPlayer.player.jersey_number || editingPlayer.player.jerseyNumber
+      }),
+    });
+
+    if (res.ok) {
+      const updatedPlayer = await res.json();
+      
+      // Update teams state
+      setTeams(prev => prev.map(team => {
+        if (team.id === viewModal.team.id) {
+          const updatedPlayers = [...team.players];
+          updatedPlayers[editingPlayer.index] = {
+            ...updatedPlayer,
+            jerseyNumber: updatedPlayer.jersey_number || updatedPlayer.jerseyNumber
+          };
+          return { ...team, players: updatedPlayers };
+        }
+        return team;
+      }));
+
+      // Update modal state
+      setViewModal(prev => {
+        const updatedPlayers = [...prev.team.players];
+        updatedPlayers[editingPlayer.index] = {
+          ...updatedPlayer,
+          jerseyNumber: updatedPlayer.jersey_number || updatedPlayer.jerseyNumber
+        };
+        return { ...prev, team: { ...prev.team, players: updatedPlayers } };
       });
 
-      if (res.ok) {
-        const updatedPlayer = await res.json();
-        
-        // Update teams state
-        setTeams(prev => prev.map(team => {
-          if (team.id === viewModal.team.id) {
-            const updatedPlayers = [...team.players];
-            updatedPlayers[editingPlayer.index] = updatedPlayer;
-            return { ...team, players: updatedPlayers };
-          }
-          return team;
-        }));
-
-        // Update modal state
-        setViewModal(prev => {
-          const updatedPlayers = [...prev.team.players];
-          updatedPlayers[editingPlayer.index] = updatedPlayer;
-          return { ...prev, team: { ...prev.team, players: updatedPlayers } };
-        });
-
-        setEditingPlayer(null);
-        setValidationError("Player updated successfully!");
-        setShowValidationMessage(true);
-        
-        setTimeout(() => {
-          setValidationError("");
-          setShowValidationMessage(false);
-        }, 3000);
-      } else {
-        setValidationError("Error updating player");
-        setShowValidationMessage(true);
-      }
-    } catch (err) {
-      console.error("Error updating player:", err);
+      setEditingPlayer(null);
+      setValidationError("Player updated successfully!");
+      setShowValidationMessage(true);
+      
+      setTimeout(() => {
+        setValidationError("");
+        setShowValidationMessage(false);
+      }, 3000);
+    } else {
       setValidationError("Error updating player");
       setShowValidationMessage(true);
     }
-  };
+  } catch (err) {
+    console.error("Error updating player:", err);
+    setValidationError("Error updating player");
+    setShowValidationMessage(true);
+  }
+};
 
   // Delete team
   const handleDeleteTeam = async (team) => {
@@ -1420,183 +1434,235 @@ const TeamsPage = ({ sidebarOpen }) => {
                 Players List
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {viewModal.team.players.map((player, index) => {
-                  const isEditing = editingPlayer && editingPlayer.index === index;
-                  const teamSport = viewModal.team.sport || 'Basketball';
-                  
-                  return isEditing ? (
-                    <div 
-                      key={index} 
-                      style={{
-                        background: 'var(--primary-color)',
-                        padding: '16px',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(59, 130, 246, 0.3)'
-                      }}
-                    >
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: '10px', alignItems: 'end' }}>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'white', fontWeight: '600' }}>Name *</label>
-                          <input
-                            type="text"
-                            value={editingPlayer.player.name}
-                            onChange={(e) => handleEditPlayerChange("name", e.target.value)}
-                            placeholder="Player name"
-                           style={{ 
-  width: '100%', 
-  padding: '8px 12px', 
-  border: '2px solid #2d3748', 
-  borderRadius: '6px',
-  background: '#1a2332',
-  color: '#e2e8f0',
-  fontSize: '14px',
-  outline: 'none'
-}}
-onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-onBlur={(e) => e.target.style.borderColor = '#2d3748'}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'white', fontWeight: '600' }}>Jersey # *</label>
-                          <input
-                            type="text"
-                            value={editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number}
-                            onChange={(e) => handleEditPlayerChange("jerseyNumber", e.target.value)}
-                            placeholder="Jersey #"
-                            maxLength="10"
-                            style={{ 
-  width: '100%', 
-  padding: '8px 12px', 
-  border: '2px solid #2d3748',
-  borderRadius: '6px',
-  background: '#1a2332',
-  color: '#e2e8f0',
-  fontSize: '14px',
-  outline: 'none'
-}}
-onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-onBlur={(e) => e.target.style.borderColor = '#2d3748'}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'white', fontWeight: '600' }}>Position *</label>
-                          <select
-                            value={editingPlayer.player.position}
-                            onChange={(e) => handleEditPlayerChange("position", e.target.value)}
-                            
-                            style={{ 
-                              width: '100%', 
-                              padding: '8px 12px', 
-                              border: '1px solid white', 
-                              borderRadius: '4px',
-                              background: '#1a2332',
-                              color: '#e2e8f0'
-                            }}
-                          >
-                            <option value="">Select position</option>
-                            {positions[teamSport]?.map(pos => (
-                              <option key={pos} value={pos}>{pos}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <button 
-                          onClick={saveEditedPlayer} 
-                          style={{ 
-                            padding: '8px 16px',
-                            background: 'var(--success-color)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            height: 'fit-content',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          <FaSave /> Save
-                        </button>
-                        <button 
-                          onClick={cancelEditPlayer} 
-                          style={{ 
-                            padding: '8px 16px',
-                            background: 'var(--text-muted)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            height: 'fit-content',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          <FaTimes /> Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div 
-                      key={index} 
-                      style={{
-                        background: 'var(--background-secondary)',
-                        padding: '16px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-color)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '16px'
-                      }}
-                    >
-                      <span 
-                        style={{ 
-                          background: 'var(--primary-color)', 
-                          color: 'white', 
-                          width: '36px', 
-                          height: '36px', 
-                          borderRadius: '8px', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          fontWeight: '700',
-                          fontSize: '14px'
-                        }}
-                      >
-                        #{player.jersey_number || player.jerseyNumber}
-                      </span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '16px' }}>
-                          {player.name}
-                        </div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '2px' }}>
-                          {player.position}
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => startEditPlayer(index)}
-                        style={{ 
-                          padding: '8px 12px', 
-                          background: 'var(--purple-color)', 
-                          color: 'white', 
-                          border: 'none', 
-                          borderRadius: '6px', 
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: '600',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <FaEdit /> Edit
-                      </button>
-                    </div>
-                  );
-                })}
+          
+
+{viewModal.team.players.map((player, index) => {
+  const isEditing = editingPlayer && editingPlayer.index === index;
+  const teamSport = viewModal.team.sport || 'Basketball';
+  
+  return isEditing ? (
+    // NEW EDITING STYLE - Matching Events Page
+    <div 
+      key={index} 
+      style={{
+        background: '#1a2332',
+        padding: '16px 24px',
+        borderRadius: '12px',
+        border: '2px solid #2d3748',
+        marginBottom: '12px'
+      }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: '16px', alignItems: 'end' }}>
+        {/* Name Input */}
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: '8px', 
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#e2e8f0'
+          }}>
+            Name *
+          </label>
+          <input
+            type="text"
+            value={editingPlayer.player.name}
+            onChange={(e) => handleEditPlayerChange("name", e.target.value)}
+            placeholder="Player name"
+            style={{ 
+              width: '100%', 
+              padding: '12px 16px', 
+              border: '2px solid #2d3748', 
+              borderRadius: '8px',
+              background: '#0f172a',
+              color: '#e2e8f0',
+              fontSize: '14px',
+              outline: 'none',
+              transition: 'border-color 0.2s ease'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+          />
+        </div>
+
+        {/* Jersey Number Input */}
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: '8px', 
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#e2e8f0'
+          }}>
+            Jersey # *
+          </label>
+          <input
+            type="text"
+            value={editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number}
+            onChange={(e) => handleEditPlayerChange("jerseyNumber", e.target.value)}
+            placeholder="Jersey #"
+            maxLength="10"
+            style={{ 
+              width: '100%', 
+              padding: '12px 16px', 
+              border: '2px solid #2d3748',
+              borderRadius: '8px',
+              background: '#0f172a',
+              color: '#e2e8f0',
+              fontSize: '14px',
+              outline: 'none',
+              transition: 'border-color 0.2s ease'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+          />
+        </div>
+
+        {/* Position Select */}
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: '8px', 
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#e2e8f0'
+          }}>
+            Position *
+          </label>
+          <select
+            value={editingPlayer.player.position}
+            onChange={(e) => handleEditPlayerChange("position", e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '12px 16px', 
+              border: '2px solid #2d3748', 
+              borderRadius: '8px',
+              background: '#0f172a',
+              color: '#e2e8f0',
+              fontSize: '14px',
+              cursor: 'pointer',
+              outline: 'none',
+              transition: 'border-color 0.2s ease'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+          >
+            <option value="">Select position</option>
+            {positions[teamSport]?.map(pos => (
+              <option key={pos} value={pos}>{pos}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Save Button */}
+        <button 
+          onClick={saveEditedPlayer} 
+          style={{ 
+            padding: '12px 24px',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            height: '48px',
+            marginTop: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <FaSave /> Save
+        </button>
+
+        {/* Cancel Button */}
+        <button 
+          onClick={cancelEditPlayer} 
+          style={{ 
+            padding: '12px 24px',
+            background: '#2d3748',
+            color: '#e2e8f0',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            height: '48px',
+            marginTop: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <FaTimes /> Cancel
+        </button>
+      </div>
+    </div>
+  ) : (
+    // Normal display mode (keep as is)
+    <div 
+      key={index} 
+      style={{
+        background: 'var(--background-secondary)',
+        padding: '16px',
+        borderRadius: '8px',
+        border: '1px solid var(--border-color)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px'
+      }}
+    >
+      <span 
+        style={{ 
+          background: 'var(--primary-color)', 
+          color: 'white', 
+          width: '36px', 
+          height: '36px', 
+          borderRadius: '8px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          fontWeight: '700',
+          fontSize: '14px'
+        }}
+      >
+        #{player.jersey_number || player.jerseyNumber}
+      </span>
+      <div style={{ flex: 1 }}>
+        <div style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '16px' }}>
+          {player.name}
+        </div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '2px' }}>
+          {player.position}
+        </div>
+      </div>
+      <button 
+        onClick={() => startEditPlayer(index)}
+        style={{ 
+          padding: '8px 12px', 
+          background: 'var(--purple-color)', 
+          color: 'white', 
+          border: 'none', 
+          borderRadius: '6px', 
+          cursor: 'pointer',
+          fontSize: '13px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}
+      >
+        <FaEdit /> Edit
+      </button>
+    </div>
+  );
+})}
               </div>
             </div>
           </div>

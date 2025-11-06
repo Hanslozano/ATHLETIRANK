@@ -97,10 +97,50 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ✅ UPDATE team basic info (name and sport)
+// In routes/teams.js - UPDATE team basic info
 router.put("/:id", async (req, res) => {
   const { name, sport } = req.body;
 
+  // If only name is provided (for team name updates from modal)
+  if (name && !sport) {
+    const conn = await db.pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Check if team exists
+      const [existingTeam] = await conn.query("SELECT * FROM teams WHERE id = ?", [req.params.id]);
+      if (existingTeam.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({ error: "Team not found" });
+      }
+
+      // Update only team name
+      await conn.query(
+        "UPDATE teams SET name = ? WHERE id = ?",
+        [name, req.params.id]
+      );
+
+      await conn.commit();
+
+      // Return updated team with players
+      const [updatedTeam] = await conn.query("SELECT id, name, sport FROM teams WHERE id = ?", [req.params.id]);
+      const [players] = await conn.query("SELECT * FROM players WHERE team_id = ?", [req.params.id]);
+
+      res.json({
+        ...updatedTeam[0],
+        players: players
+      });
+    } catch (err) {
+      await conn.rollback();
+      console.error("Error updating team:", err);
+      res.status(500).json({ error: "Database error" });
+    } finally {
+      conn.release();
+    }
+    return;
+  }
+
+  // Original code for updating both name and sport
   if (!name || !sport) {
     return res.status(400).json({ error: "Team name and sport are required" });
   }
@@ -142,11 +182,15 @@ router.put("/:id", async (req, res) => {
 });
 
 // ✅ UPDATE player
+// In routes/teams.js - UPDATE player
 router.put("/:teamId/players/:playerId", async (req, res) => {
   const { teamId, playerId } = req.params;
-  const { name, position, jerseyNumber } = req.body;
+  const { name, position, jerseyNumber, jersey_number } = req.body;
+  
+  // Accept either jerseyNumber or jersey_number
+  const finalJerseyNumber = jerseyNumber || jersey_number;
 
-  if (!name || !position || !jerseyNumber) {
+  if (!name || !position || !finalJerseyNumber) {
     return res.status(400).json({ error: "Player name, position, and jersey number are required" });
   }
 
@@ -168,18 +212,21 @@ router.put("/:teamId/players/:playerId", async (req, res) => {
     // Update player
     await conn.query(
       "UPDATE players SET name = ?, position = ?, jersey_number = ? WHERE id = ?",
-      [name, position, jerseyNumber, playerId]
+      [name, position, finalJerseyNumber, playerId]
     );
 
     await conn.commit();
 
-    // Return updated player
+    // Return updated player with both formats for compatibility
     const [updatedPlayer] = await conn.query(
-      "SELECT * FROM players WHERE id = ?",
+      "SELECT id, name, position, jersey_number FROM players WHERE id = ?",
       [playerId]
     );
 
-    res.json(updatedPlayer[0]);
+    res.json({
+      ...updatedPlayer[0],
+      jerseyNumber: updatedPlayer[0].jersey_number
+    });
   } catch (err) {
     await conn.rollback();
     console.error("Error updating player:", err);
@@ -188,7 +235,6 @@ router.put("/:teamId/players/:playerId", async (req, res) => {
     conn.release();
   }
 });
-
 // ✅ ADD new player to existing team
 router.post("/:teamId/players", async (req, res) => {
   const { teamId } = req.params;

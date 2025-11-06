@@ -592,14 +592,19 @@ const getAwardsForDisplay = () => {
 
   // Edit handlers
   const handleEditEvent = (event) => {
-    setEditModal({ 
-      show: true, 
-      event: { ...event } 
-    });
-    setEditingEventName(event.name);
-    setEditingStartDate(event.start_date);
-    setEditingEndDate(event.end_date);
-  };
+  // Format dates to YYYY-MM-DD for date inputs
+  const formattedStartDate = event.start_date ? event.start_date.split('T')[0] : '';
+  const formattedEndDate = event.end_date ? event.end_date.split('T')[0] : '';
+  
+  // Set all states together to ensure they're properly initialized
+  setEditingEventName(event.name || '');
+  setEditingStartDate(formattedStartDate);
+  setEditingEndDate(formattedEndDate);
+  setEditModal({ 
+    show: true, 
+    event: { ...event } 
+  });
+};
 
   const handleEditBracket = async (bracket) => {
   // Check if any matches are completed
@@ -3939,15 +3944,7 @@ const closeEditTeamModal = () => {
         )}
 
         {/* Modal Footer - Close Button */}
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-          <button
-            onClick={closeEditTeamModal}
-            className="admin-teams-cancel-btn"
-            style={{ padding: '12px 24px' }}
-          >
-            Close
-          </button>
-        </div>
+        
       </div>
     </div>
   </div>
