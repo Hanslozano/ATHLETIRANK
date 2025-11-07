@@ -1941,18 +1941,88 @@ const hasMoreMatches = () => {
               const mergedPlayer = { ...p };
               
               if (game.sport_type === "basketball") {
-                // Load regulation stats
-                mergedPlayer.two_points_made = found.two_points_made ? [found.two_points_made, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.three_points_made = found.three_points_made ? [found.three_points_made, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.free_throws_made = found.free_throws_made ? [found.free_throws_made, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.technical_fouls = found.technical_fouls ? [found.technical_fouls, 0, 0, 0] : [0, 0, 0, 0]; // ADDED: Technical fouls
+                // Calculate overtime totals to subtract from regulation totals
+                const overtimeTwoPoints = found.overtime_two_points_made ? found.overtime_two_points_made.reduce((a, b) => a + b, 0) : 0;
+                const overtimeThreePoints = found.overtime_three_points_made ? found.overtime_three_points_made.reduce((a, b) => a + b, 0) : 0;
+                const overtimeFreeThrows = found.overtime_free_throws_made ? found.overtime_free_throws_made.reduce((a, b) => a + b, 0) : 0;
+                const overtimeAssists = found.overtime_assists ? found.overtime_assists.reduce((a, b) => a + b, 0) : 0;
+                const overtimeRebounds = found.overtime_rebounds ? found.overtime_rebounds.reduce((a, b) => a + b, 0) : 0;
+                const overtimeSteals = found.overtime_steals ? found.overtime_steals.reduce((a, b) => a + b, 0) : 0;
+                const overtimeBlocks = found.overtime_blocks ? found.overtime_blocks.reduce((a, b) => a + b, 0) : 0;
+                const overtimeFouls = found.overtime_fouls ? found.overtime_fouls.reduce((a, b) => a + b, 0) : 0;
+                const overtimeTechnicalFouls = found.overtime_technical_fouls ? found.overtime_technical_fouls.reduce((a, b) => a + b, 0) : 0;
+                const overtimeTurnovers = found.overtime_turnovers ? found.overtime_turnovers.reduce((a, b) => a + b, 0) : 0;
                 
-                mergedPlayer.assists = found.assists ? [found.assists, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.rebounds = found.rebounds ? [found.rebounds, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.steals = found.steals ? [found.steals, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.blocks = found.blocks ? [found.blocks, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.fouls = found.fouls ? [found.fouls, 0, 0, 0] : [0, 0, 0, 0];
-                mergedPlayer.turnovers = found.turnovers ? [found.turnovers, 0, 0, 0] : [0, 0, 0, 0];
+                // Load regulation stats - check if per-quarter arrays exist, otherwise use totals minus overtime
+                if (found.two_points_made_per_quarter && Array.isArray(found.two_points_made_per_quarter)) {
+                  mergedPlayer.two_points_made = [...found.two_points_made_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.two_points_made || 0) - overtimeTwoPoints);
+                  mergedPlayer.two_points_made = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.three_points_made_per_quarter && Array.isArray(found.three_points_made_per_quarter)) {
+                  mergedPlayer.three_points_made = [...found.three_points_made_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.three_points_made || 0) - overtimeThreePoints);
+                  mergedPlayer.three_points_made = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.free_throws_made_per_quarter && Array.isArray(found.free_throws_made_per_quarter)) {
+                  mergedPlayer.free_throws_made = [...found.free_throws_made_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.free_throws_made || 0) - overtimeFreeThrows);
+                  mergedPlayer.free_throws_made = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.technical_fouls_per_quarter && Array.isArray(found.technical_fouls_per_quarter)) {
+                  mergedPlayer.technical_fouls = [...found.technical_fouls_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.technical_fouls || 0) - overtimeTechnicalFouls);
+                  mergedPlayer.technical_fouls = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.assists_per_quarter && Array.isArray(found.assists_per_quarter)) {
+                  mergedPlayer.assists = [...found.assists_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.assists || 0) - overtimeAssists);
+                  mergedPlayer.assists = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.rebounds_per_quarter && Array.isArray(found.rebounds_per_quarter)) {
+                  mergedPlayer.rebounds = [...found.rebounds_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.rebounds || 0) - overtimeRebounds);
+                  mergedPlayer.rebounds = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.steals_per_quarter && Array.isArray(found.steals_per_quarter)) {
+                  mergedPlayer.steals = [...found.steals_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.steals || 0) - overtimeSteals);
+                  mergedPlayer.steals = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.blocks_per_quarter && Array.isArray(found.blocks_per_quarter)) {
+                  mergedPlayer.blocks = [...found.blocks_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.blocks || 0) - overtimeBlocks);
+                  mergedPlayer.blocks = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.fouls_per_quarter && Array.isArray(found.fouls_per_quarter)) {
+                  mergedPlayer.fouls = [...found.fouls_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.fouls || 0) - overtimeFouls);
+                  mergedPlayer.fouls = [regulationTotal, 0, 0, 0];
+                }
+                
+                if (found.turnovers_per_quarter && Array.isArray(found.turnovers_per_quarter)) {
+                  mergedPlayer.turnovers = [...found.turnovers_per_quarter];
+                } else {
+                  const regulationTotal = Math.max(0, (found.turnovers || 0) - overtimeTurnovers);
+                  mergedPlayer.turnovers = [regulationTotal, 0, 0, 0];
+                }
                 
                 // Load overtime stats if they exist
                 if (found.overtime_periods > 0) {
@@ -2140,20 +2210,34 @@ const hasMoreMatches = () => {
                    (p.overtime_rebounds?.reduce((a, b) => a + b, 0) || 0),
           two_points_made: (p.two_points_made?.reduce((a, b) => a + b, 0) || 0) + 
                           (p.overtime_two_points_made?.reduce((a, b) => a + b, 0) || 0),
+          two_points_made_per_quarter: p.two_points_made || [0, 0, 0, 0],
           three_points_made: (p.three_points_made?.reduce((a, b) => a + b, 0) || 0) + 
                             (p.overtime_three_points_made?.reduce((a, b) => a + b, 0) || 0),
+          three_points_made_per_quarter: p.three_points_made || [0, 0, 0, 0],
           free_throws_made: (p.free_throws_made?.reduce((a, b) => a + b, 0) || 0) + 
                            (p.overtime_free_throws_made?.reduce((a, b) => a + b, 0) || 0),
+          free_throws_made_per_quarter: p.free_throws_made || [0, 0, 0, 0],
+          assists: (p.assists?.reduce((a, b) => a + b, 0) || 0) + 
+                  (p.overtime_assists?.reduce((a, b) => a + b, 0) || 0),
+          assists_per_quarter: p.assists || [0, 0, 0, 0],
+          rebounds: (p.rebounds?.reduce((a, b) => a + b, 0) || 0) + 
+                   (p.overtime_rebounds?.reduce((a, b) => a + b, 0) || 0),
+          rebounds_per_quarter: p.rebounds || [0, 0, 0, 0],
           steals: (p.steals?.reduce((a, b) => a + b, 0) || 0) + 
                  (p.overtime_steals?.reduce((a, b) => a + b, 0) || 0),
+          steals_per_quarter: p.steals || [0, 0, 0, 0],
           blocks: (p.blocks?.reduce((a, b) => a + b, 0) || 0) + 
                  (p.overtime_blocks?.reduce((a, b) => a + b, 0) || 0),
+          blocks_per_quarter: p.blocks || [0, 0, 0, 0],
           fouls: (p.fouls?.reduce((a, b) => a + b, 0) || 0) + 
                 (p.overtime_fouls?.reduce((a, b) => a + b, 0) || 0),
+          fouls_per_quarter: p.fouls || [0, 0, 0, 0],
           technical_fouls: (p.technical_fouls?.reduce((a, b) => a + b, 0) || 0) + 
                          (p.overtime_technical_fouls?.reduce((a, b) => a + b, 0) || 0), // ADDED: Technical fouls
+          technical_fouls_per_quarter: p.technical_fouls || [0, 0, 0, 0],
           turnovers: (p.turnovers?.reduce((a, b) => a + b, 0) || 0) + 
                     (p.overtime_turnovers?.reduce((a, b) => a + b, 0) || 0),
+          turnovers_per_quarter: p.turnovers || [0, 0, 0, 0],
           overtime_periods: overtimePeriods,
           overtime_two_points_made: p.overtime_two_points_made || [],
           overtime_three_points_made: p.overtime_three_points_made || [],
