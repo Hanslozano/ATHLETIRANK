@@ -1945,45 +1945,92 @@ const closeEditTeamModal = () => {
                           <div className="bracket-error"><p>{errorAwards}</p></div>
                         ) : (
                           <>
-                            <div style={{ 
-                              padding: '20px 40px', 
-                              borderBottom: '1px solid var(--border-color)',
-                              background: 'var(--background-card)'
-                            }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', maxWidth: '380px' }}>
-                                <label style={{ 
-                                  color: 'var(--text-primary)', 
-                                  fontWeight: '600',
-                                  fontSize: '14px',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  View:
-                                </label>
-                                <select
-                                  value={awardsTab}
-                                  onChange={(e) => setAwardsTab(e.target.value)}
-                                  style={{
-                                    flex: '1',
-                                    padding: '8px 12px',
-                                    border: '2px solid var(--border-color)',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    backgroundColor: 'var(--background-secondary)',
-                                    color: 'var(--text-primary)',
-                                    cursor: 'pointer',
-                                    fontWeight: '500',
-                                    outline: 'none',
-                                    transition: 'var(--transition)'
-                                  }}
-                                  onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
-                                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
-                                >
-                                <option value="standings">🏆 Team Standings</option>
-                                <option value="mvp">👑 Tournament MVP{selectedBracket.sport_type === "basketball" ? " & Mythical 5" : ""}</option>
-                                <option value="awards">{selectedBracket.sport_type === "basketball" ? "🏅 Mythical Five" : "🏅 Volleyball Awards"}</option>
-                                </select>
-                              </div>
-                            </div>
+                          <div style={{ 
+  padding: '20px 40px', 
+  borderBottom: '1px solid var(--border-color)',
+  background: 'transparent',
+  display: 'flex',
+  justifyContent: 'center'
+}}>
+ <div style={{ 
+  display: 'flex', 
+  gap: '12px',
+  background: 'transparent',
+  padding: '6px',
+  borderRadius: '8px',
+  border: 'none'
+}}>
+
+    <button
+      onClick={() => setAwardsTab("standings")}
+      style={{
+        padding: '14px 32px',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '15px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        background: awardsTab === "standings" ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'transparent',
+        color: awardsTab === "standings" ? '#ffffff' : '#cbd5e1',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        boxShadow: awardsTab === "standings" ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none',
+        whiteSpace: 'nowrap'
+      }}
+    >
+      🏆 Team Standings
+    </button>
+    
+    <button
+      onClick={() => setAwardsTab("mvp")}
+      style={{
+        padding: '14px 32px',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '15px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        background: awardsTab === "mvp" ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'transparent',
+        color: awardsTab === "mvp" ? '#ffffff' : '#cbd5e1',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        boxShadow: awardsTab === "mvp" ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+        whiteSpace: 'nowrap'
+      }}
+    >
+      👑 Tournament MVP{selectedBracket.sport_type === "basketball" ? " & Mythical 5" : ""}
+    </button>
+    
+    {/* Only show Awards button for Volleyball */}
+    {selectedBracket.sport_type === "volleyball" && (
+      <button
+        onClick={() => setAwardsTab("awards")}
+        style={{
+          padding: '14px 32px',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '15px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          background: awardsTab === "awards" ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'transparent',
+          color: awardsTab === "awards" ? '#ffffff' : '#cbd5e1',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: awardsTab === "awards" ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        🏅 Volleyball Awards
+      </button>
+    )}
+  </div>
+</div>
 
                             {awardsTab === "standings" && (
                               <div className="awards_standings_tab_content">
@@ -2245,7 +2292,7 @@ const closeEditTeamModal = () => {
 )}
                             
 
-                            {awardsTab === "awards" && (
+                         {awardsTab === "awards" && selectedBracket.sport_type === "volleyball" && (
   <div className="awards_standings_tab_content">
     {!awards || getAwardsForDisplay().length === 0 ? (
       <div className="bracket-no-brackets">
@@ -2459,7 +2506,7 @@ const closeEditTeamModal = () => {
                           
                               </div>
                                 
-</div>
+  </div>
 
                         <AdminStats 
                           sidebarOpen={sidebarOpen}

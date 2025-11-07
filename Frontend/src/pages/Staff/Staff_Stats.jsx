@@ -3630,56 +3630,56 @@ const handleNextMatch = async () => {
               </div>
 
               <div className="bracket-form-actions" style={{ marginTop: '30px', gap: '15px' }}>
-  <button 
-    onClick={handleReEditStatistics}
-    className="bracket-cancel-btn"
-    style={{ 
-      width: '100%', 
-      fontSize: '16px', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      gap: '8px' 
-    }}
-  >
-    <FaRedo />
-    Re-edit Statistics
-  </button>
-  <button 
-    onClick={handleBackToMatchList}
-    className="bracket-submit-btn"
-    style={{ 
-      width: '100%', 
-      background: '#3b82f6', 
-      fontSize: '16px', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      gap: '8px' 
-    }}
-  >
-    <FaArrowLeft />
-    Back to Matches List
-  </button>
-  {hasMoreMatches() && (
-    <button 
-      onClick={handleNextMatch}
-      className="bracket-submit-btn"
-      style={{ 
-        width: '100%', 
-        background: '#10b981', 
-        fontSize: '16px', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        gap: '8px' 
-      }}
-    >
-      Next Match
-      <FaArrowRight />
-    </button>
-  )}
-</div>
+                <button 
+                  onClick={handleReEditStatistics}
+                  className="bracket-cancel-btn"
+                  style={{ 
+                    width: '100%', 
+                    fontSize: '16px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '8px' 
+                  }}
+                >
+                  <FaRedo />
+                  Re-edit Statistics
+                </button>
+                <button 
+                  onClick={handleBackToMatchList}
+                  className="bracket-submit-btn"
+                  style={{ 
+                    width: '100%', 
+                    background: '#3b82f6', 
+                    fontSize: '16px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '8px' 
+                  }}
+                >
+                  <FaArrowLeft />
+                  Back to Matches List
+                </button>
+                {hasMoreMatches() && (
+                  <button 
+                    onClick={handleNextMatch}
+                    className="bracket-submit-btn"
+                    style={{ 
+                      width: '100%', 
+                      background: '#10b981', 
+                      fontSize: '16px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: '8px' 
+                    }}
+                  >
+                    Next Match
+                    <FaArrowRight />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
