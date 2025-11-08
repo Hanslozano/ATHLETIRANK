@@ -684,90 +684,64 @@ const TeamsPage = ({ sidebarOpen }) => {
             {activeTab === "view" && (
               <div className="bracket-view-section purple-background">
                 {/* Updated Search Container - Matching Events Page Style */}
-                <div style={{ 
-                  background: '#1a2332', 
-                  padding: '24px', 
-                  borderRadius: '12px', 
-                  marginBottom: '24px', 
-                  border: '1px solid #2d3748' 
-                }}>
-                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {/* Search Input with Icon */}
-                    <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
-                      <FaSearch style={{ 
-                        position: 'absolute', 
-                        left: '12px', 
-                        top: '50%', 
-                        transform: 'translateY(-50%)', 
-                        color: '#64748b', 
-                        width: '18px', 
-                        height: '18px' 
-                      }} />
-                      <input 
-                        type="text" 
-                        placeholder="Search teams or players..." 
-                        value={searchTerm} 
-                        onChange={(e) => setSearchTerm(e.target.value)} 
-                        style={{ 
-                          width: '100%', 
-                          padding: '12px 16px 12px 45px', 
-                          border: '2px solid #2d3748', 
-                          borderRadius: '10px', 
-                          fontSize: '14px', 
-                          backgroundColor: '#0f172a', 
-                          color: '#e2e8f0', 
-                          outline: 'none',
-                          fontWeight: '500'
-                        }} 
-                      />
-                    </div>
-
-                    {/* Sport Filter */}
-                    <select 
-                      value={sportFilter} 
-                      onChange={(e) => setSportFilter(e.target.value)} 
-                      style={{ 
-                        padding: '12px 16px', 
-                        border: '2px solid #2d3748', 
-                        borderRadius: '10px', 
-                        fontSize: '14px', 
-                        backgroundColor: '#0f172a', 
-                        color: '#e2e8f0', 
-                        minWidth: '150px', 
-                        outline: 'none',
-                        fontWeight: '600',
-                        cursor: 'pointer'
+                {/* Search Container - Matching Events Page */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search teams or players..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{
+                        flex: '1',
+                        padding: '12px 16px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    <select
+                      value={sportFilter}
+                      onChange={(e) => setSportFilter(e.target.value)}
+                      style={{
+                        padding: '12px 16px',
+                        border: '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'var(--background-secondary)',
+                        color: 'var(--text-primary)',
+                        minWidth: '150px',
                       }}
                     >
                       <option value="all">All Sports</option>
                       <option value="Basketball">Basketball</option>
                       <option value="Volleyball">Volleyball</option>
                     </select>
-
-                    {/* Create Team Button */}
-                    <button 
-                      className="awards_standings_export_btn" 
-                      onClick={() => setActiveTab("create")}
-                      style={{ 
-                        padding: '12px 24px', 
-                        border: 'none', 
-                        borderRadius: '10px', 
-                        fontSize: '14px', 
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                        color: 'white', 
-                        cursor: 'pointer', 
-                        fontWeight: '700', 
-                        transition: 'all 0.2s ease',
-                        whiteSpace: 'nowrap',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)'
-                      }}
-                    >
-                      <FaPlus /> Create Team
-                    </button>
                   </div>
+                  <button 
+                    className="awards_standings_export_btn" 
+                    onClick={() => setActiveTab("create")}
+                    style={{ 
+                      padding: '12px 24px', 
+                      border: 'none', 
+                      borderRadius: '10px', 
+                      fontSize: '14px', 
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+                      color: 'white', 
+                      cursor: 'pointer', 
+                      fontWeight: '700', 
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)'
+                    }}
+                  >
+                    <FaPlus /> Create Team
+                  </button>
                 </div>
 
                 {/* Results Info & Items Per Page */}

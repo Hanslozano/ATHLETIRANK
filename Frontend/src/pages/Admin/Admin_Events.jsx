@@ -607,7 +607,7 @@ const getAwardsForDisplay = () => {
   });
 };
 
-  const handleEditBracket = async (bracket) => {
+const handleEditBracket = async (bracket) => {
   // Check if any matches are completed
   try {
     const matchesRes = await fetch(`http://localhost:5000/api/brackets/${bracket.id}/matches`);
@@ -625,7 +625,7 @@ const getAwardsForDisplay = () => {
       showAddTeam: false,
       selectedTeamToAdd: '',
       availableTeams: [],
-      hasCompletedMatches: hasCompletedMatches,  // Set this flag
+      hasCompletedMatches: hasCompletedMatches,
       editingBracket: {
         name: bracket.name,
         sport_type: bracket.sport_type,
@@ -637,12 +637,11 @@ const getAwardsForDisplay = () => {
     const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}`);
     const teams = await teamsRes.json();
     
-   const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}/available`);
-const availableTeams = await availableTeamsRes.json();
+    const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}/available`);
+    const availableTeams = await availableTeamsRes.json();
 
-const teamsWithPlayers = await Promise.all(
-  teams.map(async (team) => {
-
+    const teamsWithPlayers = await Promise.all(
+      teams.map(async (team) => {
         try {
           const playersRes = await fetch(`http://localhost:5000/api/teams/${team.id}`);
           if (playersRes.ok) {
@@ -657,16 +656,21 @@ const teamsWithPlayers = await Promise.all(
       })
     );
     
-   const assignedTeamIds = teams.map(t => t.id);
-const filteredAvailableTeams = availableTeams.filter(team => !assignedTeamIds.includes(team.id));
+    // Filter out teams that are already assigned to this bracket
+    const assignedTeamIds = teams.map(t => t.id);
+    const filteredAvailableTeams = availableTeams.filter(team => !assignedTeamIds.includes(team.id));
 
-setEditTeamModal(prev => ({
-  ...prev,
-  teams: teamsWithPlayers,
-  availableTeams: filteredAvailableTeams,  // <-- CHANGED
-  loading: false,
-  error: null
-}));
+    console.log('📊 Assigned Team IDs:', assignedTeamIds);
+    console.log('📋 Available Teams (before filter):', availableTeams.length);
+    console.log('✅ Filtered Available Teams:', filteredAvailableTeams.length);
+
+    setEditTeamModal(prev => ({
+      ...prev,
+      teams: teamsWithPlayers,
+      availableTeams: filteredAvailableTeams,
+      loading: false,
+      error: null
+    }));
   } catch (err) {
     console.error('Error loading bracket data:', err);
     setEditTeamModal(prev => ({
@@ -1353,132 +1357,77 @@ const closeEditTeamModal = () => {
             {/* Events Selection Tab */}
             {activeTab === "events" && (
                 <div className="bracket-view-section purple-background">
-                  <div style={{ 
-                    background: '#1a2332', 
-                    padding: '24px', 
-                    borderRadius: '12px', 
-                    marginBottom: '24px', 
-                    border: '1px solid #2d3748' 
-                  }}>
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
-                        <FaSearch style={{ 
-                          position: 'absolute', 
-                          left: '12px', 
-                          top: '50%', 
-                          transform: 'translateY(-50%)', 
-                          color: '#64748b', 
-                          width: '18px', 
-                          height: '18px' 
-                        }} />
-                        <input 
-                          type="text" 
-                          placeholder="Search teams or match #..." 
-                          value={searchTerm} 
-                          onChange={(e) => setSearchTerm(e.target.value)} 
-                          style={{ 
-                            width: '100%', 
-                            padding: '12px 16px 12px 45px', 
-                            border: '2px solid #2d3748', 
-                            borderRadius: '10px', 
-                            fontSize: '14px', 
-                            backgroundColor: '#0f172a', 
-                            color: '#e2e8f0', 
-                            outline: 'none',
-                            fontWeight: '500'
-                          }} 
-                        />
-                      </div>
+                
+                    {/* Search Container */}
+<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+  <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
+    <input
+      type="text"
+      placeholder="Search events..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      style={{
+        flex: '1',
+        padding: '12px 16px',
+        border: '2px solid var(--border-color)',
+        borderRadius: '8px',
+        fontSize: '14px',
+        backgroundColor: 'var(--background-secondary)',
+        color: 'var(--text-primary)',
+      }}
+    />
+    <select
+      value={statusFilter}
+      onChange={(e) => setStatusFilter(e.target.value)}
+      style={{
+        padding: '12px 16px',
+        border: '2px solid var(--border-color)',
+        borderRadius: '8px',
+        fontSize: '14px',
+        backgroundColor: 'var(--background-secondary)',
+        color: 'var(--text-primary)',
+        minWidth: '150px',
+      }}
+    >
+      <option value="all">All Status</option>
+      <option value="ongoing">Ongoing</option>
+      <option value="completed">Completed</option>
+    </select>
+  </div>
+  <button 
+    className="awards_standings_export_btn" 
+    onClick={() => navigate('/AdminDashboard/tournament-creator')}
+    style={{ 
+      padding: '12px 24px', 
+      border: 'none', 
+      borderRadius: '10px', 
+      fontSize: '14px', 
+      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+      color: 'white', 
+      cursor: 'pointer', 
+      fontWeight: '700', 
+      transition: 'all 0.2s ease',
+      whiteSpace: 'nowrap',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)'
+    }}
+  >
+    <FaPlus /> Create Event
+  </button>
+</div>
 
-                      <select 
-                        value={statusFilter} 
-                        onChange={(e) => setStatusFilter(e.target.value)} 
-                        style={{ 
-                          padding: '12px 16px', 
-                          border: '2px solid #2d3748', 
-                          borderRadius: '10px', 
-                          fontSize: '14px', 
-                          backgroundColor: '#0f172a', 
-                          color: '#e2e8f0', 
-                          minWidth: '150px', 
-                          outline: 'none',
-                          fontWeight: '600',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="all">All Status</option>
-                        <option value="ongoing">⏳ Ongoing</option>
-                        <option value="completed">✅ Completed</option>
-                      </select>
+{/* Results Info */}
+{(searchTerm || statusFilter !== "all") && (
+  <div style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+    Showing {currentRows.length} of {totalRows} results
+    {searchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{searchTerm}"</span>}
+    {statusFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Status: {statusFilter}</span>}
+  </div>
+)}
 
-                      <button 
-                className="awards_standings_export_btn" 
-                onClick={() => navigate('/AdminDashboard/tournament-creator')}
-                style={{ 
-                  padding: '12px 24px', 
-                  border: 'none', 
-                  borderRadius: '10px', 
-                  fontSize: '14px', 
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                  color: 'white', 
-                  cursor: 'pointer', 
-                  fontWeight: '700', 
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)'
-                }}
-              >
-                        <FaPlus /> Create Event
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    marginBottom: '20px', 
-                    flexWrap: 'wrap', 
-                    gap: '15px' 
-                  }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                      {(searchTerm || statusFilter !== "all") && (
-                        <>
-                          Showing {currentRows.length} of {totalRows} results
-                          {searchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{searchTerm}"</span>}
-                          {statusFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Status: {statusFilter}</span>}
-                        </>
-                      )}
-                      {!searchTerm && statusFilter === "all" && (
-                        <>Showing {indexOfFirstRow + 1}-{Math.min(indexOfLastRow, totalRows)} of {totalRows} entries</>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Show:</label>
-                      <select
-                        value={itemsPerPage}
-                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        style={{
-                          padding: '8px 12px',
-                          border: '2px solid var(--border-color)',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          backgroundColor: 'var(--background-secondary)',
-                          color: 'var(--text-primary)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value={5}>5</option>
-                        <option value={10}>10</option>
-                        <option value={20}>20</option>
-                        <option value={50}>50</option>
-                      </select>
-                      <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>per page</span>
-                    </div>
-                  </div>
+                 
 
                 {loading ? (
                   <div className="awards_standings_loading">
