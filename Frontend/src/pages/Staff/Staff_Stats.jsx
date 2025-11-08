@@ -768,46 +768,44 @@ const hasMoreMatches = () => {
   };
 
   // Control Bar Component - UPDATED with centered layout
-  const ControlBar = () => {
+ // Control Bar Component - UPDATED with centered layout
+const ControlBar = () => {
   if (!selectedGame) return null;
+  
+  // Don't show control bar at all in admin edit mode
+  if (isEditMode && cameFromAdmin) return null;
 
   return (
     <div className="control-bar">
-      {/* Hide Switch Team View and Current View in admin edit mode */}
-      {!(isEditMode && cameFromAdmin) && (
-        <>
-          <button 
-            onClick={shiftTeamView}
-            className="control-bar-button"
-          >
-            <FaExchangeAlt /> Switch Team View
-          </button>
-          
-          <div className="current-view-display">
-            Current View: 
-            <span className="view-indicator">
-              {showBothTeams ? 'Both Teams' : (activeTeamView === 'team1' ? selectedGame.team1_name : selectedGame.team2_name)}
-            </span>
-          </div>
-          
-          <label className="control-bar-checkbox">
-            <input
-              type="checkbox"
-              checked={showBothTeams}
-              onChange={() => setShowBothTeams(!showBothTeams)}
-            />
-            Show Both Teams
-          </label>
-        </>
-      )}
+      <button 
+        onClick={shiftTeamView}
+        className="control-bar-button"
+      >
+        <FaExchangeAlt /> Switch Team View
+      </button>
       
-      {(!isViewOnlyMode || isEditMode) && (
+      <div className="current-view-display">
+        Current View: 
+        <span className="view-indicator">
+          {showBothTeams ? 'Both Teams' : (activeTeamView === 'team1' ? selectedGame.team1_name : selectedGame.team2_name)}
+        </span>
+      </div>
+      
+      <label className="control-bar-checkbox">
+        <input
+          type="checkbox"
+          checked={showBothTeams}
+          onChange={() => setShowBothTeams(!showBothTeams)}
+        />
+        Show Both Teams
+      </label>
+      
+      {!isViewOnlyMode && (
         <label className="control-bar-checkbox">
           <input
             type="checkbox"
             checked={hideButtons}
             onChange={() => setHideButtons(!hideButtons)}
-            disabled={isEditMode && cameFromAdmin} // Disable toggle in admin edit mode
           />
           Hide Buttons
         </label>
@@ -2349,18 +2347,19 @@ const hasMoreMatches = () => {
 
       // Check if we're in admin edit mode
       if (isEditMode && cameFromAdmin) {
-        // Admin edit mode - just show toast notification
-        addToast('Statistics updated successfully!', 'success', '');
-        
-        // Exit edit mode after successful save
-        setIsEditMode(false);
-        setIsViewOnlyMode(true);
-        
-        // Refresh the data
-        await handleGameSelect(selectedGame);
-        setLoading(false);
-        return;
-      }
+  // Admin edit mode - just show toast notification
+  addToast('Statistics updated successfully!', 'success', '');
+  
+  // Exit edit mode after successful save
+  setIsEditMode(false);
+  setIsViewOnlyMode(true);
+  setHideButtons(true); // ADD THIS LINE - Hide buttons after saving
+  
+  // Refresh the data
+  await handleGameSelect(selectedGame);
+  setLoading(false);
+  return;
+}
 
       // Prepare success page data for normal staff stat entry
       let advancementMessage = "";
