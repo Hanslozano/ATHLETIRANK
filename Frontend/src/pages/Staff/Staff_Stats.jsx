@@ -1175,7 +1175,7 @@ const ControlBar = () => {
       const matchData = JSON.parse(storedMatchData);
       
       // Check if coming from admin
-      if (matchData.fromAdmin || adminContext) {
+      if (matchData.fromAdmin && adminContext) {
         setCameFromAdmin(true);
         setIsViewOnlyMode(true);
         setIsEditMode(false);
@@ -3951,33 +3951,33 @@ const handleNextMatch = async () => {
                     )}
                   </h2>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    {/* Only show Edit Stats button for admins, not for staff */}
-                    {isViewOnlyMode && !isEditMode && cameFromAdmin && (
+  {/* Only show Edit Stats button for admins, NOT for staff */}
+ {isViewOnlyMode && !isEditMode && cameFromAdmin && (
   <button 
     onClick={() => {
       setIsEditMode(true);
       setShowBenchPlayers({ team1: true, team2: true });
-      setShowBothTeams(true); // ✅ Always show both teams in admin edit
-      setHideButtons(false); // ✅ Always show buttons in admin edit
+      setShowBothTeams(true);
+      setHideButtons(false); // This should already be here
     }}
-                        className="stats-edit-button"
-                        style={{
-                          padding: '10px 20px',
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}
-                      >
-                        <FaEdit /> Edit Stats
-                      </button>
-                    )}
+      className="stats-edit-button"
+      style={{
+        padding: '10px 20px',
+        background: '#3b82f6',
+        color: 'white',
+        border: 'none',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        fontWeight: '600',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}
+    >
+      <FaEdit /> Edit Stats
+    </button>
+  )}
                  <button 
   onClick={() => {
     if (cameFromAdmin) {
@@ -4095,7 +4095,8 @@ const handleNextMatch = async () => {
                   </button>
                   <button
                     onClick={() => {
-                      setIsEditMode(false);
+                              setIsEditMode(false);
+                              setHideButtons(true); // ADD THIS LINE
                       // Reload stats to reset any changes
                       handleGameSelect(selectedGame);
                     }}
