@@ -197,7 +197,7 @@ const AddRemoveTeamsSection = ({
                 selectedTeamToAdd: '',
                 showAddTeam: false
               }));
-              await refreshTeamsInModal();
+              await r();
             } catch (err) {
               console.error('Error adding team:', err);
               alert('Failed to add team: ' + err.message);

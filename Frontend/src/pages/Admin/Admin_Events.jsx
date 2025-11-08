@@ -637,11 +637,12 @@ const getAwardsForDisplay = () => {
     const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}`);
     const teams = await teamsRes.json();
     
-    const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}/available`);
-    const availableTeams = await availableTeamsRes.json();
-    
-    const teamsWithPlayers = await Promise.all(
-      teams.map(async (team) => {
+   const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${bracket.id}/available`);
+const availableTeams = await availableTeamsRes.json();
+
+const teamsWithPlayers = await Promise.all(
+  teams.map(async (team) => {
+
         try {
           const playersRes = await fetch(`http://localhost:5000/api/teams/${team.id}`);
           if (playersRes.ok) {
@@ -656,13 +657,16 @@ const getAwardsForDisplay = () => {
       })
     );
     
-    setEditTeamModal(prev => ({
-      ...prev,
-      teams: teamsWithPlayers,
-      availableTeams: availableTeams,
-      loading: false,
-      error: null
-    }));
+   const assignedTeamIds = teams.map(t => t.id);
+const filteredAvailableTeams = availableTeams.filter(team => !assignedTeamIds.includes(team.id));
+
+setEditTeamModal(prev => ({
+  ...prev,
+  teams: teamsWithPlayers,
+  availableTeams: filteredAvailableTeams,  // <-- CHANGED
+  loading: false,
+  error: null
+}));
   } catch (err) {
     console.error('Error loading bracket data:', err);
     setEditTeamModal(prev => ({
@@ -864,9 +868,13 @@ const handleEditTeam = async (bracket) => {
       const teams = await teamsRes.json();
       
       const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}/available`);
-      const availableTeams = await availableTeamsRes.json();
-      
-      if (teams.length >= 2) {
+const availableTeams = await availableTeamsRes.json();
+
+// Filter out teams that are already assigned to this bracket
+const assignedTeamIds = teams.map(t => t.id);
+const filteredAvailableTeams = availableTeams.filter(team => !assignedTeamIds.includes(team.id));
+
+if (teams.length >= 2) {
         try {
           let generateEndpoint;
           if (editTeamModal.bracket.elimination_type === 'round_robin') {
@@ -931,7 +939,7 @@ const handleEditTeam = async (bracket) => {
       setEditTeamModal(prev => ({
         ...prev,
         teams: teamsWithPlayers,
-        availableTeams: availableTeams
+         availableTeams: filteredAvailableTeams
       }));
       
         if (selectedBracket && selectedBracket.id === editTeamModal.bracket.id) {
