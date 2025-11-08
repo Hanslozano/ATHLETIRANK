@@ -769,46 +769,52 @@ const hasMoreMatches = () => {
 
   // Control Bar Component - UPDATED with centered layout
   const ControlBar = () => {
-    if (!selectedGame) return null;
+  if (!selectedGame) return null;
 
-    return (
-      <div className="control-bar">
-        <button 
-          onClick={shiftTeamView}
-          className="control-bar-button"
-        >
-          <FaExchangeAlt /> Switch Team View
-        </button>
-        
-        <div className="current-view-display">
-          Current View: 
-          <span className="view-indicator">
-            {showBothTeams ? 'Both Teams' : (activeTeamView === 'team1' ? selectedGame.team1_name : selectedGame.team2_name)}
-          </span>
-        </div>
-        
-        <label className="control-bar-checkbox">
-          <input
-            type="checkbox"
-            checked={showBothTeams}
-            onChange={() => setShowBothTeams(!showBothTeams)}
-          />
-          Show Both Teams
-        </label>
-        
-        {(!isViewOnlyMode || isEditMode) && (
+  return (
+    <div className="control-bar">
+      {/* Hide Switch Team View and Current View in admin edit mode */}
+      {!(isEditMode && cameFromAdmin) && (
+        <>
+          <button 
+            onClick={shiftTeamView}
+            className="control-bar-button"
+          >
+            <FaExchangeAlt /> Switch Team View
+          </button>
+          
+          <div className="current-view-display">
+            Current View: 
+            <span className="view-indicator">
+              {showBothTeams ? 'Both Teams' : (activeTeamView === 'team1' ? selectedGame.team1_name : selectedGame.team2_name)}
+            </span>
+          </div>
+          
           <label className="control-bar-checkbox">
             <input
               type="checkbox"
-              checked={hideButtons}
-              onChange={() => setHideButtons(!hideButtons)}
+              checked={showBothTeams}
+              onChange={() => setShowBothTeams(!showBothTeams)}
             />
-            Hide Buttons
+            Show Both Teams
           </label>
-        )}
-      </div>
-    );
-  };
+        </>
+      )}
+      
+      {(!isViewOnlyMode || isEditMode) && (
+        <label className="control-bar-checkbox">
+          <input
+            type="checkbox"
+            checked={hideButtons}
+            onChange={() => setHideButtons(!hideButtons)}
+            disabled={isEditMode && cameFromAdmin} // Disable toggle in admin edit mode
+          />
+          Hide Buttons
+        </label>
+      )}
+    </div>
+  );
+};
 
   // Function to calculate total points from shooting stats (including overtime)
   const calculateTotalPoints = (player) => {
@@ -862,29 +868,13 @@ const hasMoreMatches = () => {
 
   // Function to check if a position is already taken in the starting lineup
   const isPositionTaken = (teamKey, playerId, position) => {
-    if (!position || position === "N/A") return false;
-    
-    const currentStarters = startingPlayers[teamKey];
-    return currentStarters.some(starterId => {
-      const starter = playerStats.find(p => p.player_id === starterId);
-      return starter && starter.player_id !== playerId && starter.position === position;
-    });
-  };
+  return false; // Always return false - no position restrictions
+};
 
   // Function to get available positions for a team
   const getAvailablePositions = (teamKey) => {
-    const currentStarters = startingPlayers[teamKey];
-    const takenPositions = new Set();
-    
-    currentStarters.forEach(starterId => {
-      const starter = playerStats.find(p => p.player_id === starterId);
-      if (starter && starter.position && starter.position !== "N/A") {
-        takenPositions.add(starter.position);
-      }
-    });
-    
-    return takenPositions;
-  };
+  return new Set(); // Return empty set - no positions are "taken"
+};
 
   const initializeStartingPlayers = (stats, team1Id, team2Id, sportType) => {
     const maxStarters = getMaxStartingPlayers(sportType);
@@ -893,41 +883,9 @@ const hasMoreMatches = () => {
       const team1Players = stats.filter(p => p.team_id === team1Id);
       const team2Players = stats.filter(p => p.team_id === team2Id);
       
-      const team1Starters = [];
-      const usedPositionsTeam1 = new Set();
-      
-      team1Players.forEach(player => {
-        if (team1Starters.length < maxStarters && player.position && player.position !== "N/A") {
-          if (!usedPositionsTeam1.has(player.position)) {
-            team1Starters.push(player.player_id);
-            usedPositionsTeam1.add(player.position);
-          }
-        }
-      });
-      
-      team1Players.forEach(player => {
-        if (team1Starters.length < maxStarters && !team1Starters.includes(player.player_id)) {
-          team1Starters.push(player.player_id);
-        }
-      });
-      
-      const team2Starters = [];
-      const usedPositionsTeam2 = new Set();
-      
-      team2Players.forEach(player => {
-        if (team2Starters.length < maxStarters && player.position && player.position !== "N/A") {
-          if (!usedPositionsTeam2.has(player.position)) {
-            team2Starters.push(player.player_id);
-            usedPositionsTeam2.add(player.position);
-          }
-        }
-      });
-      
-      team2Players.forEach(player => {
-        if (team2Starters.length < maxStarters && !team2Starters.includes(player.player_id)) {
-          team2Starters.push(player.player_id);
-        }
-      });
+      // SIMPLIFIED: Just take first maxStarters players, no position restrictions
+      const team1Starters = team1Players.slice(0, maxStarters).map(p => p.player_id);
+      const team2Starters = team2Players.slice(0, maxStarters).map(p => p.player_id);
       
       setStartingPlayers({
         team1: team1Starters,
@@ -1047,7 +1005,6 @@ const hasMoreMatches = () => {
       setPlayerStats(updatedStats);
     }
   };
-
   const handleStartingPlayerToggle = (playerId, teamId) => {
     const sportType = selectedGame?.sport_type;
     const maxStarters = getMaxStartingPlayers(sportType);
@@ -1055,12 +1012,7 @@ const hasMoreMatches = () => {
     const currentStarters = [...startingPlayers[teamKey]];
     const player = playerStats.find(p => p.player_id === playerId);
     
-    if (sportType === "basketball" && player && player.position && player.position !== "N/A") {
-      if (isPositionTaken(teamKey, playerId, player.position)) {
-        alert(`Position "${player.position}" is already taken in the starting lineup. Please select a player with a different position.`);
-        return;
-      }
-    }
+  
     
     if (currentStarters.includes(playerId)) {
       const updatedStarters = currentStarters.filter(id => id !== playerId);
@@ -2692,11 +2644,11 @@ const handleNextMatch = async () => {
           <table className="stats-table">
             <thead>
               <tr>
-                {(!isViewOnlyMode || isEditMode) && <th className="col-start">Start</th>}
+              {(!isViewOnlyMode || (isEditMode && !cameFromAdmin)) && <th className="col-start">Start</th>}
                 <th className="col-player">Player</th>
                 <th className="col-number">#</th>
                 <th className="col-position">Position</th>
-                {(!isViewOnlyMode || isEditMode) && <th className="col-status">Status</th>}
+               {(!isViewOnlyMode || (isEditMode && !cameFromAdmin)) && <th className="col-status">Status</th>}
                 {isBasketball ? (
                   <>
                     <th className="col-score">Score</th>
@@ -2733,14 +2685,13 @@ const handleNextMatch = async () => {
               {starters.map((player) => {
                 const globalIndex = playerStats.findIndex(p => p.player_id === player.player_id);
                 const isStarter = startingPlayers[teamKey].includes(player.player_id);
-                const positionTaken = isBasketball && player.position && player.position !== "N/A" && 
-                  takenPositions.has(player.position) && !isStarter;
+               const positionTaken = false; // No position restrictions
                 const isDisabled = isPlayerDisabled(player);
                 
                 return (
                   <tr key={player.player_id} className={`${player.isOnCourt ? 'on-court' : ''} ${isDisabled ? 'fouled-out' : ''}`}>
-                    {(!isViewOnlyMode || isEditMode) && (
-                      <td className="col-start">
+           {(!isViewOnlyMode || (isEditMode && !cameFromAdmin)) && (
+  <td className="col-start">
                         <input
                           type="checkbox"
                           checked={isStarter}
@@ -2763,8 +2714,8 @@ const handleNextMatch = async () => {
                     </td>
                     <td className="col-number">#{player.jersey_number}</td>
                     <td className="col-position">{player.position}</td>
-                    {(!isViewOnlyMode || isEditMode) && (
-                      <td className="col-status">
+                   {(!isViewOnlyMode || (isEditMode && !cameFromAdmin)) && (
+  <td className="col-status">
                         <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
                           {player.isOnCourt ? 'On Court' : 'Bench'}
                           {isDisabled && ' (FO)'}
@@ -3219,14 +3170,13 @@ const handleNextMatch = async () => {
               {isBenchVisible && benchPlayers.map((player) => {
                 const globalIndex = playerStats.findIndex(p => p.player_id === player.player_id);
                 const isStarter = startingPlayers[teamKey].includes(player.player_id);
-                const positionTaken = isBasketball && player.position && player.position !== "N/A" && 
-                  takenPositions.has(player.position) && !isStarter;
+               const positionTaken = false; // No position restrictions
                 const isDisabled = isPlayerDisabled(player);
                 
                 return (
                   <tr key={player.player_id} className={`bench-player ${isDisabled ? 'fouled-out' : ''}`}>
-                    {(!isViewOnlyMode || isEditMode) && (
-                      <td className="col-start">
+                    {(!isViewOnlyMode || (isEditMode && !cameFromAdmin)) && (
+  <td className="col-start">
                         <input
                           type="checkbox"
                           checked={isStarter}
@@ -3249,8 +3199,8 @@ const handleNextMatch = async () => {
                     </td>
                     <td className="col-number">#{player.jersey_number}</td>
                     <td className="col-position">{player.position}</td>
-                    {(!isViewOnlyMode || isEditMode) && (
-                      <td className="col-status">
+                 {(!isViewOnlyMode || (isEditMode && !cameFromAdmin)) && (
+  <td className="col-status">
                         <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
                           {player.isOnCourt ? 'On Court' : 'Bench'}
                           {isDisabled && ' (FO)'}
@@ -4004,12 +3954,13 @@ const handleNextMatch = async () => {
                   <div style={{ display: 'flex', gap: '10px' }}>
                     {/* Only show Edit Stats button for admins, not for staff */}
                     {isViewOnlyMode && !isEditMode && cameFromAdmin && (
-                      <button 
-                        onClick={() => {
-                          setIsEditMode(true);
-                          setShowBenchPlayers({ team1: true, team2: true });
-                          setHideButtons(false); // ✅ Uncheck "Hide Buttons" when entering edit mode
-                        }}
+  <button 
+    onClick={() => {
+      setIsEditMode(true);
+      setShowBenchPlayers({ team1: true, team2: true });
+      setShowBothTeams(true); // ✅ Always show both teams in admin edit
+      setHideButtons(false); // ✅ Always show buttons in admin edit
+    }}
                         className="stats-edit-button"
                         style={{
                           padding: '10px 20px',
