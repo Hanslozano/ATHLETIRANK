@@ -724,7 +724,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                   alignItems: 'center',
                   gap: '6px'
                 }} 
-                title="View Stats"
+                title="View Scores"
               >
                 <BarChart3 style={{ width: '16px', height: '16px' }} />
               </button>

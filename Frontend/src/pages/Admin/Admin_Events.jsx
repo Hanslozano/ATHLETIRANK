@@ -198,28 +198,28 @@ const [editTeamModal, setEditTeamModal] = useState({
 
   // Check for return context from AdminStats
   useEffect(() => {
-    const checkReturnContext = async () => {
-      const returnContext = sessionStorage.getItem('adminEventsReturnContext');
-      
-      if (returnContext) {
-        try {
-          const { 
-            selectedEvent: eventContext, 
-            selectedBracket: bracketContext,
-            contentTab: tabContext,
-            bracketViewType: viewTypeContext
-          } = JSON.parse(returnContext);
+  const checkReturnContext = async () => {
+    const returnContext = sessionStorage.getItem('adminEventsReturnContext');
+    
+    if (returnContext) {
+      try {
+        const { 
+          selectedEvent: eventContext, 
+          selectedBracket: bracketContext,
+          contentTab: tabContext,
+          bracketViewType: viewTypeContext
+        } = JSON.parse(returnContext);
+        
+        if (eventContext && bracketContext) {
+          setSelectedEvent(eventContext);
+          setSelectedBracket(bracketContext);
+          setActiveTab("results");
           
-          if (eventContext && bracketContext) {
-            setSelectedEvent(eventContext);
-            setSelectedBracket(bracketContext);
-            setActiveTab("results");
-            
-            setContentTab(tabContext || "matches");
-            
-            if (viewTypeContext) {
-              setBracketViewType(viewTypeContext);
-            }
+          setContentTab(tabContext || "matches");
+          
+          if (viewTypeContext) {
+            setBracketViewType(viewTypeContext);
+          }
             
             setLoadingDetails(true);
             
@@ -240,17 +240,18 @@ const [editTeamModal, setEditTeamModal] = useState({
             } finally {
               setLoadingDetails(false);
             }
-          }
-        } catch (err) {
-          console.error("Error loading return context:", err);
-        } finally {
-          sessionStorage.removeItem('adminEventsReturnContext');
-        }
+              }
+      } catch (err) {
+        console.error("Error loading return context:", err);
+      } finally {
+        sessionStorage.removeItem('adminEventsReturnContext');
       }
-    };
-    
-    checkReturnContext();
-  }, []);
+    }
+  };
+  
+  checkReturnContext();
+}, []);
+
 
   // Auto-load data when statsViewMode changes
   useEffect(() => {
@@ -1908,14 +1909,27 @@ const closeEditTeamModal = () => {
     eventId={selectedEvent?.id}
     bracketId={selectedBracket?.id}
     onViewStats={(match) => {
-      sessionStorage.setItem('selectedMatchData', JSON.stringify({
-        matchId: match.id,
-        eventId: selectedEvent?.id,
-        bracketId: selectedBracket?.id,
-        match: match
-      }));
-      setContentTab("statistics");
-    }}
+  sessionStorage.setItem('selectedMatchData', JSON.stringify({
+    matchId: match.id,
+    eventId: selectedEvent?.id,
+    bracketId: selectedBracket?.id,
+    match: match,
+    viewOnly: true,
+    fromAdmin: true
+  }));
+  
+  // Save context for returning to admin events
+  sessionStorage.setItem('adminEventsContext', JSON.stringify({
+    selectedEvent: selectedEvent,
+    selectedBracket: selectedBracket,
+    bracketViewType: bracketViewType,
+    activeTab: activeTab,
+    contentTab: contentTab
+  }));
+  
+  // Redirect to Admin Stats Viewer (using same component)
+  navigate('/AdminDashboard/stats-viewer');
+}}
     onRefresh={async () => {
       try {
         const res = await fetch(`http://localhost:5000/api/brackets/${selectedBracket.id}/matches`);

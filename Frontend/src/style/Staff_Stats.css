@@ -2057,6 +2057,7 @@
 }
 
 /* Toast Notifications */
+/* Toast Notifications */
 .toast-container {
   position: fixed;
   top: 80px;
@@ -2078,6 +2079,14 @@
   font-weight: 600;
   position: relative;
   overflow: hidden;
+}
+
+/* Admin success toast - longer animation and larger size */
+.toast.toast-admin-success {
+  min-width: 320px;
+  padding: 20px 24px;
+  animation: slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 3.7s;
+  box-shadow: 0 12px 32px rgba(72, 187, 120, 0.5);
 }
 
 .toast::before {
@@ -2108,6 +2117,19 @@
   font-weight: 900;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   letter-spacing: 0.5px;
+}
+
+/* Larger message for admin success */
+.toast-admin-success .toast-message {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast-admin-success .toast-message::before {
+  content: '✅';
+  font-size: 24px;
 }
 
 @keyframes slideInRight {

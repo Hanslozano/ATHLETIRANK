@@ -17,6 +17,7 @@ import {
   FaClock,
   FaTimes,
   FaUsers,
+  FaEdit,
   // ============================================
   // 1. ADDED OFFLINE ICONS
   // ============================================
@@ -30,6 +31,9 @@ import "../../style/Staff_Stats.css";
 const StaffStats = ({ sidebarOpen }) => {
   const navigate = useNavigate();
   const [cameFromStaffEvents, setCameFromStaffEvents] = useState(false);
+  const [cameFromAdmin, setCameFromAdmin] = useState(false);
+  const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [events, setEvents] = useState([]);
   const [brackets, setBrackets] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -87,10 +91,11 @@ const StaffStats = ({ sidebarOpen }) => {
     const newToast = { id, message, type, playerName };
     setToasts(prev => [...prev, newToast]);
     
-    // Auto-remove toast after 2 seconds
+    // Auto-remove toast - longer duration for important messages
+    const duration = playerName ? 2000 : 4000; // 4 seconds for admin success message
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 2000);
+    }, duration);
   };
 
   const getStatLabel = (statKey) => {
@@ -380,20 +385,27 @@ const [savedMatchData, setSavedMatchData] = useState(null);
 
     return (
       <div className="toast-container">
-        {toasts.map((toast) => (
-          <div 
-            key={toast.id} 
-            className={`toast toast-${toast.type}`}
-            style={{
-              backgroundColor: getStatColor(toast.message.toLowerCase().replace(/[^a-z_]/g, '_').replace(/\+/g, '').replace(/\s/g, '_')),
-            }}
-          >
-            <div className="toast-content">
-              <div className="toast-player">{toast.playerName}</div>
-              <div className="toast-message">{toast.message}</div>
+        {toasts.map((toast) => {
+          const isAdminSuccess = !toast.playerName && toast.message.includes('updated successfully');
+          const backgroundColor = isAdminSuccess 
+            ? '#48bb78' // Green for admin success
+            : getStatColor(toast.message.toLowerCase().replace(/[^a-z_]/g, '_').replace(/\+/g, '').replace(/\s/g, '_'));
+          
+          return (
+            <div 
+              key={toast.id} 
+              className={`toast toast-${toast.type} ${isAdminSuccess ? 'toast-admin-success' : ''}`}
+              style={{
+                backgroundColor: backgroundColor,
+              }}
+            >
+              <div className="toast-content">
+                {toast.playerName && <div className="toast-player">{toast.playerName}</div>}
+                <div className="toast-message">{toast.message}</div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -784,14 +796,16 @@ const hasMoreMatches = () => {
           Show Both Teams
         </label>
         
-        <label className="control-bar-checkbox">
-          <input
-            type="checkbox"
-            checked={hideButtons}
-            onChange={() => setHideButtons(!hideButtons)}
-          />
-          Hide Buttons
-        </label>
+        {(!isViewOnlyMode || isEditMode) && (
+          <label className="control-bar-checkbox">
+            <input
+              type="checkbox"
+              checked={hideButtons}
+              onChange={() => setHideButtons(!hideButtons)}
+            />
+            Hide Buttons
+          </label>
+        )}
       </div>
     );
   };
@@ -1203,12 +1217,29 @@ const hasMoreMatches = () => {
   };
 
   useEffect(() => {
-    const storedMatchData = sessionStorage.getItem('selectedMatchData');
-    
-    if (storedMatchData) {
-      setCameFromStaffEvents(true);
-      try {
-        const matchData = JSON.parse(storedMatchData);
+  const storedMatchData = sessionStorage.getItem('selectedMatchData');
+  const adminContext = sessionStorage.getItem('adminEventsContext');
+  
+  if (storedMatchData) {
+    try {
+      const matchData = JSON.parse(storedMatchData);
+      
+      // Check if coming from admin
+      if (matchData.fromAdmin || adminContext) {
+        setCameFromAdmin(true);
+        setIsViewOnlyMode(true);
+        setIsEditMode(false);
+      } else if (matchData.viewOnly) {
+        // Staff clicked "View Stats" - enable view-only mode
+        setCameFromStaffEvents(true);
+        setIsViewOnlyMode(true);
+        setIsEditMode(false);
+      } else {
+        // Staff clicked "Input Stats" - normal edit mode
+        setCameFromStaffEvents(true);
+        setIsViewOnlyMode(false);
+        setIsEditMode(false);
+      }
         
         const loadFromSession = async () => {
           if (matchData.eventId) {
@@ -1250,6 +1281,13 @@ const hasMoreMatches = () => {
       }
     }
   }, []);
+
+  // Update showBothTeams when view-only mode changes and game is selected
+  useEffect(() => {
+    if (selectedGame && isViewOnlyMode) {
+      setShowBothTeams(true);
+    }
+  }, [selectedGame, isViewOnlyMode]);
 
   const sortRounds = (rounds) => {
     return Object.entries(rounds).sort(([a], [b]) => {
@@ -2142,7 +2180,8 @@ const hasMoreMatches = () => {
   setSelectedGame(game);
   setLoading(true);
   setActiveTeamView('team1');
-  setShowBothTeams(false);
+  // Show both teams in view-only mode (for staff viewing stats)
+  setShowBothTeams(isViewOnlyMode);
   setShowBenchPlayers({ team1: true, team2: true });
   setCurrentQuarter(0);
     setCurrentOvertime(0);
@@ -2291,25 +2330,41 @@ const hasMoreMatches = () => {
       };
 
       // IF OFFLINE: Save to localStorage
-      if (!isOnline) {
-  const saved = saveToLocalStorage(selectedGame.id, statsData, 'save_stats');
-  if (saved) {
-    // Show success page for offline save
-    setSavedMatchData({
-      team1Name: selectedGame.team1_name,
-      team2Name: selectedGame.team2_name,
-      team1Score: team1TotalScore,
-      team2Score: team2TotalScore,
-      winnerName: winner_id === selectedGame.team1_id ? selectedGame.team1_name : selectedGame.team2_name,
-      overtimePeriods: overtimePeriods,
-      isOffline: true,
-      pendingSyncs: pendingSyncs.length + 1
-    });
-    setShowSuccessPage(true);
-  }
-  setLoading(false);
-  return;
-}
+        if (!isOnline) {
+        const saved = saveToLocalStorage(selectedGame.id, statsData, 'save_stats');
+        if (saved) {
+          // Check if we're in admin edit mode
+          if (isEditMode && cameFromAdmin) {
+            // Admin edit mode - just show toast notification
+            addToast('Statistics updated successfully!', 'success', '');
+            
+            // Exit edit mode after successful save
+            setIsEditMode(false);
+            setIsViewOnlyMode(true);
+            
+            // Refresh the data
+            await handleGameSelect(selectedGame);
+            setLoading(false);
+            return;
+          }
+          
+          // Show success page for normal staff stat entry
+          setSavedMatchData({
+            team1Name: selectedGame.team1_name,
+            team2Name: selectedGame.team2_name,
+            team1Score: team1TotalScore,
+            team2Score: team2TotalScore,
+            winnerName: winner_id === selectedGame.team1_id ? selectedGame.team1_name : selectedGame.team2_name,
+            overtimePeriods: overtimePeriods,
+            advancementMessage: '',
+            isBracketReset: false,
+            isOffline: true
+          });
+          setShowSuccessPage(true);
+        }
+        setLoading(false);
+        return;
+      }
 
       // IF ONLINE: Save to server
       const statsRes = await fetch(
@@ -2325,7 +2380,7 @@ const hasMoreMatches = () => {
         throw new Error(`Failed to save stats: ${statsRes.status}`);
       }
 
-      const bracketRes = await fetch(
+    const bracketRes = await fetch(
         `http://localhost:5000/api/brackets/matches/${selectedGame.id}/complete`,
         {
           method: "POST",
@@ -2338,42 +2393,57 @@ const hasMoreMatches = () => {
         throw new Error(`Failed to complete match: ${bracketRes.status}`);
       }
       
-     const bracketData = await bracketRes.json();
+      const bracketData = await bracketRes.json();
 
-// Prepare success page data
-let advancementMessage = "";
-let isBracketReset = false;
+      // Check if we're in admin edit mode
+      if (isEditMode && cameFromAdmin) {
+        // Admin edit mode - just show toast notification
+        addToast('Statistics updated successfully!', 'success', '');
+        
+        // Exit edit mode after successful save
+        setIsEditMode(false);
+        setIsViewOnlyMode(true);
+        
+        // Refresh the data
+        await handleGameSelect(selectedGame);
+        setLoading(false);
+        return;
+      }
 
-if (bracketData.bracketReset) {
-  isBracketReset = true;
-  advancementMessage = "The Loser's Bracket winner has defeated the Winner's Bracket winner! A Reset Final has been scheduled - both teams start fresh!";
-} else if (bracketData.advanced) {
-  if (selectedGame.elimination_type === 'double') {
-    if (selectedGame.bracket_type === 'winner') {
-      advancementMessage = "Winner advanced in winner's bracket!";
-    } else if (selectedGame.bracket_type === 'loser') {
-      advancementMessage = "Winner advanced in loser's bracket!";
-    } else if (selectedGame.bracket_type === 'championship') {
-      advancementMessage = selectedGame.round_number === 201 ? "Tournament champion determined!" : "Grand Final completed!";
-    }
-  } else {
-    advancementMessage = "Winner advanced to next round!";
-  }
-}
+      // Prepare success page data for normal staff stat entry
+      let advancementMessage = "";
+      let isBracketReset = false;
 
-// Show success page
-setSavedMatchData({
-  team1Name: selectedGame.team1_name,
-  team2Name: selectedGame.team2_name,
-  team1Score: team1TotalScore,
-  team2Score: team2TotalScore,
-  winnerName: winner_id === selectedGame.team1_id ? selectedGame.team1_name : selectedGame.team2_name,
-  overtimePeriods: overtimePeriods,
-  advancementMessage: advancementMessage,
-  isBracketReset: isBracketReset,
-  isOffline: false
-});
-setShowSuccessPage(true);
+      if (bracketData.bracketReset) {
+        isBracketReset = true;
+        advancementMessage = "The Loser's Bracket winner has defeated the Winner's Bracket winner! A Reset Final has been scheduled - both teams start fresh!";
+      } else if (bracketData.advanced) {
+        if (selectedGame.elimination_type === 'double') {
+          if (selectedGame.bracket_type === 'winner') {
+            advancementMessage = "Winner advanced in winner's bracket!";
+          } else if (selectedGame.bracket_type === 'loser') {
+            advancementMessage = "Winner advanced in loser's bracket!";
+          } else if (selectedGame.bracket_type === 'championship') {
+            advancementMessage = selectedGame.round_number === 201 ? "Tournament champion determined!" : "Grand Final completed!";
+          }
+        } else {
+          advancementMessage = "Winner advanced to next round!";
+        }
+      }
+
+      // Show success page for staff stat entry
+      setSavedMatchData({
+        team1Name: selectedGame.team1_name,
+        team2Name: selectedGame.team2_name,
+        team1Score: team1TotalScore,
+        team2Score: team2TotalScore,
+        winnerName: winner_id === selectedGame.team1_id ? selectedGame.team1_name : selectedGame.team2_name,
+        overtimePeriods: overtimePeriods,
+        advancementMessage: advancementMessage,
+        isBracketReset: isBracketReset,
+        isOffline: false
+      });
+      setShowSuccessPage(true);
       
     } catch (err) {
       // If save fails, offer to save offline
@@ -2593,16 +2663,18 @@ const handleNextMatch = async () => {
         <div className="stats-team-header">
           <div className="stats-team-title-section">
             <h3>{teamName}</h3>
-            <span className="stats-team-hint">
-              Max {maxStarters} starters - Click checkbox to set lineup
-              {isBasketball && takenPositions.size > 0 && (
-                <span className="stats-positions-taken">
-                  Positions taken: {Array.from(takenPositions).join(', ')}
-                </span>
-              )}
-            </span>
+            {(!isViewOnlyMode || isEditMode) && (
+              <span className="stats-team-hint">
+                Max {maxStarters} starters - Click checkbox to set lineup
+                {isBasketball && takenPositions.size > 0 && (
+                  <span className="stats-positions-taken">
+                    Positions taken: {Array.from(takenPositions).join(', ')}
+                  </span>
+                )}
+              </span>
+            )}
           </div>
-          {benchPlayers.length > 0 && (
+          {benchPlayers.length > 0 && (!isViewOnlyMode || isEditMode) && (
             <button 
               onClick={() => setShowBenchPlayers(prev => ({
                 ...prev,
@@ -2620,11 +2692,11 @@ const handleNextMatch = async () => {
           <table className="stats-table">
             <thead>
               <tr>
-                <th className="col-start">Start</th>
+                {(!isViewOnlyMode || isEditMode) && <th className="col-start">Start</th>}
                 <th className="col-player">Player</th>
                 <th className="col-number">#</th>
                 <th className="col-position">Position</th>
-                <th className="col-status">Status</th>
+                {(!isViewOnlyMode || isEditMode) && <th className="col-status">Status</th>}
                 {isBasketball ? (
                   <>
                     <th className="col-score">Score</th>
@@ -2667,15 +2739,17 @@ const handleNextMatch = async () => {
                 
                 return (
                   <tr key={player.player_id} className={`${player.isOnCourt ? 'on-court' : ''} ${isDisabled ? 'fouled-out' : ''}`}>
-                    <td className="col-start">
-                      <input
-                        type="checkbox"
-                        checked={isStarter}
-                        onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
-                        disabled={positionTaken || isDisabled}
-                        title={positionTaken ? `Position ${player.position} is already taken` : isDisabled ? 'Player has fouled out' : ''}
-                      />
-                    </td>
+                    {(!isViewOnlyMode || isEditMode) && (
+                      <td className="col-start">
+                        <input
+                          type="checkbox"
+                          checked={isStarter}
+                          onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
+                          disabled={positionTaken || isDisabled || (isViewOnlyMode && !isEditMode)}
+                          title={positionTaken ? `Position ${player.position} is already taken` : isDisabled ? 'Player has fouled out' : ''}
+                        />
+                      </td>
+                    )}
                     <td className="col-player">
                       {player.player_name}
                       {isDisabled && (
@@ -2689,12 +2763,14 @@ const handleNextMatch = async () => {
                     </td>
                     <td className="col-number">#{player.jersey_number}</td>
                     <td className="col-position">{player.position}</td>
-                    <td className="col-status">
-                      <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
-                        {player.isOnCourt ? 'On Court' : 'Bench'}
-                        {isDisabled && ' (FO)'}
-                      </span>
-                    </td>
+                    {(!isViewOnlyMode || isEditMode) && (
+                      <td className="col-status">
+                        <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
+                          {player.isOnCourt ? 'On Court' : 'Bench'}
+                          {isDisabled && ' (FO)'}
+                        </span>
+                      </td>
+                    )}
                     
                     {isBasketball ? (
                       <>
@@ -2707,11 +2783,11 @@ const handleNextMatch = async () => {
                         </td>
                         <td className="col-stat">
                           <div className="stats-controls">
-                            {!hideButtons && (
+                            {!hideButtons && (!isViewOnlyMode || isEditMode) && (
                               <button 
                                 onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} 
                                 className="stats-control-button"
-                                disabled={isDisabled}
+                                disabled={isDisabled || (isViewOnlyMode && !isEditMode)}
                               >
                                 <FaMinus />
                               </button>
@@ -2722,11 +2798,11 @@ const handleNextMatch = async () => {
                                 : (player.two_points_made?.[currentQuarter] || 0)
                               }
                             </span>
-                            {!hideButtons && (
+                            {!hideButtons && (!isViewOnlyMode || isEditMode) && (
                               <button 
                                 onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} 
                                 className="stats-control-button"
-                                disabled={isDisabled}
+                                disabled={isDisabled || (isViewOnlyMode && !isEditMode)}
                               >
                                 <FaPlus />
                               </button>
@@ -3149,15 +3225,17 @@ const handleNextMatch = async () => {
                 
                 return (
                   <tr key={player.player_id} className={`bench-player ${isDisabled ? 'fouled-out' : ''}`}>
-                    <td className="col-start">
-                      <input
-                        type="checkbox"
-                        checked={isStarter}
-                        onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
-                        disabled={positionTaken || isDisabled}
-                        title={positionTaken ? `Position ${player.position} is already taken` : isDisabled ? 'Player has fouled out' : ''}
-                      />
-                    </td>
+                    {(!isViewOnlyMode || isEditMode) && (
+                      <td className="col-start">
+                        <input
+                          type="checkbox"
+                          checked={isStarter}
+                          onChange={() => handleStartingPlayerToggle(player.player_id, teamId)}
+                          disabled={positionTaken || isDisabled || (isViewOnlyMode && !isEditMode)}
+                          title={positionTaken ? `Position ${player.position} is already taken` : isDisabled ? 'Player has fouled out' : ''}
+                        />
+                      </td>
+                    )}
                     <td className="col-player">
                       {player.player_name}
                       {isDisabled && (
@@ -3171,12 +3249,14 @@ const handleNextMatch = async () => {
                     </td>
                     <td className="col-number">#{player.jersey_number}</td>
                     <td className="col-position">{player.position}</td>
-                    <td className="col-status">
-                      <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
-                        {player.isOnCourt ? 'On Court' : 'Bench'}
-                        {isDisabled && ' (FO)'}
-                      </span>
-                    </td>
+                    {(!isViewOnlyMode || isEditMode) && (
+                      <td className="col-status">
+                        <span className={`stats-player-status ${player.isOnCourt ? 'on-court' : 'on-bench'} ${isDisabled ? 'fouled-out' : ''}`}>
+                          {player.isOnCourt ? 'On Court' : 'Bench'}
+                          {isDisabled && ' (FO)'}
+                        </span>
+                      </td>
+                    )}
                     
                     {isBasketball ? (
                       <>
@@ -3189,11 +3269,11 @@ const handleNextMatch = async () => {
                         </td>
                         <td className="col-stat">
                           <div className="stats-controls">
-                            {!hideButtons && (
+                            {!hideButtons && (!isViewOnlyMode || isEditMode) && (
                               <button 
                                 onClick={() => adjustPlayerStat(globalIndex, "two_points_made", false)} 
                                 className="stats-control-button"
-                                disabled={isDisabled}
+                                disabled={isDisabled || (isViewOnlyMode && !isEditMode)}
                               >
                                 <FaMinus />
                               </button>
@@ -3204,11 +3284,11 @@ const handleNextMatch = async () => {
                                 : (player.two_points_made?.[currentQuarter] || 0)
                               }
                             </span>
-                            {!hideButtons && (
+                            {!hideButtons && (!isViewOnlyMode || isEditMode) && (
                               <button 
                                 onClick={() => adjustPlayerStat(globalIndex, "two_points_made", true)} 
                                 className="stats-control-button"
-                                disabled={isDisabled}
+                                disabled={isDisabled || (isViewOnlyMode && !isEditMode)}
                               >
                                 <FaPlus />
                               </button>
@@ -3921,22 +4001,61 @@ const handleNextMatch = async () => {
                       </span>
                     )}
                   </h2>
-                  <button 
-                    onClick={() => {
-                      if (cameFromStaffEvents) {
-                        sessionStorage.setItem('staffEventsContext', JSON.stringify({
-                          selectedEvent: selectedEvent,
-                          selectedBracket: selectedBracket
-                        }));
-                        navigate('/StaffDashboard/events');
-                      } else {
-                        setSelectedGame(null);
-                      }
-                    }}
-                    className="stats-back-button"
-                  >
-                    Back to Games
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {/* Only show Edit Stats button for admins, not for staff */}
+                    {isViewOnlyMode && !isEditMode && cameFromAdmin && (
+                      <button 
+                        onClick={() => {
+                          setIsEditMode(true);
+                          setShowBenchPlayers({ team1: true, team2: true });
+                          setHideButtons(false); // ✅ Uncheck "Hide Buttons" when entering edit mode
+                        }}
+                        className="stats-edit-button"
+                        style={{
+                          padding: '10px 20px',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <FaEdit /> Edit Stats
+                      </button>
+                    )}
+                 <button 
+  onClick={() => {
+    if (cameFromAdmin) {
+      // Save context to return to the exact manage matches page
+      sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
+        selectedEvent: selectedEvent,
+        selectedBracket: selectedBracket,
+        contentTab: 'matches',
+        bracketViewType: 'list'
+      }));
+      sessionStorage.removeItem('selectedMatchData');
+      sessionStorage.removeItem('adminEventsContext');
+      navigate('/AdminDashboard/events');
+    } else if (cameFromStaffEvents) {
+      sessionStorage.setItem('staffEventsContext', JSON.stringify({
+        selectedEvent: selectedEvent,
+        selectedBracket: selectedBracket
+      }));
+      navigate('/StaffDashboard/events');
+    } else {
+      setSelectedGame(null);
+    }
+  }}
+  className="stats-back-button"
+>
+  Back to {cameFromAdmin ? 'Manage Matches' : 'Games'}
+</button>
+                  </div>
                 </div>
                 <div className="stats-game-meta">
                   <span><strong>Sport:</strong> {selectedGame.sport_type}</span>
@@ -3951,17 +4070,48 @@ const handleNextMatch = async () => {
                 </div>
               </div>
 
-              {/* Period Navigation */}
+              {/* Period Navigation - Always show in view-only mode for staff to select quarters/OT */}
               {renderPeriodNavigation()}
 
-              {/* Overtime Controls */}
-              {renderOvertimeControls()}
+              {/* Overtime Controls - Show read-only version in view-only mode for navigation */}
+              {isViewOnlyMode && !isEditMode && overtimePeriods > 0 && (
+                <div className="stats-overtime-controls">
+                  <div className="overtime-period-selector">
+                    <span>Overtime Periods:</span>
+                    {Array.from({ length: overtimePeriods }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setIsOvertime(true);
+                          setCurrentOvertime(i);
+                        }}
+                        className={`overtime-period-tab ${isOvertime && currentOvertime === i ? 'active' : ''}`}
+                      >
+                        OT {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  {isOvertime && (
+                    <button
+                      onClick={() => {
+                        setIsOvertime(false);
+                        setCurrentQuarter(3);
+                      }}
+                      className="stats-regulation-button"
+                    >
+                      Back to Regulation
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* Full overtime controls for edit mode */}
+              {(!isViewOnlyMode || isEditMode) && renderOvertimeControls()}
 
               {/* Scores Display */}
               {renderScores()}
 
-              {/* Action Buttons */}
-              {selectedGame.status !== 'completed' && (
+              {/* Action Buttons - Show only in edit mode or if not view-only */}
+              {(!isViewOnlyMode || isEditMode) && selectedGame.status !== 'completed' && (
                 <div className="stats-actions">
                   <button 
                     onClick={resetStatistics}
@@ -3978,12 +4128,39 @@ const handleNextMatch = async () => {
                   </button>
                 </div>
               )}
+              
+              {/* Save button for edit mode in view-only - Only for admins */}
+              {isViewOnlyMode && isEditMode && cameFromAdmin && (
+                <div className="stats-actions">
+                  <button
+                    onClick={async () => {
+                      await saveStatistics();
+                      setIsEditMode(false);
+                      setIsViewOnlyMode(true);
+                    }}
+                    disabled={loading}
+                    className="stats-action-button stats-action-save"
+                  >
+                    <FaSave /> {loading ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditMode(false);
+                      // Reload stats to reset any changes
+                      handleGameSelect(selectedGame);
+                    }}
+                    className="stats-action-button stats-action-reset"
+                  >
+                    <FaTimes /> Cancel
+                  </button>
+                </div>
+              )}
 
-              {/* Control Bar */}
-              <ControlBar />
+              {/* Control Bar - Hide in view-only mode unless edit mode */}
+              {(!isViewOnlyMode || isEditMode) && <ControlBar />}
 
-              {/* QuickScore Bar */}
-              <QuickScoreBar />
+              {/* QuickScore Bar - Hide in view-only mode unless edit mode */}
+              {(!isViewOnlyMode || isEditMode) && <QuickScoreBar />}
 
               {loading ? (
                 <div className="loading-message">
