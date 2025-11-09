@@ -528,6 +528,7 @@ router.get("/events/:eventId/statistics", async (req, res) => {
 // FIXED: Get comprehensive player statistics for an event - WITH BRACKET FILTERING AND CORRECTED EFFICIENCY
 // UPDATED: Added individual error columns for volleyball
 // FIXED: Get comprehensive player statistics for an event - WITH RECEPTIONS ADDED
+// FIXED: Get comprehensive player statistics for an event - WITH POSITION FIELD ADDED
 router.get("/events/:eventId/players-statistics", async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -563,6 +564,7 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
           p.id,
           p.name,
           p.jersey_number,
+          p.position,
           t.name as team_name,
           b.id as bracket_id,
           b.name as bracket_name,
@@ -602,17 +604,18 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
         WHERE m.status = 'completed' 
           AND b.event_id = ?
           ${bracketFilter}
-        GROUP BY p.id, p.name, p.jersey_number, t.name, b.id, b.name
+        GROUP BY p.id, p.name, p.jersey_number, p.position, t.name, b.id, b.name
         HAVING games_played > 0
         ORDER BY overall_score DESC, ppg DESC, rpg DESC, apg DESC
       `;
     } else {
-      // Volleyball - FIXED: Added receptions to the query
+      // Volleyball - FIXED: Added p.position to SELECT
       query = `
         SELECT 
           p.id,
           p.name,
           p.jersey_number,
+          p.position,
           t.name as team_name,
           b.id as bracket_id,
           b.name as bracket_name,
@@ -666,7 +669,7 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
         WHERE m.status = 'completed' 
           AND b.event_id = ?
           ${bracketFilter}
-        GROUP BY p.id, p.name, p.jersey_number, t.name, b.id, b.name
+        GROUP BY p.id, p.name, p.jersey_number, p.position, t.name, b.id, b.name
         HAVING games_played > 0
         ORDER BY overall_score DESC, kills DESC, digs DESC, assists DESC
       `;

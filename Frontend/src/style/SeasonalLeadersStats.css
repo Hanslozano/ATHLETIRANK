@@ -780,3 +780,286 @@
     width: 100%;
   }
 }
+
+/* Team Position Stats Section */
+.seasonal-position-stats {
+  margin-top: 3rem;
+  padding-top: 3rem;
+  border-top: 2px solid var(--border-color);
+}
+
+/* Header */
+.seasonal-position-header {
+  margin-bottom: 2rem;
+}
+
+.seasonal-position-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.seasonal-position-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+/* Position Tabs */
+.seasonal-position-tabs {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.seasonal-position-tab {
+  flex: 1;
+  min-width: 150px;
+  padding: 1rem 1.5rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.seasonal-position-tab:hover {
+  background: var(--background-card);
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+
+.seasonal-position-tab.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-medium);
+}
+
+.seasonal-position-tab-icon {
+  font-size: 1.25rem;
+}
+
+/* Table Container */
+.seasonal-position-table-container {
+  background: var(--background-secondary);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.seasonal-position-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.seasonal-position-table thead {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.seasonal-position-table th {
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.seasonal-position-table th.text-center {
+  text-align: center;
+}
+
+.seasonal-position-table tbody tr {
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  transition: var(--transition);
+}
+
+.seasonal-position-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.05);
+  transform: translateX(2px);
+}
+
+.seasonal-position-table tbody tr.top-three {
+  background: rgba(59, 130, 246, 0.03);
+}
+
+.seasonal-position-table tbody tr.top-three:hover {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.seasonal-position-table td {
+  padding: 1rem 1.5rem;
+  color: var(--text-primary);
+}
+
+.seasonal-position-table td.text-center {
+  text-align: center;
+}
+
+/* Table Elements */
+.seasonal-position-team {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.seasonal-position-player {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.seasonal-position-jersey {
+  display: inline-block;
+  background: var(--primary-color);
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--border-radius);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.seasonal-position-stat-value {
+  font-weight: 700;
+  color: var(--primary-color);
+  font-size: 1.125rem;
+}
+
+/* Summary Cards */
+.seasonal-position-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.seasonal-position-summary-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  transition: var(--transition);
+}
+
+.seasonal-position-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+  border-color: var(--primary-color);
+}
+
+.seasonal-position-summary-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.seasonal-position-summary-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.seasonal-position-summary-value-large {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1;
+}
+
+.seasonal-position-summary-team {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .seasonal-position-tabs {
+    flex-wrap: wrap;
+  }
+
+  .seasonal-position-tab {
+    flex: 1 1 calc(50% - 0.375rem);
+  }
+
+  .seasonal-position-table-container {
+    overflow-x: auto;
+  }
+
+  .seasonal-position-table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .seasonal-position-stats {
+    margin-top: 2rem;
+    padding-top: 2rem;
+  }
+
+  .seasonal-position-title {
+    font-size: 1.5rem;
+  }
+
+  .seasonal-position-tabs {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .seasonal-position-tab {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  .seasonal-position-table th,
+  .seasonal-position-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .seasonal-position-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .seasonal-position-jersey {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .seasonal-position-stat-value {
+    font-size: 1rem;
+  }
+}
+
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+  .seasonal-position-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.08);
+  }
+
+  .seasonal-position-table tbody tr.top-three {
+    background: rgba(59, 130, 246, 0.05);
+  }
+
+  .seasonal-position-table tbody tr.top-three:hover {
+    background: rgba(59, 130, 246, 0.12);
+  }
+}

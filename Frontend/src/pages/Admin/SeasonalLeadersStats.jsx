@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaBasketballBall, FaVolleyballBall, FaTrophy } from "react-icons/fa";
 import { IoStatsChart } from "react-icons/io5";
+import TeamPositionStats from "./TeamPositionStats.jsx"; // Import the new component
 import "../../style/SeasonalLeadersStats.css";
 
 const SeasonalLeadersStats = ({ sidebarOpen }) => {
@@ -165,8 +166,8 @@ const SeasonalLeadersStats = ({ sidebarOpen }) => {
         {/* Header */}
         <div className="dashboard-header">
           <div>
-            <h1>Seasonal Leaders Stats</h1>
-            <p>Top performers across all tournaments</p>
+            <h1>Seasonal Leaders</h1>
+            <p>Top performers per tournament</p>
           </div>
         </div>
 
@@ -246,25 +247,33 @@ const SeasonalLeadersStats = ({ sidebarOpen }) => {
 
             {/* Leaderboards Grid */}
             {!loading && !error && selectedEvent && selectedBracket && (
-              <div className="seasonal-leaders-grid">
-                {selectedBracket.sport_type === "basketball" ? (
-                  <>
-                    {renderLeaderCard("POINTS", leaderboards.points, "ppg", "🏀")}
-                    {renderLeaderCard("REBOUNDS", leaderboards.rebounds, "rpg", "🏀")}
-                    {renderLeaderCard("ASSISTS", leaderboards.assists, "apg", "🏀")}
-                    {renderLeaderCard("BLOCKS", leaderboards.blocks, "bpg", "🛡️")}
-                    {renderLeaderCard("STEALS", leaderboards.steals, "spg", "🤲")}
-                  </>
-                ) : (
-                  <>
-                    {renderLeaderCard("KILLS", leaderboards.kills, "kills", "⚡")}
-                    {renderLeaderCard("DIGS", leaderboards.digs, "digs", "🏐")}
-                    {renderLeaderCard("ASSISTS", leaderboards.assists, "assists", "🤝")}
-                    {renderLeaderCard("BLOCKS", leaderboards.blocks, "blocks", "🛡️")}
-                    {renderLeaderCard("SERVICE ACES", leaderboards.serviceAces, "service_aces", "🎯")}
-                  </>
-                )}
-              </div>
+              <>
+                <div className="seasonal-leaders-grid">
+                  {selectedBracket.sport_type === "basketball" ? (
+                    <>
+                      {renderLeaderCard("POINTS", leaderboards.points, "ppg", "🏀")}
+                      {renderLeaderCard("REBOUNDS", leaderboards.rebounds, "rpg", "🏀")}
+                      {renderLeaderCard("ASSISTS", leaderboards.assists, "apg", "🏀")}
+                      {renderLeaderCard("BLOCKS", leaderboards.blocks, "bpg", "🛡️")}
+                      {renderLeaderCard("STEALS", leaderboards.steals, "spg", "🤲")}
+                    </>
+                  ) : (
+                    <>
+                      {renderLeaderCard("KILLS", leaderboards.kills, "kills", "⚡")}
+                      {renderLeaderCard("DIGS", leaderboards.digs, "digs", "🏐")}
+                      {renderLeaderCard("ASSISTS", leaderboards.assists, "assists", "🤝")}
+                      {renderLeaderCard("BLOCKS", leaderboards.blocks, "blocks", "🛡️")}
+                      {renderLeaderCard("SERVICE ACES", leaderboards.serviceAces, "service_aces", "🎯")}
+                    </>
+                  )}
+                </div>
+
+                {/* Team Position Stats - Only show for volleyball */}
+                <TeamPositionStats 
+                  selectedEvent={selectedEvent}
+                  selectedBracket={selectedBracket}
+                />
+              </>
             )}
           </div>
         </div>
