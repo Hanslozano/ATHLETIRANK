@@ -14,6 +14,7 @@ import { RiLogoutCircleLine } from "react-icons/ri";
 import { FaUser } from "react-icons/fa";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { LiaAwardSolid } from "react-icons/lia";
+import { FaTrophy } from "react-icons/fa";
 
 const SideBar = ({ isOpen, toggleSidebar }) => {
     const { user, logout } = useAuth();
@@ -34,17 +35,16 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
 
     const adminMenuItems = [
         { icon: <IoIosHome />, label: "Dashboard", id: "dashboard", path: "/AdminDashboard" },
-        { icon: <TbTournament />, label: "Tournament Creator", id: "tournament-creator", path: "/AdminDashboard/tournament-creator" }, // ✅ Fixed
+        { icon: <TbTournament />, label: "Tournament Creator", id: "tournament-creator", path: "/AdminDashboard/tournament-creator" },
         { icon: <AiFillSchedule />, label: "Events", id: "events", path: "/AdminDashboard/events" },
         { icon: <RiTeamFill />, label: "Teams", id: "teams", path: "/AdminDashboard/teams" },
-       
+        { icon: <FaTrophy />, label: "Stats", id: "stats", path: "/AdminDashboard/stats" },
         { icon: <HiUsers />, label: "Users", id: "users", path: "/AdminDashboard/users" },
-        
     ];
+    
     const staffMenuItems = [
         { icon: <IoIosHome />, label: "Dashboard", id: "dashboard", path: "/StaffDashboard" },
         { icon: <IoStatsChart />, label: "Events", id: "events", path: "/StaffDashboard/events" },
-      
     ];
 
     const menuItems = user?.role === 'admin' ? adminMenuItems : staffMenuItems;

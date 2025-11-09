@@ -15,6 +15,8 @@ import AdminUsers from "./pages/Admin/Admin_Users";
 import AdminAwardsStandings from "./pages/Admin/Admin_Awards & Standings";
 import TournamentCreator from "./pages/Admin/TournamentCreator"; // ✅ Add this import
 
+import SeasonalLeadersStats from "./pages/Admin/SeasonalLeadersStats"
+
 import StaffDashboard from "./pages/Staff/Staff_Dashboard";
 import StaffEvents from "./pages/Staff/Staff_Events";
 import StaffStats from "./pages/Staff/Staff_Stats";
@@ -141,7 +143,7 @@ function App() {
               element={
                 <>
                   <SideBar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-                  <AdminStats sidebarOpen={sidebarOpen} />
+                  <SeasonalLeadersStats sidebarOpen={sidebarOpen} />
                 </>
               }
             />
