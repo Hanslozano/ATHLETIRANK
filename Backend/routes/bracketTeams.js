@@ -3,9 +3,7 @@ const router = express.Router();
 const db = require("../config/database");
 
 // POST - Assign team to bracket
-// POST - Assign team to bracket
 router.post("/", async (req, res) => {
-  // Accept both formats for compatibility
   const { bracket_id, team_id, bracketId, teamId } = req.body;
   
   const finalBracketId = bracket_id || bracketId;
@@ -45,10 +43,13 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET - Get available teams for a bracket (MOVED UP - BEFORE other GET routes)
+// ✅ COMPLETE FIX - GET available teams (excludes teams from ALL brackets)
+// ✅ COMPLETE FIX - GET available teams (excludes teams from ALL brackets including current)
 router.get("/bracket/:bracketId/available", async (req, res) => {
   try {
     const { bracketId } = req.params;
+    
+    console.log(`\n🔍 [BACKEND] Fetching available teams for bracket: ${bracketId}`);
     
     // First get the bracket's sport type
     const [bracketInfo] = await db.pool.query(
@@ -57,32 +58,59 @@ router.get("/bracket/:bracketId/available", async (req, res) => {
     );
 
     if (bracketInfo.length === 0) {
+      console.log(`❌ [BACKEND] Bracket ${bracketId} not found`);
       return res.status(404).json({ error: "Bracket not found" });
     }
 
-    const sportType = bracketInfo[0].sport_type;
+    const sportType = bracketInfo[0].sport_type.toLowerCase();
+    console.log(`✅ [BACKEND] Bracket sport type: ${sportType}`);
 
-    // Get all teams matching the sport type that are NOT already in this bracket
-    const [availableTeams] = await db.pool.query(`
-      SELECT t.id, t.name, t.sport
-      FROM teams t
-      WHERE t.sport = ?
-      AND t.id NOT IN (
-        SELECT team_id 
-        FROM bracket_teams 
-        WHERE bracket_id = ?
-      )
-      ORDER BY t.name
-    `, [sportType, bracketId]);
+    // ✅ FIX: Get ALL teams already in ANY bracket (including this one)
+    const [allAssignedTeams] = await db.pool.query(
+      "SELECT DISTINCT team_id FROM bracket_teams"
+    );
+    
+    const allAssignedTeamIds = allAssignedTeams.map(t => t.team_id);
+    console.log(`📊 [BACKEND] ALL assigned team IDs (including this bracket):`, allAssignedTeamIds);
 
-    console.log(`✅ Found ${availableTeams.length} available ${sportType} teams for bracket ${bracketId}`);
+    let availableTeams;
+    
+    if (allAssignedTeamIds.length > 0) {
+      // Exclude ALL teams that are in ANY bracket (including this one)
+      const placeholders = allAssignedTeamIds.map(() => '?').join(',');
+      
+      const query = `
+        SELECT t.id, t.name, t.sport 
+        FROM teams t 
+        WHERE LOWER(t.sport) = ?
+        AND t.id NOT IN (${placeholders})
+        ORDER BY t.name
+      `;
+      
+      [availableTeams] = await db.pool.query(query, [sportType, ...allAssignedTeamIds]);
+      
+      console.log(`🔍 [BACKEND] Excluded ${allAssignedTeamIds.length} teams that are already in brackets`);
+    } else {
+      // No teams assigned anywhere, return all teams of matching sport
+      [availableTeams] = await db.pool.query(`
+        SELECT t.id, t.name, t.sport 
+        FROM teams t 
+        WHERE LOWER(t.sport) = ?
+        ORDER BY t.name
+      `, [sportType]);
+      
+      console.log(`🔍 [BACKEND] No teams assigned to any bracket yet`);
+    }
+    
+    console.log(`✅ [BACKEND] Available teams count:`, availableTeams.length);
+    console.log(`📤 [BACKEND] Available teams:`, availableTeams.map(t => t.name));
+    
     res.json(availableTeams);
   } catch (err) {
-    console.error("Error fetching available teams:", err);
+    console.error("❌ [BACKEND] Error fetching available teams:", err);
     res.status(500).json({ error: "Database error: " + err.message });
   }
 });
-
 // GET - Get all teams in a bracket
 router.get("/bracket/:bracketId", async (req, res) => {
   try {
@@ -95,6 +123,7 @@ router.get("/bracket/:bracketId", async (req, res) => {
       FROM bracket_teams bt
       JOIN teams t ON bt.team_id = t.id
       WHERE bt.bracket_id = ?
+      ORDER BY t.name
     `, [req.params.bracketId]);
 
     res.json(teams);
@@ -124,11 +153,8 @@ router.delete("/:id", async (req, res) => {
 
     const { team_id, bracket_id } = assignment[0];
 
-    // Delete the bracket_teams assignment FIRST
+    // Delete the bracket_teams assignment
     await conn.query("DELETE FROM bracket_teams WHERE id = ?", [req.params.id]);
-
-    // Note: We DON'T update matches here because the bracket will be regenerated
-    // The frontend will call /api/brackets/:id/generate after this
 
     await conn.commit();
     

@@ -656,18 +656,13 @@ const handleEditBracket = async (bracket) => {
       })
     );
     
-    // Filter out teams that are already assigned to this bracket
-    const assignedTeamIds = teams.map(t => t.id);
-    const filteredAvailableTeams = availableTeams.filter(team => !assignedTeamIds.includes(team.id));
-
-    console.log('📊 Assigned Team IDs:', assignedTeamIds);
-    console.log('📋 Available Teams (before filter):', availableTeams.length);
-    console.log('✅ Filtered Available Teams:', filteredAvailableTeams.length);
+    console.log('📊 Assigned Team IDs:', teams.map(t => t.id));
+    console.log('📋 Available Teams (already filtered by backend):', availableTeams.length);
 
     setEditTeamModal(prev => ({
       ...prev,
       teams: teamsWithPlayers,
-      availableTeams: filteredAvailableTeams,
+      availableTeams: availableTeams,  // Use backend response directly
       loading: false,
       error: null
     }));
@@ -864,21 +859,22 @@ const handleEditTeam = async (bracket) => {
   handleEditBracket(bracket);
 };
 
-  const refreshTeamsInModal = async () => {
-    if (!editTeamModal.bracket) return;
+ const refreshTeamsInModal = async () => {
+  if (!editTeamModal.bracket) return;
+  
+  try {
+    const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}`);
+    const teams = await teamsRes.json();
     
-    try {
-      const teamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}`);
-      const teams = await teamsRes.json();
-      
-      const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}/available`);
+    console.log('🔄 Refreshing teams for bracket:', editTeamModal.bracket.id);
+    console.log('📊 Currently assigned teams:', teams.length, teams.map(t => ({ id: t.id, name: t.name })));
+    
+    const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}/available`);
 const availableTeams = await availableTeamsRes.json();
 
-// Filter out teams that are already assigned to this bracket
-const assignedTeamIds = teams.map(t => t.id);
-const filteredAvailableTeams = availableTeams.filter(team => !assignedTeamIds.includes(team.id));
-
-if (teams.length >= 2) {
+console.log('📋 Available teams from API (already filtered by backend):', availableTeams.length, availableTeams.map(t => ({ id: t.id, name: t.name })));
+console.log('✅ Using backend-filtered teams directly');
+      if (teams.length >= 2) {
         try {
           let generateEndpoint;
           if (editTeamModal.bracket.elimination_type === 'round_robin') {
@@ -941,10 +937,10 @@ if (teams.length >= 2) {
       );
       
       setEditTeamModal(prev => ({
-        ...prev,
-        teams: teamsWithPlayers,
-         availableTeams: filteredAvailableTeams
-      }));
+  ...prev,
+  teams: teamsWithPlayers,
+  availableTeams: availableTeams  // Use backend-filtered teams directly
+}));
       
         if (selectedBracket && selectedBracket.id === editTeamModal.bracket.id) {
         // If no teams or only 1 team, clear matches immediately
