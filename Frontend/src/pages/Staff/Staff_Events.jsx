@@ -179,13 +179,33 @@ const StaffEvents = ({ sidebarOpen }) => {
     }
   };
 
-  // Navigate to stats input
+  // Navigate to stats input (for editing)
   const handleInputStats = (match) => {
     sessionStorage.setItem('selectedMatchData', JSON.stringify({
       matchId: match.id,
       eventId: selectedEvent?.id,
       bracketId: selectedBracket?.id,
       match: match
+    }));
+    
+    // Save current context including view type
+    sessionStorage.setItem('staffEventsContext', JSON.stringify({
+      selectedEvent: selectedEvent,
+      selectedBracket: selectedBracket,
+      bracketViewType: bracketViewType
+    }));
+    
+    navigate('/StaffDashboard/stats');
+  };
+
+  // Navigate to stats view (view-only mode for staff)
+  const handleViewStats = (match) => {
+    sessionStorage.setItem('selectedMatchData', JSON.stringify({
+      matchId: match.id,
+      eventId: selectedEvent?.id,
+      bracketId: selectedBracket?.id,
+      match: match,
+      viewOnly: true // Flag to indicate view-only mode
     }));
     
     // Save current context including view type
@@ -512,7 +532,7 @@ const StaffEvents = ({ sidebarOpen }) => {
     matches={bracketMatches}
     eventId={selectedEvent?.id}
     bracketId={selectedBracket?.id}
-    onViewStats={(match) => handleInputStats(match)}
+    onViewStats={(match) => handleViewStats(match)}
     onInputStats={(match) => handleInputStats(match)}
     onRefresh={async () => {
       try {

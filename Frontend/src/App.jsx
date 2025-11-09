@@ -13,7 +13,7 @@ import TeamsPage from "./pages/Admin/Admin_Teams";
 import AdminStats from "./pages/Admin/AdminStats";
 import AdminUsers from "./pages/Admin/Admin_Users";
 import AdminAwardsStandings from "./pages/Admin/Admin_Awards & Standings";
-import TournamentCreator from "./pages/Admin/TournamentCreator"; // ✅ Add this import
+import TournamentCreator from "./pages/Admin/TournamentCreator";
 
 import SeasonalLeadersStats from "./pages/Admin/SeasonalLeadersStats"
 
@@ -74,7 +74,7 @@ function App() {
               }
             />
 
-            {/* ✅ Event details page */}
+            {/* Event details page */}
             <Route
               path="/AdminDashboard/events/:id"
               element={
@@ -85,7 +85,7 @@ function App() {
               }
             />
 
-            {/* ✅ NEW: Tournament Creator Route */}
+            {/* Tournament Creator Route */}
             <Route
               path="/AdminDashboard/tournament-creator"
               element={
@@ -96,7 +96,7 @@ function App() {
               }
             />
 
-            {/* ✅ Brackets main page */}
+            {/* Brackets main page */}
             <Route
               path="/AdminDashboard/brackets"
               element={
@@ -144,6 +144,17 @@ function App() {
                 <>
                   <SideBar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
                   <SeasonalLeadersStats sidebarOpen={sidebarOpen} />
+                </>
+              }
+            />
+
+            {/* ✅ NEW: Admin Stats Viewer - Uses StaffStats component in view-only mode */}
+            <Route
+              path="/AdminDashboard/stats-viewer"
+              element={
+                <>
+                  <SideBar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+                  <StaffStats sidebarOpen={sidebarOpen} />
                 </>
               }
             />

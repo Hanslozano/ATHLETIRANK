@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, Clock, Plus, X, Edit, Trash2, BarChart3, Zap, CheckCircle, Trophy, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, Plus, X, Edit, Trash2, BarChart3, Zap, CheckCircle, Trophy, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, onViewStats, isStaffView, onInputStats }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -724,7 +724,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                   alignItems: 'center',
                   gap: '6px'
                 }} 
-                title="View Stats"
+                title="View Scores"
               >
                 <BarChart3 style={{ width: '16px', height: '16px' }} />
               </button>
@@ -820,42 +820,36 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
   return (
     <div style={{ background: '#0f172a', minHeight: '100vh', padding: '0' }}>
       {/* Filter Bar */}
-      <div style={{ background: '#1a2332', padding: '24px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #2d3748' }}>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
-            <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', width: '18px', height: '18px' }} />
-            <input 
-              type="text" 
-              placeholder="Search teams or match #..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-              style={{ 
-                width: '100%', 
-                padding: '12px 16px 12px 45px', 
-                border: '2px solid #2d3748', 
-                borderRadius: '10px', 
-                fontSize: '14px', 
-                backgroundColor: '#0f172a', 
-                color: '#e2e8f0', 
-                outline: 'none',
-                fontWeight: '500'
-              }} 
-            />
-          </div>
+      {/* Filter Bar - Matching Events/Teams Page Style */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px', flexWrap: 'wrap' }}>
+          <input 
+            type="text" 
+            placeholder="Search teams or match #..." 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            style={{ 
+              flex: '1',
+              minWidth: '250px',
+              padding: '12px 16px', 
+              border: '2px solid var(--border-color)', 
+              borderRadius: '8px', 
+              fontSize: '14px', 
+              backgroundColor: 'var(--background-secondary)', 
+              color: 'var(--text-primary)',
+            }} 
+          />
           <select 
             value={filterStatus} 
             onChange={(e) => setFilterStatus(e.target.value)} 
             style={{ 
               padding: '12px 16px', 
-              border: '2px solid #2d3748', 
-              borderRadius: '10px', 
+              border: '2px solid var(--border-color)', 
+              borderRadius: '8px', 
               fontSize: '14px', 
-              backgroundColor: '#0f172a', 
-              color: '#e2e8f0', 
-              minWidth: '150px', 
-              outline: 'none',
-              fontWeight: '600',
-              cursor: 'pointer'
+              backgroundColor: 'var(--background-secondary)', 
+              color: 'var(--text-primary)', 
+              minWidth: '150px',
             }}
           >
             <option value="all">All Status</option>
@@ -868,15 +862,12 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
             onChange={(e) => setFilterRound(e.target.value)} 
             style={{ 
               padding: '12px 16px', 
-              border: '2px solid #2d3748', 
-              borderRadius: '10px', 
+              border: '2px solid var(--border-color)', 
+              borderRadius: '8px', 
               fontSize: '14px', 
-              backgroundColor: '#0f172a', 
-              color: '#e2e8f0', 
-              minWidth: '150px', 
-              outline: 'none',
-              fontWeight: '600',
-              cursor: 'pointer'
+              backgroundColor: 'var(--background-secondary)', 
+              color: 'var(--text-primary)', 
+              minWidth: '150px',
             }}
           >
             <option value="all">All Rounds</option>
@@ -889,13 +880,13 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
               onClick={() => setShowTBDMatches(!showTBDMatches)} 
               style={{ 
                 padding: '12px 20px', 
-                border: '2px solid #2d3748', 
-                borderRadius: '10px', 
+                border: 'none', 
+                borderRadius: '8px', 
                 fontSize: '14px', 
-                backgroundColor: showTBDMatches ? '#3b82f6' : '#0f172a', 
+                backgroundColor: showTBDMatches ? '#3b82f6' : 'var(--background-secondary)', 
                 color: '#e2e8f0', 
                 cursor: 'pointer', 
-                fontWeight: '700', 
+                fontWeight: '600', 
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap'
               }}
@@ -907,19 +898,21 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
             onClick={() => setGroupByRound(!groupByRound)} 
             style={{ 
               padding: '12px 20px', 
-              border: '2px solid #2d3748', 
-              borderRadius: '10px', 
+              border: 'none', 
+              borderRadius: '8px', 
               fontSize: '14px', 
-              backgroundColor: groupByRound ? '#8b5cf6' : '#0f172a', 
+              backgroundColor: groupByRound ? '#8b5cf6' : 'var(--background-secondary)', 
               color: '#e2e8f0', 
               cursor: 'pointer', 
-              fontWeight: '700', 
+              fontWeight: '600', 
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap'
             }}
           >
             {groupByRound ? 'Grouped' : 'List'}
           </button>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {canBulkSchedule && !isStaffView && (
             <button 
               onClick={() => setShowBulkScheduleModal(true)} 
