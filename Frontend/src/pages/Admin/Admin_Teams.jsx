@@ -652,19 +652,26 @@ const TeamsPage = ({ sidebarOpen }) => {
         <div className="dashboard-main">
           <div className="bracket-content">
             {/* Tabs */}
-            <div className="bracket-tabs">
+           <div className="bracket-breadcrumb">
               <button
-                className={`bracket-tab-button ${activeTab === "view" ? "bracket-tab-active" : ""}`}
-                onClick={() => setActiveTab("view")}
+                className={`breadcrumb-item ${activeTab === "view" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("view");
+                  setFormData({ teamName: "", sport: "", players: [] });
+                  setValidationError("");
+                  setShowValidationMessage(false);
+                }}
               >
-                View Teams ({teams.length})
+                View Teams
               </button>
-              <button
-                className={`bracket-tab-button ${activeTab === "create" ? "bracket-tab-active" : ""}`}
-                onClick={() => setActiveTab("create")}
-              >
-                Create Team
-              </button>
+              {activeTab === "create" && (
+                <>
+                  <span className="breadcrumb-separator">›</span>
+                  <span className="breadcrumb-item active">
+                    Create Team
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Validation Message */}

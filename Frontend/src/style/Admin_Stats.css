@@ -808,10 +808,10 @@
   align-items: center;
   margin-bottom: 24px;
   gap: 16px;
-  background: #1a2332;
-  padding: 20px 24px;
-  border-radius: 12px;
-  border: 1px solid #2d3748;
+  background: transparent;  /* ← CHANGED */
+  padding: 0;  /* ← CHANGED */
+  border-radius: 0;  /* ← CHANGED */
+  border: none;  /* ← CHANGED */
 }
 
 .stats-export-btn {

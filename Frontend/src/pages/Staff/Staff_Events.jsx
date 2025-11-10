@@ -233,22 +233,26 @@ const StaffEvents = ({ sidebarOpen }) => {
         <div className="dashboard-main">
           <div className="bracket-content">
             {/* Tabs */}
-            <div className="bracket-tabs">
-              <button
-                className={`bracket-tab-button ${activeTab === "events" ? "bracket-tab-active" : ""}`}
-                onClick={() => setActiveTab("events")}
-              >
-                Select Events & Brackets
-              </button>
-              {selectedBracket && (
-                <button
-                  className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
-                  onClick={() => setActiveTab("results")}
-                >
-                  {selectedBracket.name} - Matches
-                </button>
-              )}
-            </div>
+           <div className="bracket-breadcrumb">
+            <button
+              className={`breadcrumb-item ${!selectedBracket ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab("events");
+                setSelectedBracket(null);
+                setSelectedEvent(null);
+              }}
+            >
+              Select Events & Brackets
+            </button>
+            {selectedBracket && (
+              <>
+                <span className="breadcrumb-separator">›</span>
+                <span className="breadcrumb-item active">
+                  {selectedBracket.name}
+                </span>
+              </>
+            )}
+          </div>
 
             {/* Events Selection Tab */}
             {activeTab === "events" && (

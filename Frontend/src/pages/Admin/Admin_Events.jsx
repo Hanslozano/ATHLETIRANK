@@ -1328,33 +1328,31 @@ const closeEditTeamModal = () => {
         <div className="dashboard-main">
           <div className="bracket-content">
             {/* Tabs */}
-        <div className="bracket-tabs">
-  <button
-    className={`bracket-tab-button ${activeTab === "events" ? "bracket-tab-active" : ""}`}
-    onClick={() => setActiveTab("events")}
-    style={{ paddingRight: 0 }}
-  >
-    Manage Events & Brackets
-  </button>
-  {selectedBracket && (
-    <>
-      <span className="bracket-tab-separator" style={{ margin: '0 12px' }}>/</span>
-      <button
-        className={`bracket-tab-button ${activeTab === "results" ? "bracket-tab-active" : ""}`}
-        onClick={() => setActiveTab("results")}
-        style={{ paddingLeft: 0 }}
-      >
-        {selectedBracket.name} - Manage Matches
-      </button>
-    </>
-  )}
-</div>
-
+      <div className="bracket-breadcrumb">
+        <button
+          className={`breadcrumb-item ${!selectedBracket ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("events");
+            setSelectedBracket(null);
+            setSelectedEvent(null);
+          }}
+        >
+          Events & Brackets
+        </button>
+        {selectedBracket && (
+          <>
+           <span className="breadcrumb-separator">›</span>
+            <span className="breadcrumb-item active">
+              {selectedBracket.name}
+            </span>
+          </>
+        )}
+      </div>
             {/* Events Selection Tab */}
             {activeTab === "events" && (
                 <div className="bracket-view-section purple-background">
                 
-                    {/* Search Container */}
+                    {/* Search Container - Matching TeamsPage Design */}
 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
   <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
     <input
@@ -1414,15 +1412,43 @@ const closeEditTeamModal = () => {
   </button>
 </div>
 
-{/* Results Info */}
-{(searchTerm || statusFilter !== "all") && (
-  <div style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>
-    Showing {currentRows.length} of {totalRows} results
-    {searchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{searchTerm}"</span>}
-    {statusFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Status: {statusFilter}</span>}
+{/* Results Info & Items Per Page */}
+<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+  <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+    {(searchTerm || statusFilter !== "all") && (
+      <>
+        Showing {currentRows.length} of {totalRows} results
+        {searchTerm && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Searching: "{searchTerm}"</span>}
+        {statusFilter !== "all" && <span style={{ color: 'var(--primary-color)', marginLeft: '5px' }}> • Status: {statusFilter}</span>}
+      </>
+    )}
+    {!searchTerm && statusFilter === "all" && (
+      <>Showing {indexOfFirstRow + 1}-{Math.min(indexOfLastRow, totalRows)} of {totalRows} events</>
+    )}
   </div>
-)}
-
+  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Show:</label>
+    <select
+      value={itemsPerPage}
+      onChange={(e) => setItemsPerPage(Number(e.target.value))}
+      style={{
+        padding: '8px 12px',
+        border: '2px solid var(--border-color)',
+        borderRadius: '6px',
+        fontSize: '14px',
+        backgroundColor: 'var(--background-secondary)',
+        color: 'var(--text-primary)',
+        cursor: 'pointer'
+      }}
+    >
+      <option value={5}>5</option>
+      <option value={10}>10</option>
+      <option value={20}>20</option>
+      <option value={50}>50</option>
+    </select>
+    <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>per page</span>
+  </div>
+</div>
                  
 
                 {loading ? (
@@ -2001,21 +2027,15 @@ const closeEditTeamModal = () => {
 
                             {awardsTab === "standings" && (
                               <div className="awards_standings_tab_content">
-                                <div className="awards_standings_toolbar">
-                                  <div className="awards_standings_search_container">
-                                    <FaSearch className="awards_standings_search_icon" />
-                                    <input
-                                      type="text"
-                                      className="awards_standings_search_input"
-                                      placeholder="Search teams..."
-                                      value={searchTermStandings}
-                                      onChange={(e) => setSearchTermStandings(e.target.value)}
-                                    />
-                                  </div>
-                                  <button className="awards_standings_export_btn" onClick={exportStandings}>
-                                    <FaDownload /> Export CSV
-                                  </button>
-                                </div>
+                               <div className="awards_standings_toolbar">
+  <button 
+    className="awards_standings_export_btn" 
+    onClick={exportStandings}
+    style={{ marginLeft: 'auto' }}
+  >
+    <FaDownload /> Export CSV
+  </button>
+</div>
 
                                 <div className="awards_standings_table_container">
                                   <table className="awards_standings_table">
@@ -2259,7 +2279,7 @@ const closeEditTeamModal = () => {
 )}
                             
 
-                         {awardsTab === "awards" && selectedBracket.sport_type === "volleyball" && (
+                       {awardsTab === "awards" && selectedBracket.sport_type === "volleyball" && (
   <div className="awards_standings_tab_content">
     {!awards || getAwardsForDisplay().length === 0 ? (
       <div className="bracket-no-brackets">
@@ -2267,134 +2287,63 @@ const closeEditTeamModal = () => {
       </div>
     ) : (
       <div className="awards_standings_awards_section">
-        {selectedBracket.sport_type === "basketball" ? (
-          <>
-            <h2>Mythical Five</h2>
-            <div className="awards_standings_table_container">
-              <table className="awards_standings_table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '60px', textAlign: 'center' }}>RANK</th>
-                    <th>PLAYER</th>
-                    <th>TEAM</th>
-                    <th style={{ textAlign: 'center' }}>G</th>
-                    <th style={{ textAlign: 'center' }}>PPG</th>
-                    <th style={{ textAlign: 'center' }}>RPG</th>
-                    <th style={{ textAlign: 'center' }}>APG</th>
-                    <th style={{ textAlign: 'center', background: 'rgba(59, 130, 246, 0.1)' }}>OVERALL AVG</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getAwardsForDisplay().map((award, index) => (
-                    <tr key={index}>
-                      <td style={{ textAlign: 'center', fontWeight: '700', fontSize: '18px' }}>
-                        {index === 0 && <FaCrown style={{ color: '#fbbf24', fontSize: '24px' }} />}
-                        {index > 0 && (
-                          <span style={{ 
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                            color: 'white',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            letterSpacing: '0.5px'
-                          }}>
-                            #{index + 1}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>
-                        {award.winner}
-                        {index === 0 && (
-                          <span style={{ 
-                            marginLeft: '10px',
-                            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                            color: '#1a2332',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '10px',
-                            fontWeight: '800',
-                            letterSpacing: '0.5px'
-                          }}>
-                            MVP
-                          </span>
-                        )}
-                        {index > 0 && (
-                          <span style={{ 
-                            marginLeft: '10px',
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                            color: 'white',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '10px',
-                            fontWeight: '800',
-                            letterSpacing: '0.5px'
-                          }}>
-                            MYTHICAL 5
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ fontWeight: '600' }}>{award.team}</td>
-                      <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        -
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: '600' }}>
-                        {award.stat.split(',')[0].trim()}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {award.stat.split(',')[1]?.trim() || '-'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {award.stat.split(',')[2]?.trim() || '-'}
-                      </td>
-                      <td style={{ 
-                        textAlign: 'center', 
-                        fontWeight: '700', 
-                        fontSize: '16px',
-                        color: '#3b82f6',
-                        background: 'rgba(59, 130, 246, 0.1)'
-                      }}>
-                        {award.overall || '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
-          <>
-            <h2>Volleyball Awards</h2>
-            <div className="awards_standings_table_container">
-              <table className="awards_standings_table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '60px', textAlign: 'center' }}></th>
-                    <th>Award Category</th>
-                    <th>Winner</th>
-                    <th>Team</th>
-                    <th>Statistics</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getAwardsForDisplay().map((award, index) => (
-                    <tr key={index}>
-                      <td style={{ textAlign: 'center' }}>
-                        <FaStar style={{ color: '#3b82f6', fontSize: '20px' }} />
-                      </td>
-                      <td style={{ fontWeight: '600' }}>{award.category}</td>
-                      <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>
-                        {award.winner}
-                      </td>
-                      <td>{award.team}</td>
-                      <td style={{ color: '#3b82f6', fontWeight: '600' }}>{award.stat}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+        {/* Export CSV Button - Right Aligned */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+          <button 
+            className="awards_standings_export_btn" 
+            onClick={() => {
+              if (getAwardsForDisplay().length === 0 || !selectedBracket) return;
+              
+              let csvContent = "data:text/csv;charset=utf-8,";
+              csvContent += "Award Category,Winner,Team,Statistics\n";
+              
+              getAwardsForDisplay().forEach(award => {
+                csvContent += `${award.category},${award.winner},${award.team},${award.stat}\n`;
+              });
+              
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement("a");
+              link.setAttribute("href", encodedUri);
+              link.setAttribute("download", `${selectedEvent?.name}_${selectedBracket?.name}_volleyball_awards.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+            style={{ marginLeft: 'auto' }}
+          >
+            <FaDownload /> Export CSV
+          </button>
+        </div>
+
+        {/* Awards Table - Title Removed */}
+        <div className="awards_standings_table_container">
+          <table className="awards_standings_table">
+            <thead>
+              <tr>
+                <th style={{ width: '60px', textAlign: 'center' }}></th>
+                <th>Award Category</th>
+                <th>Winner</th>
+                <th>Team</th>
+                <th>Statistics</th>
+              </tr>
+            </thead>
+            <tbody>
+              {getAwardsForDisplay().map((award, index) => (
+                <tr key={index}>
+                  <td style={{ textAlign: 'center' }}>
+                    <FaStar style={{ color: '#3b82f6', fontSize: '20px' }} />
+                  </td>
+                  <td style={{ fontWeight: '600' }}>{award.category}</td>
+                  <td style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>
+                    {award.winner}
+                  </td>
+                  <td>{award.team}</td>
+                  <td style={{ color: '#3b82f6', fontWeight: '600' }}>{award.stat}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     )}
   </div>
@@ -3223,7 +3172,7 @@ const closeEditTeamModal = () => {
           borderRadius: '8px',
           marginBottom: '20px',
           border: '1px solid var(--border-color)'
-        }}>
+          }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h4 style={{ margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <FaPlus /> Add Team to Bracket
