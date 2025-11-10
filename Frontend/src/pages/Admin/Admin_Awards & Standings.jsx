@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaTrophy, FaMedal, FaStar, FaCrown, FaDownload, FaSearch } from "react-icons/fa";
+import { FaTrophy, FaMedal, FaStar, FaCrown, FaDownload, FaSearch, FaEye, FaEyeSlash } from "react-icons/fa";
 import "../../style/Admin_Awards & Standing.css";
 
 const AdminAwardsStandings = ({ sidebarOpen }) => {
@@ -113,6 +113,37 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
       console.error("Error loading awards:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleAwardsDisclosure = async (bracketId, currentStatus) => {
+    const newStatus = !currentStatus;
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/awards/brackets/${bracketId}/awards-disclosure`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ awards_disclosed: newStatus })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update disclosure status');
+      }
+
+      // Refresh the events list to show updated disclosure status
+      await fetchCompletedEvents();
+      
+      // If this was the selected bracket, update it
+      if (selectedBracket && selectedBracket.id === bracketId) {
+        setSelectedBracket(prev => ({ ...prev, awards_disclosed: newStatus }));
+      }
+
+      alert(`Awards ${newStatus ? 'disclosed to public' : 'hidden from public'} successfully!`);
+    } catch (err) {
+      console.error('Error updating awards disclosure:', err);
+      alert('Failed to update awards disclosure status');
     }
   };
 
@@ -409,13 +440,30 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
                                   </div>
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
-                                  <button
-                                    onClick={() => handleBracketSelect(event, bracket)}
-                                    className="bracket-view-btn"
-                                    style={{ fontSize: '13px', padding: '8px 14px' }}
-                                  >
-                                    View Results →
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                                    <button
+                                      onClick={() => toggleAwardsDisclosure(bracket.id, bracket.awards_disclosed)}
+                                      className="bracket-view-btn"
+                                      style={{ 
+                                        fontSize: '13px', 
+                                        padding: '8px 14px',
+                                        background: bracket.awards_disclosed ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                      }}
+                                      title={bracket.awards_disclosed ? 'Awards are public' : 'Awards are hidden'}
+                                    >
+                                      {bracket.awards_disclosed ? <><FaEye /> Public</> : <><FaEyeSlash /> Hidden</>}
+                                    </button>
+                                    <button
+                                      onClick={() => handleBracketSelect(event, bracket)}
+                                      className="bracket-view-btn"
+                                      style={{ fontSize: '13px', padding: '8px 14px' }}
+                                    >
+                                      View Results →
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))
@@ -447,11 +495,47 @@ const AdminAwardsStandings = ({ sidebarOpen }) => {
             {activeTab === "results" && selectedEvent && selectedBracket && (
               <div className="bracket-visualization-section">
                 <div className="event-details-header">
-                  <h2>{selectedEvent.name} - {selectedBracket.name} Results</h2>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                    <h2>{selectedEvent.name} - {selectedBracket.name} Results</h2>
+                    <button
+                      onClick={() => toggleAwardsDisclosure(selectedBracket.id, selectedBracket.awards_disclosed)}
+                      className="bracket-view-btn"
+                      style={{ 
+                        fontSize: '14px', 
+                        padding: '10px 20px',
+                        background: selectedBracket.awards_disclosed ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        minWidth: '160px',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {selectedBracket.awards_disclosed ? (
+                        <>
+                          <FaEye /> Awards Public
+                        </>
+                      ) : (
+                        <>
+                          <FaEyeSlash /> Awards Hidden
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <div className="event-details-info">
                     <span><strong>Sport:</strong> {selectedBracket.sport_type}</span>
                     <span><strong>Champion:</strong> {selectedBracket.winner_team_name}</span>
                     <span><strong>Type:</strong> {selectedBracket.elimination_type === 'double' ? 'Double Elimination' : 'Single Elimination'}</span>
+                    <span style={{ 
+                      background: selectedBracket.awards_disclosed ? '#10b981' : '#ef4444',
+                      color: 'white',
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      {selectedBracket.awards_disclosed ? '✓ Public' : '✗ Hidden'}
+                    </span>
                   </div>
                 </div>
 

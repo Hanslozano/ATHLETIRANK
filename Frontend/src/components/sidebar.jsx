@@ -38,7 +38,7 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
         { icon: <TbTournament />, label: "Tournament Creator", id: "tournament-creator", path: "/AdminDashboard/tournament-creator" },
         { icon: <AiFillSchedule />, label: "Events", id: "events", path: "/AdminDashboard/events" },
         { icon: <RiTeamFill />, label: "Teams", id: "teams", path: "/AdminDashboard/teams" },
-        { icon: <FaTrophy />, label: "Stats", id: "stats", path: "/AdminDashboard/stats" },
+        { icon: <FaTrophy />, label: "Seasonal Leaders", id: "stats", path: "/AdminDashboard/stats" },
         { icon: <HiUsers />, label: "Users", id: "users", path: "/AdminDashboard/users" },
     ];
     

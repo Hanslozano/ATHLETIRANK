@@ -30,8 +30,8 @@ const UserAwardsStandings = () => {
   const fetchLatestTournamentData = async () => {
     setLoading(true);
     try {
-      // Fetch completed events
-      const eventsRes = await fetch("http://localhost:5000/api/awards/events/completed");
+      // Fetch completed events with disclosed awards (public view)
+      const eventsRes = await fetch("http://localhost:5000/api/awards/events/completed/public");
       const eventsData = await eventsRes.json();
       
       if (eventsData.length === 0) {
@@ -50,8 +50,8 @@ const UserAwardsStandings = () => {
       setEvents(sortedEvents);
       setSelectedEvent(latestEvent);
 
-      // Fetch brackets for latest event
-      const bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${latestEvent.id}/completed-brackets`);
+      // Fetch brackets for latest event (public view only)
+      const bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${latestEvent.id}/completed-brackets/public`);
       const bracketsData = await bracketsRes.json();
       
       if (bracketsData.length > 0) {
@@ -95,7 +95,7 @@ const UserAwardsStandings = () => {
     setLoading(true);
 
     try {
-      const bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${event.id}/completed-brackets`);
+      const bracketsRes = await fetch(`http://localhost:5000/api/awards/events/${event.id}/completed-brackets/public`);
       const bracketsData = await bracketsRes.json();
       
       if (bracketsData.length > 0) {

@@ -423,8 +423,59 @@ router.get("/events/completed", async (req, res) => {
   }
 });
 
+// GET all events with disclosed awards (for public view)
+router.get("/events/completed/public", async (req, res) => {
+  try {
+    const [events] = await db.pool.query(`
+      SELECT DISTINCT
+        e.id,
+        e.name,
+        e.start_date,
+        e.end_date,
+        e.status
+      FROM events e
+      JOIN brackets b ON e.id = b.event_id
+      WHERE b.winner_team_id IS NOT NULL AND b.awards_disclosed = TRUE
+      ORDER BY e.end_date DESC
+    `);
+    
+    res.json(events);
+  } catch (err) {
+    console.error("Error fetching completed events:", err);
+    res.status(500).json({ error: "Failed to fetch completed events" });
+  }
+});
+
 // GET brackets with champions for an event
 router.get("/events/:eventId/completed-brackets", async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    
+    const [brackets] = await db.pool.query(`
+      SELECT 
+        b.id,
+        b.name,
+        b.sport_type,
+        b.elimination_type,
+        b.winner_team_id,
+        t.name as winner_team_name,
+        b.awards_disclosed,
+        b.created_at
+      FROM brackets b
+      LEFT JOIN teams t ON b.winner_team_id = t.id
+      WHERE b.event_id = ? AND b.winner_team_id IS NOT NULL
+      ORDER BY b.created_at DESC
+    `, [eventId]);
+    
+    res.json(brackets);
+  } catch (err) {
+    console.error("Error fetching completed brackets:", err);
+    res.status(500).json({ error: "Failed to fetch completed brackets" });
+  }
+});
+
+// GET brackets with disclosed awards for an event (for public view)
+router.get("/events/:eventId/completed-brackets/public", async (req, res) => {
   try {
     const { eventId } = req.params;
     
@@ -439,7 +490,7 @@ router.get("/events/:eventId/completed-brackets", async (req, res) => {
         b.created_at
       FROM brackets b
       LEFT JOIN teams t ON b.winner_team_id = t.id
-      WHERE b.event_id = ? AND b.winner_team_id IS NOT NULL
+      WHERE b.event_id = ? AND b.winner_team_id IS NOT NULL AND b.awards_disclosed = TRUE
       ORDER BY b.created_at DESC
     `, [eventId]);
     
@@ -447,6 +498,33 @@ router.get("/events/:eventId/completed-brackets", async (req, res) => {
   } catch (err) {
     console.error("Error fetching completed brackets:", err);
     res.status(500).json({ error: "Failed to fetch completed brackets" });
+  }
+});
+
+// PUT update awards disclosure status for a bracket
+router.put("/brackets/:bracketId/awards-disclosure", async (req, res) => {
+  try {
+    const { bracketId } = req.params;
+    const { awards_disclosed } = req.body;
+    
+    if (typeof awards_disclosed !== 'boolean') {
+      return res.status(400).json({ error: "awards_disclosed must be a boolean value" });
+    }
+    
+    await db.pool.query(`
+      UPDATE brackets 
+      SET awards_disclosed = ? 
+      WHERE id = ?
+    `, [awards_disclosed, bracketId]);
+    
+    res.json({ 
+      success: true, 
+      message: `Awards ${awards_disclosed ? 'disclosed' : 'hidden'} successfully`,
+      awards_disclosed 
+    });
+  } catch (err) {
+    console.error("Error updating awards disclosure:", err);
+    res.status(500).json({ error: "Failed to update awards disclosure status" });
   }
 });
 

@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaTrophy, FaCrown, FaChartBar, FaEye, FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaChevronLeft, FaChevronRight, FaUsers, FaUserPlus, FaUserEdit, FaMedal, FaStar, FaDownload, FaSearch } from "react-icons/fa";
+import { 
+  FaTrophy, FaMedal, FaStar, FaCrown, FaChartBar, 
+  FaEye, FaEdit, FaTrash, FaPlus, FaSave, FaTimes, 
+  FaChevronLeft, FaChevronRight, FaUsers, FaUserPlus, 
+  FaUserEdit, FaDownload, FaSearch,
+  FaEyeSlash  // Add this
+} from "react-icons/fa";
 import CustomBracket from "../../components/CustomBracket";
 import DoubleEliminationBracket from "../../components/DoubleEliminationBracket";
 import "../../style/Admin_Events.css";
@@ -855,8 +861,40 @@ const handleSaveBracketDetails = async () => {
 
   // Edit Team handler
   // Edit Team handler
-const handleEditTeam = async (bracket) => {
-  handleEditBracket(bracket);
+  const handleEditTeam = async (bracket) => {
+    handleEditBracket(bracket);
+  };
+
+  // Toggle awards disclosure status
+const toggleAwardsDisclosure = async (bracketId, currentStatus) => {
+  const newStatus = !currentStatus;
+  
+  try {
+    const response = await fetch(`http://localhost:5000/api/awards/brackets/${bracketId}/awards-disclosure`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ awards_disclosed: newStatus })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update disclosure status');
+    }
+
+    // Refresh the events list to show updated disclosure status
+    await fetchEvents();
+    
+    // If this was the selected bracket, update it
+    if (selectedBracket && selectedBracket.id === bracketId) {
+      setSelectedBracket(prev => ({ ...prev, awards_disclosed: newStatus }));
+    }
+
+    alert(`Awards ${newStatus ? 'disclosed to public' : 'hidden from public'} successfully!`);
+  } catch (err) {
+    console.error('Error updating awards disclosure:', err);
+    alert('Failed to update awards disclosure status');
+  }
 };
 
  const refreshTeamsInModal = async () => {
@@ -870,10 +908,10 @@ const handleEditTeam = async (bracket) => {
     console.log('📊 Currently assigned teams:', teams.length, teams.map(t => ({ id: t.id, name: t.name })));
     
     const availableTeamsRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${editTeamModal.bracket.id}/available`);
-const availableTeams = await availableTeamsRes.json();
+      const availableTeams = await availableTeamsRes.json();
 
-console.log('📋 Available teams from API (already filtered by backend):', availableTeams.length, availableTeams.map(t => ({ id: t.id, name: t.name })));
-console.log('✅ Using backend-filtered teams directly');
+      console.log('📋 Available teams from API (already filtered by backend):', availableTeams.length, availableTeams.map(t => ({ id: t.id, name: t.name })));
+      console.log('✅ Using backend-filtered teams directly');
       if (teams.length >= 2) {
         try {
           let generateEndpoint;
@@ -937,10 +975,10 @@ console.log('✅ Using backend-filtered teams directly');
       );
       
       setEditTeamModal(prev => ({
-  ...prev,
-  teams: teamsWithPlayers,
-  availableTeams: availableTeams  // Use backend-filtered teams directly
-}));
+        ...prev,
+        teams: teamsWithPlayers,
+        availableTeams: availableTeams  // Use backend-filtered teams directly
+      }));
       
         if (selectedBracket && selectedBracket.id === editTeamModal.bracket.id) {
         // If no teams or only 1 team, clear matches immediately
@@ -1554,6 +1592,23 @@ const closeEditTeamModal = () => {
                                     >
                                       <FaTrash />
                                     </button>
+                                        <button
+                                          onClick={() => toggleAwardsDisclosure(bracket.id, bracket.awards_disclosed)}
+                                          className="bracket-view-btn"
+                                          style={{ 
+                                            fontSize: '13px', 
+                                            padding: '8px 14px',
+                                            background: bracket.awards_disclosed 
+                                              ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                                              : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                            flex: '1 1 auto',
+                                            minWidth: '55px'
+                                          }}
+                                          title={bracket.awards_disclosed ? 'Awards are public' : 'Awards are hidden'}
+                                        >
+                                          {bracket.awards_disclosed ? <FaEye /> : <FaEyeSlash />}
+                                        </button>
+
                                     <button
                                       onClick={() => handleBracketSelect(event, bracket)}
                                       className="bracket-view-btn"
@@ -1727,13 +1782,16 @@ const closeEditTeamModal = () => {
                     <span><strong>Event:</strong> {selectedEvent.name}</span>
                     <span><strong>Sport:</strong> {capitalize(selectedBracket.sport_type)}</span>
                     <span><strong>Type:</strong> {
-  selectedBracket.elimination_type === 'double' 
-    ? 'Double Elimination' 
-    : selectedBracket.elimination_type === 'round_robin'
-      ? 'Round Robin'
-      : 'Single Elimination'
-}</span>
+                      selectedBracket.elimination_type === 'double' 
+                        ? 'Double Elimination' 
+                        : selectedBracket.elimination_type === 'round_robin'
+                          ? 'Round Robin'
+                          : 'Single Elimination'
+                    }</span>
                     <span><strong>Teams:</strong> {selectedBracket.team_count || 0}</span>
+                    {/* ADD THIS SPAN */}
+                   
+                    {/* END OF NEW SPAN */}
                   </div>
                 </div>
 
@@ -1927,17 +1985,19 @@ const closeEditTeamModal = () => {
   </div>
 )}
 
-                    {contentTab === "awards" && (
-                      <div className="awards_standings_tab_content">
-                        {loadingAwards ? (
-                          <div className="awards_standings_loading">
-                            <div className="awards_standings_spinner"></div>
-                            <p>Loading awards data...</p>
-                          </div>
-                        ) : errorAwards ? (
-                          <div className="bracket-error"><p>{errorAwards}</p></div>
-                        ) : (
-                          <>
+                   {contentTab === "awards" && (
+  <div className="awards_standings_tab_content">
+    {loadingAwards ? (
+      <div className="awards_standings_loading">
+        <div className="awards_standings_spinner"></div>
+        <p>Loading awards data...</p>
+      </div>
+    ) : errorAwards ? (
+      <div className="bracket-error"><p>{errorAwards}</p></div>
+    ) : (
+      <>
+        {/* ADD THIS SECTION */}
+       
                           <div style={{ 
   padding: '20px 40px', 
   borderBottom: '1px solid var(--border-color)',
