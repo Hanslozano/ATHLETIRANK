@@ -912,103 +912,110 @@ const loadRecentBracketData = async (event, bracket) => {
         <div className="recent-stats-vertical">
           {/* Container 2: Team Standing */}
           <div className="recent-container container-2">
-            <div className="container-header">
-              <h3>Team Standing</h3>
-              {selectedRecentBracket?.sport_type === 'volleyball' && !hasVolleyballData && (
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', fontStyle: 'italic' }}>
-                  Volleyball standings are not available for this tournament
+  <div className="container-header">
+    <h3>Team Statistics</h3>
+  </div>
+  <div className="container-content">
+    <div className="stats-table-container">
+      <table className="stats-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Team</th>
+            <th>GP</th>
+            <th>Overall</th>
+            {selectedRecentBracket?.sport_type === "basketball" ? (
+              <>
+                <th>PPG</th>
+                <th>RPG</th>
+                <th>APG</th>
+                <th>BPG</th>
+              </>
+            ) : (
+              <>
+                <th>Kills</th>
+                <th>Assists</th>
+                <th>Digs</th>
+                <th>Blocks</th>
+                <th>Aces</th>
+                <th>Errors</th>
+                <th>Receptions</th>
+                <th>Svc Errors</th>
+                <th>Att Errors</th>
+                <th>Rec Errors</th>
+                <th>Eff</th>
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {allTeamsData.slice(0, 10).map((team, index) => (
+            <tr key={team.team_id || index} className="stats-player-row">
+              <td className="stats-rank-cell">
+                <div className={`stats-rank-badge ${
+                  index === 0 ? 'stats-rank-1' : 
+                  index === 1 ? 'stats-rank-2' :
+                  index === 2 ? 'stats-rank-3' : 'stats-rank-other'
+                }`}>
+                  {index + 1}
                 </div>
-              )}
-            </div>
-            <div className="container-content">
-              {selectedRecentBracket?.sport_type === 'volleyball' && !hasVolleyballData ? (
-                <div className="empty-state">
-                  <p>Volleyball standings data is not available.</p>
-                  <p style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
-                    This is expected for volleyball tournaments - player and team statistics are still available.
-                  </p>
-                </div>
+              </td>
+              <td className="stats-team-name">{team.team_name || 'Unknown Team'}</td>
+              <td className="stats-games-played">{team.games_played || 0}</td>
+              <td className={getPerformanceColor(team.overall_score, 'overall_score')}>
+                {team.overall_score || 0}
+              </td>
+              {selectedRecentBracket?.sport_type === "basketball" ? (
+                <>
+                  <td className={getPerformanceColor(team.ppg, 'ppg')}>{team.ppg || 0}</td>
+                  <td className={getPerformanceColor(team.rpg, 'rpg')}>{team.rpg || 0}</td>
+                  <td className={getPerformanceColor(team.apg, 'apg')}>{team.apg || 0}</td>
+                  <td className="stats-bpg">{team.bpg || 0}</td>
+                </>
               ) : (
                 <>
-                  <div className="stats-table-container">
-                    <table className="stats-table">
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>Team</th>
-                          <th>W</th>
-                          <th>L</th>
-                          {selectedRecentBracket?.sport_type === "basketball" ? (
-                            <>
-                              <th>PF</th>
-                              <th>PA</th>
-                              <th>Diff</th>
-                            </>
-                          ) : (
-                            <>
-                              <th>SF</th>
-                              <th>SA</th>
-                              <th>Ratio</th>
-                            </>
-                          )}
-                          <th>Win%</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                       {(filteredByDateStandings.length > 0 ? filteredByDateStandings : standings).slice(0, 10).map((team, index) => (
-                          <tr key={index} className={team.position <= 3 ? `awards_standings_podium_${team.position}` : ""}>
-                            <td className="stats-rank-cell">
-                              <div className={`stats-rank-badge ${
-                                team.position === 1 ? 'stats-rank-1' : 
-                                team.position === 2 ? 'stats-rank-2' :
-                                team.position === 3 ? 'stats-rank-3' : 'stats-rank-other'
-                              }`}>
-                                {team.position === 1 && <span className="awards_standings_medal">🥇</span>}
-                                {team.position === 2 && <span className="awards_standings_medal">🥈</span>}
-                                {team.position === 3 && <span className="awards_standings_medal">🥉</span>}
-                                {team.position > 3 && (team.position || index + 1)}
-                              </div>
-                            </td>
-                            <td className="stats-team-name">
-                              <strong>{team.team || 'Unknown Team'}</strong>
-                            </td>
-                            <td>{team.wins || 0}</td>
-                            <td>{team.losses || 0}</td>
-                            {selectedRecentBracket?.sport_type === "basketball" ? (
-                              <>
-                                <td>{team.points_for || 0}</td>
-                                <td>{team.points_against || 0}</td>
-                                <td className={String(team.point_diff || 0).startsWith('+') ? 'stats-high-value' : String(team.point_diff || 0).startsWith('-') ? 'stats-low-value' : ''}>
-                                  {team.point_diff || 0}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td>{team.sets_for || 0}</td>
-                                <td>{team.sets_against || 0}</td>
-                                <td>{team.set_ratio || 0}</td>
-                              </>
-                            )}
-                            <td>{team.win_percentage || '0.0%'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {standings.length === 0 && (
-                    <div className="empty-state">
-                      <p>No standings data available.</p>
-                    </div>
-                  )}
+                  <td className={getPerformanceColor(team.kills, 'kills')}>{team.kills || 0}</td>
+                  <td className={getPerformanceColor(team.assists, 'assists')}>{team.assists || 0}</td>
+                  <td className={getPerformanceColor(team.digs, 'digs')}>{team.digs || 0}</td>
+                  <td className="stats-blocks">{team.blocks || 0}</td>
+                  <td className="stats-service-aces">{team.service_aces || 0}</td>
+                  <td className={getPerformanceColor(team.total_errors, 'total_errors')}>
+                    {team.total_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(team.total_receptions, 'total_receptions')}>
+                    {team.total_receptions || 0}
+                  </td>
+                  <td className={getPerformanceColor(team.service_errors, 'service_errors')}>
+                    {team.service_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(team.attack_errors, 'attack_errors')}>
+                    {team.attack_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(team.reception_errors, 'reception_errors')}>
+                    {team.reception_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(team.eff, 'eff')}>
+                    {team.eff || 0}
+                  </td>
                 </>
               )}
-            </div>
-          </div>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    {allTeamsData.length === 0 && (
+      <div className="empty-state">
+        <p>No team statistics available.</p>
+      </div>
+    )}
+  </div>
+</div>
 
           {/* Container 3: Player Stats */}
           <div className="recent-container container-3">
             <div className="container-header">
-              <h3>Player Stats</h3>
+              <h3>Player Statistics</h3>
             </div>
             <div className="container-content">
               <div className="stats-table-container">
