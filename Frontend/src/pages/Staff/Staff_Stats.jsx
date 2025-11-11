@@ -118,7 +118,8 @@ const StaffStats = ({ sidebarOpen }) => {
       receptions: '+1 Reception',
       serve_errors: '+1 Serve Error',
       attack_errors: '+1 Attack Error',
-      reception_errors: '+1 Reception Error'
+      reception_errors: '+1 Reception Error',
+      assist_errors: '+1 Assist Error' // ADDED: Assist errors label
     };
     return labels[statKey] || '+1 Stat';
   };
@@ -143,7 +144,8 @@ const StaffStats = ({ sidebarOpen }) => {
       receptions: '#0d9488',
       serve_errors: '#db2777',
       attack_errors: '#ea580c',
-      reception_errors: '#991b1b'
+      reception_errors: '#991b1b',
+      assist_errors: '#ef4444' // ADDED: Assist errors color
     };
     return colors[statKey] || '#3b82f6';
   };
@@ -185,6 +187,7 @@ const [savedMatchData, setSavedMatchData] = useState(null);
   digs: [0, 0, 0, 0, 0],
   volleyball_assists: [0, 0, 0, 0, 0],
   volleyball_blocks: [0, 0, 0, 0, 0],
+  assist_errors: [0, 0, 0, 0, 0], // ADDED: Assist errors array
   isStarting: false,
   isOnCourt: false
 };
@@ -214,7 +217,8 @@ const [savedMatchData, setSavedMatchData] = useState(null);
   // ADDED: Error buttons
   { key: 'serve_errors', label: 'SRV ERR', color: 'bg-pink-600 hover:bg-pink-700', points: 0 },
   { key: 'attack_errors', label: 'ATK ERR', color: 'bg-orange-600 hover:bg-orange-700', points: 0 },
-  { key: 'reception_errors', label: 'REC ERR', color: 'bg-red-800 hover:bg-red-900', points: 0 }
+  { key: 'reception_errors', label: 'REC ERR', color: 'bg-red-800 hover:bg-red-900', points: 0 },
+  { key: 'assist_errors', label: 'AST ERR', color: 'bg-red-800 hover:bg-red-900', points: 0 } // ADDED: Assist errors button
 ];
 
   // ============================================
@@ -546,7 +550,7 @@ const hasMoreMatches = () => {
       const player = newStats[playerIndex];
       const isTeam1 = player.team_id === selectedGame.team1_id;
       
-      if (statKey === "serve_errors" || statKey === "attack_errors") {
+      if (statKey === "serve_errors" || statKey === "attack_errors" || statKey === "assist_errors") {
         if (isTeam1) {
           setTeamScores(prev => {
             const newTeam2Scores = [...prev.team2];
@@ -847,9 +851,9 @@ const ControlBar = () => {
       return (twoPoints * 2) + (threePoints * 3) + freeThrows;
     } else if (selectedGame?.sport_type === "volleyball") {
       // Volleyball scoring: kills + aces + blocks
-      const kills = player.kills ? player.kills[currentQuarter] || 0 : 0;
-      const aces = player.service_aces ? player.service_aces[currentQuarter] || 0 : 0;
-      const blocks = player.volleyball_blocks ? player.volleyball_blocks[currentQuarter] || 0 : 0;
+      const kills = player.kills?.[currentQuarter] || 0;
+      const aces = player.service_aces?.[currentQuarter] || 0;
+      const blocks = player.volleyball_blocks?.[currentQuarter] || 0;
       return kills + aces + blocks;
     }
     return 0;
@@ -1448,14 +1452,16 @@ const ControlBar = () => {
         for (let i = 0; i < team2Scores.length; i++) {
           const serveErrors = player.serve_errors ? player.serve_errors[i] || 0 : 0;
           const attackErrors = player.attack_errors ? player.attack_errors[i] || 0 : 0;
-          team2Scores[i] += serveErrors + attackErrors;
+          const assistErrors = player.assist_errors ? player.assist_errors[i] || 0 : 0;
+          team2Scores[i] += serveErrors + attackErrors + assistErrors;
         }
       } else if (playerTeamId === team2Id) {
         // Team1 gets points from Team2's errors
         for (let i = 0; i < team1Scores.length; i++) {
           const serveErrors = player.serve_errors ? player.serve_errors[i] || 0 : 0;
           const attackErrors = player.attack_errors ? player.attack_errors[i] || 0 : 0;
-          team1Scores[i] += serveErrors + attackErrors;
+          const assistErrors = player.assist_errors ? player.assist_errors[i] || 0 : 0;
+          team1Scores[i] += serveErrors + attackErrors + assistErrors;
         }
       }
     });
@@ -1759,7 +1765,7 @@ const ControlBar = () => {
       const player = newStats[playerIndex];
       const isTeam1 = player.team_id === selectedGame.team1_id;
       
-      if (statName === "serve_errors" || statName === "attack_errors") {
+      if (statName === "serve_errors" || statName === "attack_errors" || statName === "assist_errors") {
         // When adding/removing an error, add/remove a point from the opponent
         if (isTeam1) {
           // Player is from team1, error gives point to team2
@@ -1848,6 +1854,34 @@ const ControlBar = () => {
         addOvertimePeriod();
       }
     }
+  };
+
+  const parseStatArray = (value, length) => {
+    if (value === null || value === undefined) return null;
+
+    let parsed = value;
+    if (typeof parsed === "string") {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch (err) {
+        console.warn("Failed to parse stat array string:", value, err);
+        return null;
+      }
+    }
+
+    if (typeof parsed === "number") {
+      parsed = [parsed];
+    }
+
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    const normalized = parsed.slice(0, length).map((item) => Number(item) || 0);
+    while (normalized.length < length) {
+      normalized.push(0);
+    }
+    return normalized;
   };
 
   const initializePlayerStats = async (game) => {
@@ -1942,71 +1976,81 @@ const ControlBar = () => {
                 const overtimeTurnovers = found.overtime_turnovers ? found.overtime_turnovers.reduce((a, b) => a + b, 0) : 0;
                 
                 // Load regulation stats - check if per-quarter arrays exist, otherwise use totals minus overtime
-                if (found.two_points_made_per_quarter && Array.isArray(found.two_points_made_per_quarter)) {
-                  mergedPlayer.two_points_made = [...found.two_points_made_per_quarter];
+                const twoPointsPerQuarter = parseStatArray(found.two_points_made_per_quarter, 4);
+                if (twoPointsPerQuarter) {
+                  mergedPlayer.two_points_made = twoPointsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.two_points_made || 0) - overtimeTwoPoints);
                   mergedPlayer.two_points_made = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.three_points_made_per_quarter && Array.isArray(found.three_points_made_per_quarter)) {
-                  mergedPlayer.three_points_made = [...found.three_points_made_per_quarter];
+                const threePointsPerQuarter = parseStatArray(found.three_points_made_per_quarter, 4);
+                if (threePointsPerQuarter) {
+                  mergedPlayer.three_points_made = threePointsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.three_points_made || 0) - overtimeThreePoints);
                   mergedPlayer.three_points_made = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.free_throws_made_per_quarter && Array.isArray(found.free_throws_made_per_quarter)) {
-                  mergedPlayer.free_throws_made = [...found.free_throws_made_per_quarter];
+                const freeThrowsPerQuarter = parseStatArray(found.free_throws_made_per_quarter, 4);
+                if (freeThrowsPerQuarter) {
+                  mergedPlayer.free_throws_made = freeThrowsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.free_throws_made || 0) - overtimeFreeThrows);
                   mergedPlayer.free_throws_made = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.technical_fouls_per_quarter && Array.isArray(found.technical_fouls_per_quarter)) {
-                  mergedPlayer.technical_fouls = [...found.technical_fouls_per_quarter];
+                const technicalFoulsPerQuarter = parseStatArray(found.technical_fouls_per_quarter, 4);
+                if (technicalFoulsPerQuarter) {
+                  mergedPlayer.technical_fouls = technicalFoulsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.technical_fouls || 0) - overtimeTechnicalFouls);
                   mergedPlayer.technical_fouls = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.assists_per_quarter && Array.isArray(found.assists_per_quarter)) {
-                  mergedPlayer.assists = [...found.assists_per_quarter];
+                const assistsPerQuarter = parseStatArray(found.assists_per_quarter, 4);
+                if (assistsPerQuarter) {
+                  mergedPlayer.assists = assistsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.assists || 0) - overtimeAssists);
                   mergedPlayer.assists = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.rebounds_per_quarter && Array.isArray(found.rebounds_per_quarter)) {
-                  mergedPlayer.rebounds = [...found.rebounds_per_quarter];
+                const reboundsPerQuarter = parseStatArray(found.rebounds_per_quarter, 4);
+                if (reboundsPerQuarter) {
+                  mergedPlayer.rebounds = reboundsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.rebounds || 0) - overtimeRebounds);
                   mergedPlayer.rebounds = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.steals_per_quarter && Array.isArray(found.steals_per_quarter)) {
-                  mergedPlayer.steals = [...found.steals_per_quarter];
+                const stealsPerQuarter = parseStatArray(found.steals_per_quarter, 4);
+                if (stealsPerQuarter) {
+                  mergedPlayer.steals = stealsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.steals || 0) - overtimeSteals);
                   mergedPlayer.steals = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.blocks_per_quarter && Array.isArray(found.blocks_per_quarter)) {
-                  mergedPlayer.blocks = [...found.blocks_per_quarter];
+                const blocksPerQuarter = parseStatArray(found.blocks_per_quarter, 4);
+                if (blocksPerQuarter) {
+                  mergedPlayer.blocks = blocksPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.blocks || 0) - overtimeBlocks);
                   mergedPlayer.blocks = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.fouls_per_quarter && Array.isArray(found.fouls_per_quarter)) {
-                  mergedPlayer.fouls = [...found.fouls_per_quarter];
+                const foulsPerQuarter = parseStatArray(found.fouls_per_quarter, 4);
+                if (foulsPerQuarter) {
+                  mergedPlayer.fouls = foulsPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.fouls || 0) - overtimeFouls);
                   mergedPlayer.fouls = [regulationTotal, 0, 0, 0];
                 }
                 
-                if (found.turnovers_per_quarter && Array.isArray(found.turnovers_per_quarter)) {
-                  mergedPlayer.turnovers = [...found.turnovers_per_quarter];
+                const turnoversPerQuarter = parseStatArray(found.turnovers_per_quarter, 4);
+                if (turnoversPerQuarter) {
+                  mergedPlayer.turnovers = turnoversPerQuarter;
                 } else {
                   const regulationTotal = Math.max(0, (found.turnovers || 0) - overtimeTurnovers);
                   mergedPlayer.turnovers = [regulationTotal, 0, 0, 0];
@@ -2030,73 +2074,34 @@ const ControlBar = () => {
                   mergedPlayer.overtime_turnovers = found.overtime_turnovers || [];
                 }
               } else {
-                // Volleyball stats - FIXED: Load per-period stats properly
-                // Use per_set arrays if available, otherwise use the single values spread across sets
-                if (found.kills_per_set && found.kills_per_set.length > 0) {
-                  mergedPlayer.kills = [...found.kills_per_set];
-                } else {
-                  mergedPlayer.kills = found.kills ? [found.kills, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.attack_attempts_per_set && found.attack_attempts_per_set.length > 0) {
-                  mergedPlayer.attack_attempts = [...found.attack_attempts_per_set];
-                } else {
-                  mergedPlayer.attack_attempts = found.attack_attempts ? [found.attack_attempts, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.attack_errors_per_set && found.attack_errors_per_set.length > 0) {
-                  mergedPlayer.attack_errors = [...found.attack_errors_per_set];
-                } else {
-                  mergedPlayer.attack_errors = found.attack_errors ? [found.attack_errors, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.serves_per_set && found.serves_per_set.length > 0) {
-                  mergedPlayer.serves = [...found.serves_per_set];
-                } else {
-                  mergedPlayer.serves = found.serves ? [found.serves, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.service_aces_per_set && found.service_aces_per_set.length > 0) {
-                  mergedPlayer.service_aces = [...found.service_aces_per_set];
-                } else {
-                  mergedPlayer.service_aces = found.service_aces ? [found.service_aces, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.serve_errors_per_set && found.serve_errors_per_set.length > 0) {
-                  mergedPlayer.serve_errors = [...found.serve_errors_per_set];
-                } else {
-                  mergedPlayer.serve_errors = found.serve_errors ? [found.serve_errors, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.receptions_per_set && found.receptions_per_set.length > 0) {
-                  mergedPlayer.receptions = [...found.receptions_per_set];
-                } else {
-                  mergedPlayer.receptions = found.receptions ? [found.receptions, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.reception_errors_per_set && found.reception_errors_per_set.length > 0) {
-                  mergedPlayer.reception_errors = [...found.reception_errors_per_set];
-                } else {
-                  mergedPlayer.reception_errors = found.reception_errors ? [found.reception_errors, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.digs_per_set && found.digs_per_set.length > 0) {
-                  mergedPlayer.digs = [...found.digs_per_set];
-                } else {
-                  mergedPlayer.digs = found.digs ? [found.digs, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.volleyball_assists_per_set && found.volleyball_assists_per_set.length > 0) {
-                  mergedPlayer.volleyball_assists = [...found.volleyball_assists_per_set];
-                } else {
-                  mergedPlayer.volleyball_assists = found.volleyball_assists ? [found.volleyball_assists, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
-                
-                if (found.volleyball_blocks_per_set && found.volleyball_blocks_per_set.length > 0) {
-                  mergedPlayer.volleyball_blocks = [...found.volleyball_blocks_per_set];
-                } else {
-                  mergedPlayer.volleyball_blocks = found.volleyball_blocks ? [found.volleyball_blocks, 0, 0, 0, 0] : [0, 0, 0, 0, 0];
-                }
+                // Volleyball stats - parse per-set arrays when available
+                const killsPerSet = parseStatArray(found.kills_per_set, 5);
+                const attackAttemptsPerSet = parseStatArray(found.attack_attempts_per_set, 5);
+                const attackErrorsPerSet = parseStatArray(found.attack_errors_per_set, 5);
+                const servesPerSet = parseStatArray(found.serves_per_set, 5);
+                const serviceAcesPerSet = parseStatArray(found.service_aces_per_set, 5);
+                const serveErrorsPerSet = parseStatArray(found.serve_errors_per_set, 5);
+                const receptionsPerSet = parseStatArray(found.receptions_per_set, 5);
+                const receptionErrorsPerSet = parseStatArray(found.reception_errors_per_set, 5);
+                const digsPerSet = parseStatArray(found.digs_per_set, 5);
+                const volleyballAssistsPerSet = parseStatArray(found.volleyball_assists_per_set, 5);
+                const volleyballBlocksPerSet = parseStatArray(found.volleyball_blocks_per_set, 5);
+                const assistErrorsPerSet = parseStatArray(found.assist_errors_per_set, 5);
+
+                const fallbackFive = () => [0, 0, 0, 0, 0];
+
+                mergedPlayer.kills = killsPerSet || (found.kills ? [found.kills, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.attack_attempts = attackAttemptsPerSet || (found.attack_attempts ? [found.attack_attempts, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.attack_errors = attackErrorsPerSet || (found.attack_errors ? [found.attack_errors, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.serves = servesPerSet || (found.serves ? [found.serves, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.service_aces = serviceAcesPerSet || (found.service_aces ? [found.service_aces, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.serve_errors = serveErrorsPerSet || (found.serve_errors ? [found.serve_errors, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.receptions = receptionsPerSet || (found.receptions ? [found.receptions, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.reception_errors = receptionErrorsPerSet || (found.reception_errors ? [found.reception_errors, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.digs = digsPerSet || (found.digs ? [found.digs, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.volleyball_assists = volleyballAssistsPerSet || (found.volleyball_assists ? [found.volleyball_assists, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.volleyball_blocks = volleyballBlocksPerSet || (found.volleyball_blocks ? [found.volleyball_blocks, 0, 0, 0, 0] : fallbackFive());
+                mergedPlayer.assist_errors = assistErrorsPerSet || (found.assist_errors ? [found.assist_errors, 0, 0, 0, 0] : fallbackFive());
               }
               
               return mergedPlayer;
@@ -2206,11 +2211,7 @@ const ControlBar = () => {
           free_throws_made: (p.free_throws_made?.reduce((a, b) => a + b, 0) || 0) + 
                            (p.overtime_free_throws_made?.reduce((a, b) => a + b, 0) || 0),
           free_throws_made_per_quarter: p.free_throws_made || [0, 0, 0, 0],
-          assists: (p.assists?.reduce((a, b) => a + b, 0) || 0) + 
-                  (p.overtime_assists?.reduce((a, b) => a + b, 0) || 0),
           assists_per_quarter: p.assists || [0, 0, 0, 0],
-          rebounds: (p.rebounds?.reduce((a, b) => a + b, 0) || 0) + 
-                   (p.overtime_rebounds?.reduce((a, b) => a + b, 0) || 0),
           rebounds_per_quarter: p.rebounds || [0, 0, 0, 0],
           steals: (p.steals?.reduce((a, b) => a + b, 0) || 0) + 
                  (p.overtime_steals?.reduce((a, b) => a + b, 0) || 0),
@@ -2260,6 +2261,9 @@ const ControlBar = () => {
           volleyball_assists_per_set: p.volleyball_assists || [0, 0, 0, 0, 0],
           volleyball_blocks: p.volleyball_blocks?.reduce((a, b) => a + b, 0) || 0,
           volleyball_blocks_per_set: p.volleyball_blocks || [0, 0, 0, 0, 0],
+          // ADDED: Assist errors data
+          assist_errors: p.assist_errors?.reduce((a, b) => a + b, 0) || 0,
+          assist_errors_per_set: p.assist_errors || [0, 0, 0, 0, 0],
         })),
         bracketData: {
           winner_id: winner_id,
@@ -2317,6 +2321,20 @@ const ControlBar = () => {
       }
 
       // IF ONLINE: Save to server
+      console.log("Sending stats data:", {
+        matchId: selectedGame.id,
+        playersCount: statsData.players.length,
+        team1_id: statsData.team1_id,
+        team2_id: statsData.team2_id,
+        firstPlayer: statsData.players[0] ? {
+          player_id: statsData.players[0].player_id,
+          team_id: statsData.players[0].team_id,
+          has_assists: 'assists' in statsData.players[0],
+          has_assists_per_quarter: 'assists_per_quarter' in statsData.players[0],
+          keys: Object.keys(statsData.players[0])
+        } : null
+      });
+      
       const statsRes = await fetch(
         `http://localhost:5000/api/stats/matches/${selectedGame.id}/stats`,
         {
@@ -2327,7 +2345,9 @@ const ControlBar = () => {
       );
       
       if (!statsRes.ok) {
-        throw new Error(`Failed to save stats: ${statsRes.status}`);
+        const errorData = await statsRes.json().catch(() => ({ error: `HTTP ${statsRes.status}: ${statsRes.statusText}` }));
+        console.error("Backend error response:", errorData);
+        throw new Error(errorData.error || `Failed to save stats: ${statsRes.status}`);
       }
 
     const bracketRes = await fetch(
@@ -2397,10 +2417,22 @@ const ControlBar = () => {
       setShowSuccessPage(true);
       
     } catch (err) {
+      console.error("Error saving statistics:", err);
+      console.error("Error details:", {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+      
       // If save fails, offer to save offline
-      if (confirm(`Failed to save: ${err.message}\n\nWould you like to save offline and sync later?`)) {
+      const errorMessage = err.message || "Unknown error occurred";
+      if (confirm(`Failed to save: ${errorMessage}\n\nWould you like to save offline and sync later?`)) {
         saveToLocalStorage(selectedGame.id, statsData, 'save_stats');
         alert('📱 Statistics saved offline. Will sync when connection is restored.');
+      } else {
+        // Show error to user
+        setError(`Failed to save statistics: ${errorMessage}`);
+        setTimeout(() => setError(null), 5000);
       }
     } finally {
       setLoading(false);
@@ -2673,6 +2705,7 @@ const handleNextMatch = async () => {
                     <th className="col-stat">Rec</th>
                     <th className="col-stat">S.Err</th>
                     <th className="col-stat">A.Err</th>
+                    <th className="col-stat">Ast.Err</th> {/* ADDED: Assist Errors header */}
                     <th className="col-stat">R.Err</th>
                     <th className="col-stat">Hit%</th>
                   </>
@@ -3136,6 +3169,22 @@ const handleNextMatch = async () => {
                             <span className="stats-value">{player.attack_errors[currentQuarter]}</span>
                             {!hideButtons && (
                               <button onClick={() => adjustPlayerStat(globalIndex, "attack_errors", true)} className="stats-control-button">
+                                <FaPlus />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        {/* ADDED: Assist Errors column */}
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            {!hideButtons && (
+                              <button onClick={() => adjustPlayerStat(globalIndex, "assist_errors", false)} className="stats-control-button">
+                                <FaMinus />
+                              </button>
+                            )}
+                            <span className="stats-value">{player.assist_errors[currentQuarter]}</span>
+                            {!hideButtons && (
+                              <button onClick={() => adjustPlayerStat(globalIndex, "assist_errors", true)} className="stats-control-button">
                                 <FaPlus />
                               </button>
                             )}
@@ -3626,6 +3675,22 @@ const handleNextMatch = async () => {
                             )}
                           </div>
                         </td>
+                        {/* ADDED: Assist Errors column for bench players */}
+                        <td className="col-stat">
+                          <div className="stats-controls">
+                            {!hideButtons && (
+                              <button onClick={() => adjustPlayerStat(globalIndex, "assist_errors", false)} className="stats-control-button">
+                                <FaMinus />
+                              </button>
+                            )}
+                            <span className="stats-value">{player.assist_errors[currentQuarter]}</span>
+                            {!hideButtons && (
+                              <button onClick={() => adjustPlayerStat(globalIndex, "assist_errors", true)} className="stats-control-button">
+                                <FaPlus />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="col-stat">
                           <div className="stats-controls">
                             {!hideButtons && (
@@ -3829,7 +3894,7 @@ const handleNextMatch = async () => {
                       handleBracketSelect(bracket);
                     }}
                     className="selector-dropdown"
-                  >
+                >
                     <option value="">Choose a bracket...</option>
                     {brackets.map(b => (
                       <option key={b.id} value={b.id}>
