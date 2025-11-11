@@ -192,8 +192,8 @@ const TeamPositionStats = ({ selectedEvent, selectedBracket }) => {
     <div className="seasonal-position-stats">
       {/* Header */}
       <div className="seasonal-position-header">
-        <h2 className="seasonal-position-title">Team Performance by Position</h2>
-        <p className="seasonal-position-subtitle">Top performers in each position across all teams</p>
+        <h2 className="seasonal-position-title">Positional Leaders</h2>
+        <p className="seasonal-position-subtitle">Top individual performers by position across all teams.</p>
       </div>
 
       {/* Position Selector */}
