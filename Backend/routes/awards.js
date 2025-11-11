@@ -17,7 +17,7 @@ function calculateBasketballMVPScore(stats, gamesPlayed) {
 }
 
 // Helper function to calculate volleyball MVP score
-// Formula: MVP = (A + K + B + D + R) - (SE + AE + RE)
+// Formula: MVP = (Kills + Blocks + Aces + Digs + Assists) - (Service Errors + Attack Errors + Reception Errors + Assist Errors)
 function calculateVolleyballMVPScore(stats, gamesPlayed) {
   const K = stats.total_kills || 0;          
   const B = stats.total_blocks || 0;         
@@ -27,12 +27,12 @@ function calculateVolleyballMVPScore(stats, gamesPlayed) {
   const AE = stats.total_attack_errors || 0; 
   const SE = stats.total_serve_errors || 0;  
   const RE = stats.total_reception_errors || 0;
+  const AER = stats.total_assist_errors || 0; // Assist Errors
   
-  // CORRECT FORMULA: (Positive - Errors) / Games
-  // This matches the "Overall" score shown in your leaderboard
-  const efficiency = ((K + B + A + VA + D) - (AE + SE + RE)) / gamesPlayed;
+  // MVP Score = (K + B + A + D + VA) - (SE + AE + RE + AER)
+  const mvpScore = (K + B + A + D + VA) - (SE + AE + RE + AER);
   
-  return efficiency;
+  return mvpScore;
 }
 
 // GET tournament champion and winner team
@@ -60,7 +60,6 @@ router.get("/brackets/:bracketId/champion", async (req, res) => {
   }
 });
 
-// GET MVP and awards for a bracket
 // GET MVP and awards for a bracket
 router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
   try {
@@ -131,18 +130,19 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         SUM(ps.serve_errors) as total_serve_errors,
         SUM(ps.attack_errors) as total_attack_errors,
         SUM(ps.reception_errors) as total_reception_errors,
+        SUM(ps.assist_errors) as total_assist_errors,
         SUM(ps.attack_attempts) as total_attack_attempts,
         SUM(ps.serves) as total_serves,
         ROUND(
           (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
            SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-           (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+           (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors) + SUM(ps.assist_errors))) / 
           NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
         ) as efficiency,
         ROUND(
           (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
            SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-           (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors))) / 
+           (SUM(ps.attack_errors) + SUM(ps.serve_errors) + SUM(ps.reception_errors) + SUM(ps.assist_errors))) / 
           NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
         ) as overall_score,
         CASE 
@@ -203,79 +203,88 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
       };
       
     } else {
-      // Volleyball - MVP from ALL players
+      // Volleyball - Calculate MVP scores using new formula with assist errors
       const playersWithScores = allPlayerStats.map(player => ({
         ...player,
-        mvp_score: player.efficiency || player.overall_score || 0,
+        // MVP Score = (Kills + Blocks + Aces + Digs + Assists) - (Service Errors + Attack Errors + Reception Errors + Assist Errors)
+        mvp_score: ((player.total_kills || 0) + (player.total_blocks || 0) + (player.total_aces || 0) + 
+                   (player.total_digs || 0) + (player.total_assists || 0)) - 
+                   ((player.total_serve_errors || 0) + (player.total_attack_errors || 0) + 
+                   (player.total_reception_errors || 0) + (player.total_assist_errors || 0)),
         overall_score: player.efficiency || player.overall_score || 0,
         total_errors: (player.total_attack_errors || 0) + 
                      (player.total_serve_errors || 0) + 
-                     (player.total_reception_errors || 0)
+                     (player.total_reception_errors || 0) +
+                     (player.total_assist_errors || 0)
       }));
 
-      // Sort by efficiency/overall_score (highest first)
-      playersWithScores.sort((a, b) => {
-        const scoreA = a.overall_score || a.efficiency || 0;
-        const scoreB = b.overall_score || b.efficiency || 0;
-        return scoreB - scoreA;
-      });
+      // Sort by MVP score (highest first)
+      playersWithScores.sort((a, b) => b.mvp_score - a.mvp_score);
       
       // MVP is the top player (no position restriction)
       mvpData = playersWithScores[0];
       
-      // Position-based awards with filtering
+      // Position-based awards with filtering and specific formulas
       // Helper function to normalize position names for comparison
       const normalizePosition = (position) => {
         if (!position) return '';
         return position.toLowerCase().trim();
       };
       
-      // Best Setter - Only players with "Setter" position
+      // Best Setter: Assists - Assist Errors
       const setters = playersWithScores.filter(p => 
         normalizePosition(p.position) === 'setter'
       );
-      const sortedSetters = setters.sort((a, b) => 
-        (b.total_assists || 0) - (a.total_assists || 0)
-      );
+      const sortedSetters = setters.sort((a, b) => {
+        const scoreA = (a.total_assists || 0) - (a.total_assist_errors || 0);
+        const scoreB = (b.total_assists || 0) - (b.total_assist_errors || 0);
+        return scoreB - scoreA;
+      });
       
-      // Best Libero - Only players with "Libero" or "Defensive Specialist" position
+      // Best Libero: (Digs + Receptions) - (Reception Errors + Attack Errors)
       const liberos = playersWithScores.filter(p => {
         const pos = normalizePosition(p.position);
         return pos === 'libero' || pos === 'defensive specialist';
       });
       const sortedLiberos = liberos.sort((a, b) => {
-        const defenseA = (a.total_digs || 0) + (a.total_receptions || 0);
-        const defenseB = (b.total_digs || 0) + (b.total_receptions || 0);
-        return defenseB - defenseA;
+        const scoreA = ((a.total_digs || 0) + (a.total_receptions || 0)) - 
+                      ((a.total_reception_errors || 0) + (a.total_attack_errors || 0));
+        const scoreB = ((b.total_digs || 0) + (b.total_receptions || 0)) - 
+                      ((b.total_reception_errors || 0) + (b.total_attack_errors || 0));
+        return scoreB - scoreA;
       });
       
-      // Best Outside Hitter - Only "Outside Hitter" position
+      // Best Outside Hitter: (Kills + Aces + Blocks) - (Attack Errors + Service Errors)
       const outsideHitters = playersWithScores.filter(p => 
         normalizePosition(p.position) === 'outside hitter'
       );
       const sortedOutside = outsideHitters.sort((a, b) => {
-        const scoreA = (a.total_kills || 0) + (a.total_aces || 0) + (a.total_blocks || 0);
-        const scoreB = (b.total_kills || 0) + (b.total_aces || 0) + (b.total_blocks || 0);
+        const scoreA = ((a.total_kills || 0) + (a.total_aces || 0) + (a.total_blocks || 0)) - 
+                      ((a.total_attack_errors || 0) + (a.total_serve_errors || 0));
+        const scoreB = ((b.total_kills || 0) + (b.total_aces || 0) + (b.total_blocks || 0)) - 
+                      ((b.total_attack_errors || 0) + (b.total_serve_errors || 0));
         return scoreB - scoreA;
       });
       
-      // Best Opposite Hitter - Only "Opposite Hitter" position
+      // Best Opposite Hitter: (Kills + Blocks + Aces) - Attack Errors
       const oppositeHitters = playersWithScores.filter(p => 
         normalizePosition(p.position) === 'opposite hitter'
       );
       const sortedOpposite = oppositeHitters.sort((a, b) => {
-        const scoreA = (a.total_kills || 0) + (a.total_blocks || 0) + (a.total_aces || 0);
-        const scoreB = (b.total_kills || 0) + (b.total_blocks || 0) + (b.total_aces || 0);
+        const scoreA = ((a.total_kills || 0) + (a.total_blocks || 0) + (a.total_aces || 0)) - 
+                      (a.total_attack_errors || 0);
+        const scoreB = ((b.total_kills || 0) + (b.total_blocks || 0) + (b.total_aces || 0)) - 
+                      (b.total_attack_errors || 0);
         return scoreB - scoreA;
       });
       
-      // Best Middle Blocker - Only "Middle Blocker" position
+      // Best Middle Blocker: (Blocks + Kills) - Attack Errors
       const middleBlockers = playersWithScores.filter(p => 
         normalizePosition(p.position) === 'middle blocker'
       );
       const sortedMiddle = middleBlockers.sort((a, b) => {
-        const scoreA = (a.total_blocks || 0) + (a.total_kills || 0);
-        const scoreB = (b.total_blocks || 0) + (b.total_kills || 0);
+        const scoreA = ((a.total_blocks || 0) + (a.total_kills || 0)) - (a.total_attack_errors || 0);
+        const scoreB = ((b.total_blocks || 0) + (b.total_kills || 0)) - (b.total_attack_errors || 0);
         return scoreB - scoreA;
       });
       
@@ -303,6 +312,7 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
     res.status(500).json({ error: "Failed to calculate MVP and awards: " + err.message });
   }
 });
+
 // GET team standings for a bracket
 router.get("/brackets/:bracketId/standings", async (req, res) => {
   try {

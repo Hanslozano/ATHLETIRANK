@@ -526,13 +526,14 @@ const loadRecentBracketData = async (event, bracket) => {
         total_receptions: { high: 80, low: 30 },
         service_errors: { high: 8, low: 2 },
         attack_errors: { high: 15, low: 5 },
-        reception_errors: { high: 12, low: 3 }
+        reception_errors: { high: 12, low: 3 },
+        assist_errors: { high: 8, low: 2 }  // ADDED: assist_errors threshold
       };
       
       const threshold = thresholds[stat];
       if (!threshold) return '';
       
-      if (stat === 'total_errors' || stat === 'service_errors' || stat === 'attack_errors' || stat === 'reception_errors') {
+      if (stat === 'total_errors' || stat === 'service_errors' || stat === 'attack_errors' || stat === 'reception_errors' || stat === 'assist_errors') {
         if (value <= threshold.low) return 'stats-high-value';
         if (value >= threshold.high) return 'stats-low-value';
         return 'stats-medium-value';
@@ -648,6 +649,9 @@ const loadRecentBracketData = async (event, bracket) => {
       <th className="stats-sortable-header" onClick={() => handleSort('reception_errors')}>
         Reception Errors {sortConfig.key === 'reception_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
+      <th className="stats-sortable-header" onClick={() => handleSort('assist_errors')}>
+      Assist Errors {sortConfig.key === 'assist_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+      </th>
       <th className="stats-sortable-header" onClick={() => handleSort('eff')}>
         Efficiency {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
@@ -686,6 +690,9 @@ const loadRecentBracketData = async (event, bracket) => {
       </th>
       <th className="stats-sortable-header" onClick={() => handleSort('reception_errors')}>
         Reception Errors {sortConfig.key === 'reception_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+      </th>
+      <th className="stats-sortable-header" onClick={() => handleSort('assist_errors')}>
+      Assist Errors {sortConfig.key === 'assist_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
       <th className="stats-sortable-header" onClick={() => handleSort('eff')}>
         Efficiency {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
@@ -911,7 +918,8 @@ const loadRecentBracketData = async (event, bracket) => {
         {/* Stats Containers Grid */}
         <div className="recent-stats-vertical">
           {/* Container 2: Team Standing */}
-          <div className="recent-container container-2">
+     {/* Container 2: Team Standing */}
+<div className="recent-container container-2">
   <div className="container-header">
     <h3>Team Statistics</h3>
   </div>
@@ -943,6 +951,7 @@ const loadRecentBracketData = async (event, bracket) => {
                 <th>Svc Errors</th>
                 <th>Att Errors</th>
                 <th>Rec Errors</th>
+                <th>Assist Errors</th> {/* ADD THIS */}
                 <th>Eff</th>
               </>
             )}
@@ -952,11 +961,7 @@ const loadRecentBracketData = async (event, bracket) => {
           {allTeamsData.slice(0, 10).map((team, index) => (
             <tr key={team.team_id || index} className="stats-player-row">
               <td className="stats-rank-cell">
-                <div className={`stats-rank-badge ${
-                  index === 0 ? 'stats-rank-1' : 
-                  index === 1 ? 'stats-rank-2' :
-                  index === 2 ? 'stats-rank-3' : 'stats-rank-other'
-                }`}>
+                <div className={`stats-rank-badge ${index === 0 ? 'stats-rank-1' : index === 1 ? 'stats-rank-2' : index === 2 ? 'stats-rank-3' : 'stats-rank-other'}`}>
                   {index + 1}
                 </div>
               </td>
@@ -994,6 +999,10 @@ const loadRecentBracketData = async (event, bracket) => {
                   <td className={getPerformanceColor(team.reception_errors, 'reception_errors')}>
                     {team.reception_errors || 0}
                   </td>
+                  {/* ADD THIS CELL */}
+                  <td className={getPerformanceColor(team.assist_errors, 'assist_errors')}>
+                    {team.assist_errors || 0}
+                  </td>
                   <td className={getPerformanceColor(team.eff, 'eff')}>
                     {team.eff || 0}
                   </td>
@@ -1013,102 +1022,103 @@ const loadRecentBracketData = async (event, bracket) => {
 </div>
 
           {/* Container 3: Player Stats */}
-          <div className="recent-container container-3">
-            <div className="container-header">
-              <h3>Player Statistics</h3>
-            </div>
-            <div className="container-content">
-              <div className="stats-table-container">
-                <table className="stats-table">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Player</th>
-                      <th>Team</th>
-                      <th>Jersey</th>
-                      <th>GP</th>
-                      <th>Overall</th>
-                      {selectedRecentBracket?.sport_type === 'basketball' ? (
-                        <>
-                          <th>PPG</th>
-                          <th>RPG</th>
-                          <th>APG</th>
-                          <th>BPG</th>
-                        </>
-                      ) : (
-                        <>
-                          <th>Kills</th>
-                          <th>Assists</th>
-                          <th>Digs</th>
-                          <th>Blocks</th>
-                          <th>Aces</th>
-                          <th>Errors</th>
-                          <th>Receptions</th>
-                          <th>Svc Errors</th>
-                          <th>Att Errors</th>
-                          <th>Rec Errors</th>
-                          <th>Eff</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allPlayersData.slice(0, 10).map((player, index) => (
-                      <tr key={player.id || index} className="stats-player-row">
-                        <td className="stats-rank-cell">
-                          <div className={`stats-rank-badge ${
-                            index === 0 ? 'stats-rank-1' : 
-                            index === 1 ? 'stats-rank-2' :
-                            index === 2 ? 'stats-rank-3' : 'stats-rank-other'
-                          }`}>
-                            {index + 1}
-                          </div>
-                        </td>
-                        <td className="stats-player-name">{player.name || 'Unknown Player'}</td>
-                        <td className="stats-team-name">{player.team_name || 'Unknown Team'}</td>
-                        <td className="stats-jersey-number">{player.jersey_number || ''}</td>
-                        <td className="stats-games-played">{player.games_played || 0}</td>
-                        <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
-                          {player.overall_score || 0}
-                        </td>
-                        {selectedRecentBracket?.sport_type === 'basketball' ? (
-                          <>
-                            <td className={getPerformanceColor(player.ppg, 'ppg')}>{player.ppg || 0}</td>
-                            <td className={getPerformanceColor(player.rpg, 'rpg')}>{player.rpg || 0}</td>
-                            <td className={getPerformanceColor(player.apg, 'apg')}>{player.apg || 0}</td>
-                            <td className="stats-bpg">{player.bpg || 0}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className={getPerformanceColor(player.kills, 'kills')}>{player.kills || 0}</td>
-                            <td className={getPerformanceColor(player.assists, 'assists')}>{player.assists || 0}</td>
-                            <td className={getPerformanceColor(player.digs, 'digs')}>{player.digs || 0}</td>
-                            <td className="stats-blocks">{player.blocks || 0}</td>
-                            <td className="stats-service-aces">{player.service_aces || 0}</td>
-                            <td className={getPerformanceColor(player.total_errors, 'total_errors')}>
-                              {player.total_errors || 0}
-                            </td>
-                            <td className={getPerformanceColor(player.total_receptions, 'total_receptions')}>
-                              {player.total_receptions || 0}
-                            </td>
-                            <td className={getPerformanceColor(player.service_errors, 'service_errors')}>
-                              {player.service_errors || 0}
-                            </td>
-                            <td className={getPerformanceColor(player.attack_errors, 'attack_errors')}>
-                              {player.attack_errors || 0}
-                            </td>
-                            <td className={getPerformanceColor(player.reception_errors, 'reception_errors')}>
-                              {player.reception_errors || 0}
-                            </td>
-                            <td className={getPerformanceColor(player.eff, 'eff')}>
-                              {player.eff || 0}
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+         <div className="recent-container container-3">
+  <div className="container-header">
+    <h3>Player Statistics</h3>
+  </div>
+  <div className="container-content">
+    <div className="stats-table-container">
+      <table className="stats-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Team</th>
+            <th>Jersey</th>
+            <th>GP</th>
+            <th>Overall</th>
+            {selectedRecentBracket?.sport_type === 'basketball' ? (
+              <>
+                <th>PPG</th>
+                <th>RPG</th>
+                <th>APG</th>
+                <th>BPG</th>
+              </>
+            ) : (
+              <>
+                <th>Kills</th>
+                <th>Assists</th>
+                <th>Digs</th>
+                <th>Blocks</th>
+                <th>Aces</th>
+                <th>Errors</th>
+                <th>Receptions</th>
+                <th>Svc Errors</th>
+                <th>Att Errors</th>
+                <th>Rec Errors</th>
+                <th>Assist Errors</th> {/* ADD THIS */}
+                <th>Eff</th>
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {allPlayersData.slice(0, 10).map((player, index) => (
+            <tr key={player.id || index} className="stats-player-row">
+              <td className="stats-rank-cell">
+                <div className={`stats-rank-badge ${index === 0 ? 'stats-rank-1' : index === 1 ? 'stats-rank-2' : index === 2 ? 'stats-rank-3' : 'stats-rank-other'}`}>
+                  {index + 1}
+                </div>
+              </td>
+              <td className="stats-player-name">{player.name || 'Unknown Player'}</td>
+              <td className="stats-team-name">{player.team_name || 'Unknown Team'}</td>
+              <td className="stats-jersey-number">{player.jersey_number || ''}</td>
+              <td className="stats-games-played">{player.games_played || 0}</td>
+              <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
+                {player.overall_score || 0}
+              </td>
+              {selectedRecentBracket?.sport_type === 'basketball' ? (
+                <>
+                  <td className={getPerformanceColor(player.ppg, 'ppg')}>{player.ppg || 0}</td>
+                  <td className={getPerformanceColor(player.rpg, 'rpg')}>{player.rpg || 0}</td>
+                  <td className={getPerformanceColor(player.apg, 'apg')}>{player.apg || 0}</td>
+                  <td className="stats-bpg">{player.bpg || 0}</td>
+                </>
+              ) : (
+                <>
+                  <td className={getPerformanceColor(player.kills, 'kills')}>{player.kills || 0}</td>
+                  <td className={getPerformanceColor(player.assists, 'assists')}>{player.assists || 0}</td>
+                  <td className={getPerformanceColor(player.digs, 'digs')}>{player.digs || 0}</td>
+                  <td className="stats-blocks">{player.blocks || 0}</td>
+                  <td className="stats-service-aces">{player.service_aces || 0}</td>
+                  <td className={getPerformanceColor(player.total_errors, 'total_errors')}>
+                    {player.total_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(player.total_receptions, 'total_receptions')}>
+                    {player.total_receptions || 0}
+                  </td>
+                  <td className={getPerformanceColor(player.service_errors, 'service_errors')}>
+                    {player.service_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(player.attack_errors, 'attack_errors')}>
+                    {player.attack_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(player.reception_errors, 'reception_errors')}>
+                    {player.reception_errors || 0}
+                  </td>
+                  {/* ADD THIS CELL */}
+                  <td className={getPerformanceColor(player.assist_errors, 'assist_errors')}>
+                    {player.assist_errors || 0}
+                  </td>
+                  <td className={getPerformanceColor(player.eff, 'eff')}>
+                    {player.eff || 0}
+                  </td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
               </div>
               {allPlayersData.length === 0 && (
                 <div className="empty-state">
@@ -1228,12 +1238,12 @@ const loadRecentBracketData = async (event, bracket) => {
                 <>
                   {/* Stats Cards */}
                   <div className="stats-cards-grid" style={{
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
-  gap: '20px',
-  padding: '0 20px',  // Add consistent horizontal padding
-  marginBottom: '24px'
-}}>
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '20px',
+                    padding: '0 20px',  // Add consistent horizontal padding
+                    marginBottom: '24px'
+                  }}>
                     <div className="stats-card stats-view-mode-card">
                       <div className="stats-card-header">
                         <span className="stats-card-label">View Mode</span>
@@ -1561,6 +1571,10 @@ const loadRecentBracketData = async (event, bracket) => {
                                       <td className={getPerformanceColor(player.reception_errors, 'reception_errors')}>
                                         {player.reception_errors || 0}
                                       </td>
+                                      {/* ADDED: assist_errors cell */}
+                                      <td className={getPerformanceColor(player.assist_errors, 'assist_errors')}>
+                                        {player.assist_errors || 0}
+                                      </td>
                                       <td className={getPerformanceColor(player.eff, 'eff')}>
                                         {player.eff || 0}
                                       </td>
@@ -1761,6 +1775,10 @@ const loadRecentBracketData = async (event, bracket) => {
                                       </td>
                                       <td className={getPerformanceColor(team.reception_errors, 'reception_errors')}>
                                         {team.reception_errors || 0}
+                                      </td>
+                                      {/* ADDED: assist_errors cell */}
+                                      <td className={getPerformanceColor(team.assist_errors, 'assist_errors')}>
+                                        {team.assist_errors || 0}
                                       </td>
                                       <td className={getPerformanceColor(team.eff, 'eff')}>
                                         {team.eff || 0}

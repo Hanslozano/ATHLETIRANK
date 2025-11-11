@@ -555,6 +555,7 @@ const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
                     <th>Service Errors</th>
                     <th>Attack Errors</th>
                     <th>Reception Errors</th>
+                    <th>Assist Errors</th> {/* ADDED: Assist Errors header */}
                     <th>Eff</th>
                   </>
                 )}
@@ -563,7 +564,8 @@ const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
             <tbody>
               {playerStats.map((player) => {
                 const jerseyNumber = player.jersey_number || player.jerseyNumber || "N/A";
-                const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0);
+                // UPDATED: Include assist_errors in total errors calculation
+                const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0) + (player.assist_errors || 0);
                 const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
                 
                 return (
@@ -594,6 +596,8 @@ const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
                         <td>{player.serve_errors || 0}</td>
                         <td>{player.attack_errors || 0}</td>
                         <td>{player.reception_errors || 0}</td>
+                        {/* ADDED: Assist Errors cell */}
+                        <td>{player.assist_errors || 0}</td>
                         <td>{efficiency}</td>
                       </>
                     )}
