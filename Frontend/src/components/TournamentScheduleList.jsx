@@ -996,7 +996,7 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
       </div>
 
       {/* Main Content */}
-      <div style={{ display: 'grid', gridTemplateColumns: showStandings && isRoundRobin ? '1fr 400px' : '1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: showStandings && isRoundRobin ? '1fr 400px' : '1fr', gap: '20px', transition: 'grid-template-columns 0.3s ease' }}>
         <div>
           {filteredMatches.length === 0 ? (
             <div style={{ 
@@ -1088,7 +1088,9 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
             background: '#1a2332', 
             maxHeight: 'fit-content', 
             position: 'sticky', 
-            top: '20px' 
+            top: '20px',
+            animation: 'slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1)',  // Added this
+            transformOrigin: 'right center'  // Added this
           }}>
             <div style={{ 
               background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
@@ -1144,9 +1146,19 @@ const TournamentScheduleList = ({ matches = [], eventId, bracketId, onRefresh, o
                           : '1px solid rgba(255, 255, 255, 0.05)',
                         borderRadius: '10px',
                         padding: '16px',
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s ease',
+                        animation: `fadeInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s backwards`,  // Added this
+                        cursor: 'pointer'  // Added this
                       }}
-                    >
+                    onMouseEnter={(e) => {  // Added hover effect
+                      e.currentTarget.style.transform = 'translateX(-4px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {  // Added hover effect
+                      e.currentTarget.style.transform = 'translateX(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
                       <div style={{ 
                         display: 'flex', 
                         alignItems: 'center', 

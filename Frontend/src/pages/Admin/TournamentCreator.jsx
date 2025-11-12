@@ -2978,6 +2978,66 @@ const handleCreateAllBrackets = async () => {
             background: rgba(255, 255, 255, 0.2);
             transform: translateY(-1px);
           }
+
+          /* Sport selection animation */
+
+/* Animation for when players section appears */
+.admin-teams-players-section {
+  animation: slideInFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 5000px;
+  }
+}
+
+/* Smooth transition for player cards appearing */
+.admin-teams-player-card {
+  animation: fadeInUp 0.3s ease-out backwards;
+}
+
+.admin-teams-player-card:nth-child(1) { animation-delay: 0.05s; }
+.admin-teams-player-card:nth-child(2) { animation-delay: 0.1s; }
+.admin-teams-player-card:nth-child(3) { animation-delay: 0.15s; }
+.admin-teams-player-card:nth-child(4) { animation-delay: 0.2s; }
+.admin-teams-player-card:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Position limits display animation */
+.position-limits-display {
+  animation: expandIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
       `}</style>
     </div>
   );

@@ -1050,3 +1050,202 @@
 .bracket-player-management-back-btn:hover {
   background: var(--text-secondary);
 }
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Fade in animation for initial table load */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide in from right animation for viewing standings */
+
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(30px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+/* Scale in animation for cards */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Staggered fade in for table rows */
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Apply animation to events table on first view */
+.bracket-view-section.purple-background {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animate table container */
+.awards_standings_table_container {
+  animation: scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animate table rows with stagger effect */
+.awards_standings_table tbody tr {
+  animation: fadeInRow 0.3s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.awards_standings_table tbody tr:nth-child(1) { animation-delay: 0.05s; }
+.awards_standings_table tbody tr:nth-child(2) { animation-delay: 0.1s; }
+.awards_standings_table tbody tr:nth-child(3) { animation-delay: 0.15s; }
+.awards_standings_table tbody tr:nth-child(4) { animation-delay: 0.2s; }
+.awards_standings_table tbody tr:nth-child(5) { animation-delay: 0.25s; }
+.awards_standings_table tbody tr:nth-child(6) { animation-delay: 0.3s; }
+.awards_standings_table tbody tr:nth-child(7) { animation-delay: 0.35s; }
+.awards_standings_table tbody tr:nth-child(8) { animation-delay: 0.4s; }
+.awards_standings_table tbody tr:nth-child(9) { animation-delay: 0.45s; }
+.awards_standings_table tbody tr:nth-child(10) { animation-delay: 0.5s; }
+
+/* Animation for when viewing standings (results tab) */
+.bracket-visualization-section {
+  animation: slideInFromRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animate event details header */
+.event-details-header {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animate tabs */
+.awards_standings_tabs {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s backwards;
+}
+
+/* Animate tab content */
+.awards_standings_tab_content {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s backwards;
+}
+
+/* Animate search and filters */
+.awards_standings_toolbar {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s backwards;
+}
+
+/* Animate standings table when it appears */
+.awards_standings_tab_content .awards_standings_table_container {
+  animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s backwards;
+}
+
+/* Animate MVP card */
+.awards_standings_mvp_card {
+  animation: scaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s backwards;
+}
+
+/* Animate MVP crown icon */
+.awards_standings_mvp_crown {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.3s backwards;
+}
+
+/* Animate MVP stats cards with stagger */
+.awards_standings_stat_card {
+  animation: scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.awards_standings_stat_card:nth-child(1) { animation-delay: 0.1s; }
+.awards_standings_stat_card:nth-child(2) { animation-delay: 0.15s; }
+.awards_standings_stat_card:nth-child(3) { animation-delay: 0.2s; }
+.awards_standings_stat_card:nth-child(4) { animation-delay: 0.25s; }
+.awards_standings_stat_card:nth-child(5) { animation-delay: 0.3s; }
+.awards_standings_stat_card:nth-child(6) { animation-delay: 0.35s; }
+.awards_standings_stat_card:nth-child(7) { animation-delay: 0.4s; }
+
+/* Animate awards section */
+.awards_standings_awards_section {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s backwards;
+}
+
+/* Animate pagination controls */
+.bracket-view-section > div:last-child {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s backwards;
+}
+
+/* Smooth transition when switching tabs */
+.awards_standings_tab_button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Breadcrumb animation */
+.bracket-breadcrumb {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* No data state animation */
+.bracket-no-brackets {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Loading spinner pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+
+
+.awards_standings_loading {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.awards_standings_loading p {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Reduce animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
