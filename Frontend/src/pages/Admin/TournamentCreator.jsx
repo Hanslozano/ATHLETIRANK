@@ -1795,13 +1795,13 @@ const handleCreateAllBrackets = async () => {
                                                 {team.players?.length || 0} players
                                               </span>
                                             </div>
-                                            <div className="players-table-container">
-                                              <table className="players-table">
+                                            <div className="players-table-container-new">
+                                              <table className="players-table-new">
                                                 <thead>
                                                   <tr>
-                                                    <th style={{ fontSize: '16px' }}>Jersey #</th>
-                                                    <th style={{ fontSize: '16px' }}>Player Name</th>
-                                                    <th style={{ fontSize: '16px' }}>Position</th>
+                                                <th style={{ fontSize: '16px', width: '80px' }}>Jersey #</th>
+<th style={{ fontSize: '16px' }}>Player Name</th>
+<th style={{ fontSize: '16px', width: '180px' }}>Position</th>
                                                   </tr>
                                                 </thead>
                                                 <tbody>
@@ -2154,20 +2154,22 @@ const handleCreateAllBrackets = async () => {
           border-radius: 8px;
           padding: 15px;
           margin-top: 10px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+          gap: 15px;
         }
 
-        .assigned-team-item {
+
+       .assigned-team-item {
           display: flex;
           flex-direction: column;
           gap: 0;
-          padding: 12px;
+          padding: 20px;
           background: #1a2332;
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 6px;
           transition: all 0.2s ease;
+          min-width: 350px;
         }
 
         .assigned-team-item:hover {
@@ -2176,8 +2178,8 @@ const handleCreateAllBrackets = async () => {
         }
 
         .team-number {
-          width: 32px;
-          height: 32px;
+          width: 40px;
+          height: 40px;
           background: #2196f3;
           color: white;
           border-radius: 50%;
@@ -2185,7 +2187,7 @@ const handleCreateAllBrackets = async () => {
           align-items: center;
           justify-content: center;
           font-weight: 600;
-          font-size: 16px;
+          font-size: 18px;
           flex-shrink: 0;
         }
 
@@ -2193,44 +2195,48 @@ const handleCreateAllBrackets = async () => {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 8px;
         }
 
         .team-name-row {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           flex-wrap: wrap;
         }
 
         .team-name-row strong {
           color: #e2e8f0;
           flex: 1;
+          font-size: 18px;
         }
 
         .team-meta {
           color: #94a3b8;
+          font-size: 15px;
         }
 
-        .team-expand-btn {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          color: #e2e8f0;
-          width: 32px;
-          height: 32px;
-          border-radius: 4px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          flex-shrink: 0;
-        }
+
+     .team-expand-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #e2e8f0;
+        width: 36px;
+        height: 36px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        font-size: 16px;
+      }
 
         .team-expand-btn:hover {
-          background: rgba(33, 150, 243, 0.3);
-          border-color: #2196f3;
-        }
+  background: rgba(33, 150, 243, 0.3);
+  border-color: #2196f3;
+}
 
         .team-players-dropdown {
           margin-top: 15px;
@@ -2252,91 +2258,132 @@ const handleCreateAllBrackets = async () => {
           }
         }
 
-        .players-dropdown-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15px;
-          padding-bottom: 10px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
+       .players-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 40px;
+}
 
-        .players-dropdown-header h4 {
-          margin: 0;
-          color: #e2e8f0;
-        }
+.players-dropdown-header h4 {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 16px;
+  flex: 1;
+}
 
-        .players-count {
-          color: #94a3b8;
-          background: rgba(255, 255, 255, 0.1);
-          padding: 4px 8px;
-          border-radius: 12px;
-        }
+.players-count {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  height: 28px;
+}
 
-        .players-table-container {
-          overflow-x: auto;
-        }
+.players-table-container-new {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
 
-        .players-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
+.players-table-new {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
 
-        .players-table th {
-          background: rgba(0, 0, 0, 0.4);
-          color: #e2e8f0;
-          padding: 12px 15px;
-          text-align: left;
-          font-weight: 600;
-          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-        }
+.players-table-new thead {
+  background: #0a0f1c;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
 
-        .players-table td {
-          padding: 12px 15px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-          color: #cbd5e1;
-        }
+.players-table-new th {
+  background: rgba(0, 0, 0, 0.4);
+  color: #e2e8f0;
+  padding: 12px 10px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  font-size: 16px;
+  height: 50px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.players-table-new td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  font-size: 16px;
+  height: 60px;
+  vertical-align: middle;
+}
+
+.players-table-new tr {
+  height: 60px;
+}
+
+.players-table-new tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+}
 
         .players-table tr:hover {
           background: rgba(255, 255, 255, 0.05);
         }
 
         .jersey-cell {
-          width: 80px;
-        }
+  width: 100px;
+  text-align: center;
+}
 
-        .jersey-number {
-          display: inline-block;
-          background: #2196f3;
-          color: white;
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-          font-size: 14px;
-        }
+     .jersey-number {
+  display: inline-flex;
+  background: #2196f3;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
 
-        .player-name-cell {
-          color: #e2e8f0;
-          font-weight: 500;
-        }
+ .player-name-cell {
+  color: #e2e8f0;
+  font-weight: 500;
+  padding-left: 15px !important;
+}
 
-        .position-cell {
-          width: 150px;
-        }
 
-        .position-badge {
-          display: inline-block;
-          background: rgba(255, 255, 255, 0.1);
-          color: #cbd5e1;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
+.position-cell {
+  width: 180px;
+  text-align: center;
+}
+
+       .position-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
 
         .no-players-message {
           text-align: center;
