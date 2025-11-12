@@ -2148,29 +2148,31 @@ const handleCreateAllBrackets = async () => {
           border-left: 3px solid #ef4444;
         }
 
-        .assigned-teams-list {
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          padding: 15px;
-          margin-top: 10px;
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-          gap: 15px;
-        }
+       .assigned-teams-list {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 15px;
+  align-items: start; /* ADD THIS LINE */
+}
 
 
        .assigned-team-item {
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-          padding: 20px;
-          background: #1a2332;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 6px;
-          transition: all 0.2s ease;
-          min-width: 350px;
-        }
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 20px;
+  background: #1a2332;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  min-width: 350px;
+  align-self: flex-start; /* ADD THIS LINE */
+}
 
         .assigned-team-item:hover {
           background: rgba(33, 150, 243, 0.1);
@@ -2322,6 +2324,20 @@ const handleCreateAllBrackets = async () => {
   white-space: nowrap;
 }
 
+/* ADD THESE SPECIFIC ALIGNMENTS */
+.players-table-new th:first-child {
+  text-align: center; /* Center Jersey # header */
+}
+
+.players-table-new th:nth-child(2) {
+  text-align: left;
+  padding-left: 15px; /* Align Player Name header with content */
+}
+
+.players-table-new th:last-child {
+  text-align: center; /* Center Position header */
+}
+
 .players-table-new td {
   padding: 12px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -2344,9 +2360,10 @@ const handleCreateAllBrackets = async () => {
           background: rgba(255, 255, 255, 0.05);
         }
 
-        .jersey-cell {
+ .jersey-cell {
   width: 100px;
   text-align: center;
+  padding: 12px 10px !important; /* Ensure consistent padding */
 }
 
      .jersey-number {
@@ -2362,16 +2379,17 @@ const handleCreateAllBrackets = async () => {
   font-size: 14px;
 }
 
- .player-name-cell {
+.player-name-cell {
   color: #e2e8f0;
   font-weight: 500;
   padding-left: 15px !important;
+  text-align: left;
 }
-
 
 .position-cell {
   width: 180px;
   text-align: center;
+  padding: 12px 10px !important; /* Ensure consistent padding */
 }
 
        .position-badge {
