@@ -550,7 +550,7 @@ const hasMoreMatches = () => {
       const player = newStats[playerIndex];
       const isTeam1 = player.team_id === selectedGame.team1_id;
       
-      if (statKey === "serve_errors" || statKey === "attack_errors" || statKey === "assist_errors") {
+      if (statKey === "serve_errors" || statKey === "attack_errors") {
         if (isTeam1) {
           setTeamScores(prev => {
             const newTeam2Scores = [...prev.team2];
@@ -1453,7 +1453,7 @@ const ControlBar = () => {
           const serveErrors = player.serve_errors ? player.serve_errors[i] || 0 : 0;
           const attackErrors = player.attack_errors ? player.attack_errors[i] || 0 : 0;
           const assistErrors = player.assist_errors ? player.assist_errors[i] || 0 : 0;
-          team2Scores[i] += serveErrors + attackErrors + assistErrors;
+          team2Scores[i] += serveErrors + attackErrors;
         }
       } else if (playerTeamId === team2Id) {
         // Team1 gets points from Team2's errors
@@ -1461,7 +1461,7 @@ const ControlBar = () => {
           const serveErrors = player.serve_errors ? player.serve_errors[i] || 0 : 0;
           const attackErrors = player.attack_errors ? player.attack_errors[i] || 0 : 0;
           const assistErrors = player.assist_errors ? player.assist_errors[i] || 0 : 0;
-          team1Scores[i] += serveErrors + attackErrors + assistErrors;
+          team1Scores[i] += serveErrors + attackErrors;
         }
       }
     });
@@ -1765,7 +1765,7 @@ const ControlBar = () => {
       const player = newStats[playerIndex];
       const isTeam1 = player.team_id === selectedGame.team1_id;
       
-      if (statName === "serve_errors" || statName === "attack_errors" || statName === "assist_errors") {
+      if (statName === "serve_errors" || statName === "attack_errors") {
         // When adding/removing an error, add/remove a point from the opponent
         if (isTeam1) {
           // Player is from team1, error gives point to team2
