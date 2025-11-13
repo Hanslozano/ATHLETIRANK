@@ -286,11 +286,11 @@ const DoubleEliminationBracket = ({ matches, eliminationType = 'double' }) => {
             <span style={{ fontSize: '1rem', color: '#a5b4fc' }}>Double Elimination</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Winner Rounds:</span>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Upper Bracket Rounds:</span>
             <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>{winnerRounds.length}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Loser Rounds:</span>
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '1rem' }}>Lower Bracket Rounds:</span>
             <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#ef4444' }}>{loserRounds.length}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -488,8 +488,8 @@ const DoubleEliminationBracket = ({ matches, eliminationType = 'double' }) => {
 
           <div className="double-main-bracket-container">
             <div className="double-left-brackets">
-              {winnerMatches.length > 0 && renderBracketSection(winnerRounds, winnerMatches, 'winner', "Winner's Bracket")}
-              {loserMatches.length > 0 && renderBracketSection(loserRounds, loserMatches, 'loser', "Loser's Bracket")}
+              {winnerMatches.length > 0 && renderBracketSection(winnerRounds, winnerMatches, 'winner', "Upper Bracket")}
+              {loserMatches.length > 0 && renderBracketSection(loserRounds, loserMatches, 'loser', "Lower Bracket")}
             </div>
 
             {championshipMatches.length > 0 && (
