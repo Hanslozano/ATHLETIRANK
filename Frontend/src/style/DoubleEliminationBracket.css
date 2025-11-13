@@ -4,12 +4,12 @@
   padding: 32px;
   background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%);
   border-radius: 16px;
-  min-height: 500px;
+  min-height: auto;  /* Increased from 500px */
+   padding-bottom: 32px;
   position: relative;
-  overflow-x: auto;
-  overflow-y: auto;
+ overflow-x: hidden;  /* CHANGE to hidden */
+  overflow-y: visible;  /* Changed from auto */
   width: 100%;
-  overflow: visible;
 }
 
 .double-bracket {
@@ -20,6 +20,7 @@
   min-width: fit-content;
   width: fit-content;
   padding: 20px;
+  padding-bottom: 20px;
 }
 
 /* Main Layout */
@@ -38,11 +39,10 @@
 .double-bracket .double-left-brackets {
   display: flex;
   flex-direction: column;
-  gap: 80px;
+  gap: 200px;  /* Increased from 80px */
   flex-shrink: 0;
   position: relative;
 }
-
 .double-bracket .double-right-championship {
   display: flex;
   flex-direction: column;
@@ -571,6 +571,9 @@
 
 .double-bracket .bracket-reset-explanation {
   margin-top: 40px;
+  position: relative;
+  width: 100%;
+  clear: both;
   padding: 24px;
   background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 107, 53, 0.05) 100%);
   border: 2px solid rgba(255, 107, 53, 0.3);

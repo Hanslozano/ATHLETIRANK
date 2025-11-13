@@ -327,9 +327,8 @@ const DoubleEliminationBracket = ({ matches, eliminationType = 'double' }) => {
         borderRadius: '16px',
         border: '2px solid rgba(255, 255, 255, 0.15)',
         backdropFilter: 'blur(8px)'
-      }}>
-        <div className="double-bracket" ref={bracketRef} style={{ minWidth: 'fit-content', display: 'inline-block', paddingRight: '500px', paddingBottom: '50px' }}>
-          
+        }}>
+        <div className="double-bracket" ref={bracketRef} style={{ minWidth: 'fit-content', display: 'inline-block', paddingRight: '50px', paddingBottom: '50px' }}>
           <svg className="double-connection-lines" xmlns="http://www.w3.org/2000/svg">
             
             {/* Draw all regular bracket connections */}
@@ -399,7 +398,12 @@ const DoubleEliminationBracket = ({ matches, eliminationType = 'double' }) => {
               const maxWinnerRound = Math.max(...winnerPoints.map(p => p.roundIndex), -1);
               const maxLoserRound = Math.max(...loserPoints.map(p => p.roundIndex), -1);
               
-              const winnerFinalPoint = winnerPoints.find(p => p.roundIndex === maxWinnerRound);
+              // Get the LAST match in the final winner's round (highest matchIndex)
+              const winnerFinalMatches = winnerPoints.filter(p => p.roundIndex === maxWinnerRound);
+              const winnerFinalPoint = winnerFinalMatches.length > 0 
+                ? winnerFinalMatches[winnerFinalMatches.length - 1] 
+                : null;
+              
               const loserFinalPoint = loserPoints.find(p => p.roundIndex === maxLoserRound);
               
               if (!winnerFinalPoint || !loserFinalPoint) return null;
@@ -489,35 +493,28 @@ const DoubleEliminationBracket = ({ matches, eliminationType = 'double' }) => {
             </div>
 
             {championshipMatches.length > 0 && (
-              <div className="double-right-championship">
-                <div className={`bracket-section championship-bracket-section ${hasResetFinal ? 'has-reset' : ''}`} data-bracket-type="championship">
-                  <h3 className="double-bracket-title championship-title">
-                    Championship
-                    {hasResetFinal && <span className="reset-final-info">Reset Format</span>}
-                  </h3>
-                  
-                  <div className="championship-rounds-wrapper">
-                    {grandFinalMatch && (
-                      <div className="championship-match-container" data-round="0">
-                        <div className="championship-label grand-final-label">Grand Final</div>
-                        <div className="matches">
-                          {renderMatch(grandFinalMatch, 0, 'championship')}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {resetFinalMatch && resetFinalMatch.status !== 'hidden' && (
-                      <div className="championship-match-container" data-round="1">
-                        <div className="championship-label reset-final-label">Reset Final</div>
-                        <div className="matches">
-                          {renderMatch(resetFinalMatch, 0, 'championship')}
-                        </div>
-                      </div>
-                    )}
+            <div className="double-right-championship">
+              <div className="bracket-section championship-bracket-section" data-bracket-type="championship">
+                <h3 className={`double-bracket-title championship-title ${resetFinalMatch && resetFinalMatch.status !== 'hidden' ? 'reset-active' : ''}`}>
+                  {resetFinalMatch && resetFinalMatch.status !== 'hidden' ? 'Championship - Reset Final' : 'Championship'}
+                </h3>
+                
+                <div className="championship-rounds-wrapper">
+                  <div className="championship-match-container" data-round="0">
+                    <div className={`championship-label ${resetFinalMatch && resetFinalMatch.status !== 'hidden' ? 'reset-final-label' : 'grand-final-label'}`}>
+                      {resetFinalMatch && resetFinalMatch.status !== 'hidden' ? 'Reset Final' : 'Grand Final'}
+                    </div>
+                    <div className="matches">
+                      {resetFinalMatch && resetFinalMatch.status !== 'hidden' 
+                        ? renderMatch(resetFinalMatch, 0, 'championship')
+                        : renderMatch(grandFinalMatch, 0, 'championship')
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
           </div>
 
           {(winnerRounds.length === 0 && loserRounds.length === 0) && (
@@ -529,20 +526,10 @@ const DoubleEliminationBracket = ({ matches, eliminationType = 'double' }) => {
             </div>
           )}
           
-          {hasResetFinal && resetFinalMatch && resetFinalMatch.status !== 'hidden' && (
-            <div className="bracket-reset-explanation">
-              <div className="reset-explanation-content">
-                <h4>🔄 Bracket Reset Active</h4>
-                <p>
-                  The Loser's Bracket winner defeated the Winner's Bracket winner in the Grand Final!
-                  Since the Winner's Bracket team had not lost before, a Reset Final is now required.
-                  Both teams start the Reset Final with a clean slate.
-                </p>
-              </div>
-            </div>
-          )}
+        
         </div>
       </div>
+    
     </div>
   );
 };

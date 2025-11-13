@@ -273,14 +273,18 @@ const CustomBracket = ({ matches, eliminationType = 'single' }) => {
       </div>
 
       {/* Bracket Container */}
-      <div style={{ 
+       <div style={{ 
         padding: '32px',
         background: 'rgba(15, 23, 42, 0.6)',
         borderRadius: '16px',
         border: '2px solid rgba(255, 255, 255, 0.15)',
-        backdropFilter: 'blur(8px)'
+        backdropFilter: 'blur(8px)',
+        overflowX: 'auto',
+        overflowY: 'hidden'
       }}>
-        <div className="enhanced-bracket" ref={bracketRef}>
+        
+        <div className="enhanced-bracket" ref={bracketRef} style={{ minWidth: 'fit-content' }}>
+   
           {/* Connection Lines */}
           <svg className="connection-lines" xmlns="http://www.w3.org/2000/svg">
             {connectionPoints.map((fromPoint, i) => {
