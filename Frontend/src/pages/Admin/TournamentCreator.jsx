@@ -13,7 +13,7 @@ const TournamentCreator = ({ sidebarOpen }) => {
   const validationMessageRef = React.useRef(null);
   const dashboardContentRef = React.useRef(null);
 
-  const maxTeams = eventData.numberOfBrackets * 10;
+ 
   
   // Scroll to validation message when error appears
  useEffect(() => {
@@ -81,6 +81,7 @@ const fileInputRef = React.useRef(null);
     endDate: "",
     numberOfBrackets: 1
   });
+  const maxTeams = eventData.numberOfBrackets * 10;
   const [createdEvent, setCreatedEvent] = useState(null);
 
   // Step 2: Teams Data
