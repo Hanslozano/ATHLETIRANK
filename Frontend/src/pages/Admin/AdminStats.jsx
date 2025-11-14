@@ -521,6 +521,9 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         serve_errors: { high: 10, low: 3 },
         attack_errors: { high: 8, low: 2 },
         reception_errors: { high: 6, low: 1 },
+        assist_errors: { high: 6, low: 1 },
+        blocking_errors: { high: 5, low: 1 },
+        ball_handling_errors: { high: 5, low: 1 },
         eff: { high: 80, low: 30 },
         overall_score: { high: 25, low: 12 }
       };
@@ -565,9 +568,11 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.total_rebounds
       ]);
     } else {
+      // UPDATED: Add new error columns
       headers = ['Rank', 'Player', 'Team', 'Jersey', 'Games Played', 'Overall Score', 
                 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Aces', 
-                'Total Receptions', 'Service Errors', 'Attack Errors', 'Reception Errors', 'Assist Errors', 'Efficiency'];
+                'Total Receptions', 'Service Errors', 'Attack Errors', 'Reception Errors', 
+                'Assist Errors', 'Blocking Errors', 'Ball Handling Errors', 'Efficiency'];
       rows = filteredPlayers.map((player, index) => [
         index + 1,
         player.name,
@@ -585,6 +590,8 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         player.attack_errors || 0,
         player.reception_errors || 0,
         player.assist_errors || 0,
+        player.blocking_errors || 0,  // NEW
+        player.ball_handling_errors || 0,  // NEW
         player.eff || 0
       ]);
     }
@@ -622,25 +629,31 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
         team.total_rebounds
       ]);
    } else {
-  headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'Total Kills', 'Total Assists', 'Total Digs', 'Total Blocks', 'Total Aces', 'Total Receptions', 'Service Errors', 'Attack Errors', 'Reception Errors', 'Assist Errors', 'Efficiency'];
-  rows = filteredTeams.map((team, index) => [
-    index + 1,
-    team.team_name,
-    team.games_played,
-    team.overall_score || 0,
-    team.kills || 0,
-    team.assists || 0,
-    team.digs || 0,
-    team.blocks || 0,
-    team.service_aces || 0,
-    team.receptions || 0,
-    team.serve_errors || 0,
-    team.attack_errors || 0,
-    team.reception_errors || 0,
-    team.assist_errors || 0,
-    team.eff || 0
-  ]);
-}
+      // UPDATED: Add new error columns
+      headers = ['Rank', 'Team', 'Games Played', 'Overall Score', 'Total Kills', 'Total Assists', 
+                'Total Digs', 'Total Blocks', 'Total Aces', 'Total Receptions', 'Service Errors', 
+                'Attack Errors', 'Reception Errors', 'Assist Errors', 'Blocking Errors', 
+                'Ball Handling Errors', 'Efficiency'];
+      rows = filteredTeams.map((team, index) => [
+        index + 1,
+        team.team_name,
+        team.games_played,
+        team.overall_score || 0,
+        team.kills || 0,
+        team.assists || 0,
+        team.digs || 0,
+        team.blocks || 0,
+        team.service_aces || 0,
+        team.receptions || 0,
+        team.serve_errors || 0,
+        team.attack_errors || 0,
+        team.reception_errors || 0,
+        team.assist_errors || 0,
+        team.blocking_errors || 0,  // NEW
+        team.ball_handling_errors || 0,  // NEW
+        team.eff || 0
+      ]);
+    }
     
     const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
     const encodedUri = encodeURI(`data:text/csv;charset=utf-8,${csvContent}`);
@@ -777,6 +790,13 @@ const renderVolleyballPlayerHeaders = () => {
       <th className="stats-sortable-header" onClick={() => handleSort('assist_errors')}>
         Assist Errors {sortConfig.key === 'assist_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
+      {/* NEW: Add these two headers */}
+      <th className="stats-sortable-header" onClick={() => handleSort('blocking_errors')}>
+        Blocking Errors {sortConfig.key === 'blocking_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+      </th>
+      <th className="stats-sortable-header" onClick={() => handleSort('ball_handling_errors')}>
+        Ball Handling Errors {sortConfig.key === 'ball_handling_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+      </th>
       <th className="stats-sortable-header" onClick={() => handleSort('eff')}>
         Efficiency {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
@@ -813,39 +833,42 @@ const renderVolleyballPlayerHeaders = () => {
   };
 
   // Render Volleyball Players Table Rows
-  const renderVolleyballPlayerRows = () => {
-    return currentPlayers.map((player, index) => (
-      <tr key={player.id} className="stats-player-row">
-        <td className="stats-rank-cell">
-          <div className={`stats-rank-badge ${
-            indexOfFirstItem + index === 0 ? 'stats-rank-1' : 
-            indexOfFirstItem + index === 1 ? 'stats-rank-2' :
-            indexOfFirstItem + index === 2 ? 'stats-rank-3' : 'stats-rank-other'
-          }`}>
-            {indexOfFirstItem + index + 1}
-          </div>
-        </td>
-        <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>{player.name}</td>
-        <td className="stats-team-name" style={{ fontSize: '0.9rem' }}>{player.team_name}</td>
-        <td className="stats-jersey-number">{player.jersey_number}</td>
-        <td className="stats-games-played">{player.games_played}</td>
-        <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
-          {player.overall_score || 0}
-        </td>
-        <td className={getPerformanceColor(player.kills, 'kills')}>{player.kills || 0}</td>
-        <td className={getPerformanceColor(player.assists, 'assists')}>{player.assists || 0}</td>
-        <td className={getPerformanceColor(player.digs, 'digs')}>{player.digs || 0}</td>
-        <td className="stats-blocks">{player.blocks || 0}</td>
-        <td className="stats-service-aces">{player.service_aces || 0}</td>
-        <td className={getPerformanceColor(player.receptions, 'receptions')}>{player.receptions || 0}</td>
-        <td className="stats-error">{player.serve_errors || 0}</td>
-        <td className="stats-error">{player.attack_errors || 0}</td>
-        <td className="stats-error">{player.reception_errors || 0}</td>
-        <td className="stats-error">{player.assist_errors || 0}</td>
-        <td className={getPerformanceColor(player.eff, 'eff')}>{player.eff || 0}</td>
-      </tr>
-    ));
-  };
+const renderVolleyballPlayerRows = () => {
+  return currentPlayers.map((player, index) => (
+    <tr key={player.id} className="stats-player-row">
+      <td className="stats-rank-cell">
+        <div className={`stats-rank-badge ${
+          indexOfFirstItem + index === 0 ? 'stats-rank-1' : 
+          indexOfFirstItem + index === 1 ? 'stats-rank-2' :
+          indexOfFirstItem + index === 2 ? 'stats-rank-3' : 'stats-rank-other'
+        }`}>
+          {indexOfFirstItem + index + 1}
+        </div>
+      </td>
+      <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>{player.name}</td>
+      <td className="stats-team-name" style={{ fontSize: '0.9rem' }}>{player.team_name}</td>
+      <td className="stats-jersey-number">{player.jersey_number}</td>
+      <td className="stats-games-played">{player.games_played}</td>
+      <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
+        {player.overall_score || 0}
+      </td>
+      <td className={getPerformanceColor(player.kills, 'kills')}>{player.kills || 0}</td>
+      <td className={getPerformanceColor(player.assists, 'assists')}>{player.assists || 0}</td>
+      <td className={getPerformanceColor(player.digs, 'digs')}>{player.digs || 0}</td>
+      <td className="stats-blocks">{player.blocks || 0}</td>
+      <td className="stats-service-aces">{player.service_aces || 0}</td>
+      <td className={getPerformanceColor(player.receptions, 'receptions')}>{player.receptions || 0}</td>
+      <td className="stats-error">{player.serve_errors || 0}</td>
+      <td className="stats-error">{player.attack_errors || 0}</td>
+      <td className="stats-error">{player.reception_errors || 0}</td>
+      <td className="stats-error">{player.assist_errors || 0}</td>
+      {/* NEW: Add these two cells */}
+      <td className="stats-error">{player.blocking_errors || 0}</td>
+      <td className="stats-error">{player.ball_handling_errors || 0}</td>
+      <td className={getPerformanceColor(player.eff, 'eff')}>{player.eff || 0}</td>
+    </tr>
+  ));
+};
 
   // Render Basketball Teams Table Headers
   const renderBasketballTeamHeaders = () => {
@@ -878,74 +901,49 @@ const renderVolleyballPlayerHeaders = () => {
       </>
     );
   };
+
 // Render Volleyball Teams Table Headers
 const renderVolleyballTeamHeaders = () => {
   return (
     <>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('kills')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('kills')}>
         Total Kills {sortConfig.key === 'kills' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('assists')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('assists')}>
         Total Assists {sortConfig.key === 'assists' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('digs')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('digs')}>
         Total Digs {sortConfig.key === 'digs' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('blocks')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('blocks')}>
         Total Blocks {sortConfig.key === 'blocks' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('service_aces')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('service_aces')}>
         Total Aces {sortConfig.key === 'service_aces' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('receptions')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('receptions')}>
         Total Receptions {sortConfig.key === 'receptions' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('serve_errors')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('serve_errors')}>
         Service Errors {sortConfig.key === 'serve_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('attack_errors')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('attack_errors')}>
         Attack Errors {sortConfig.key === 'attack_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('reception_errors')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('reception_errors')}>
         Reception Errors {sortConfig.key === 'reception_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('assist_errors')}
-      >
+      <th className="stats-sortable-header" onClick={() => handleSort('assist_errors')}>
         Assist Errors {sortConfig.key === 'assist_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
-      <th 
-        className="stats-sortable-header"
-        onClick={() => handleSort('eff')}
-      >
+      {/* NEW: Add these two headers */}
+      <th className="stats-sortable-header" onClick={() => handleSort('blocking_errors')}>
+        Blocking Errors {sortConfig.key === 'blocking_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+      </th>
+      <th className="stats-sortable-header" onClick={() => handleSort('ball_handling_errors')}>
+        Ball Handling Errors {sortConfig.key === 'ball_handling_errors' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
+      </th>
+      <th className="stats-sortable-header" onClick={() => handleSort('eff')}>
         Efficiency {sortConfig.key === 'eff' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
       </th>
     </>
@@ -1008,6 +1006,9 @@ const renderVolleyballTeamRows = () => {
       <td className="stats-error">{team.attack_errors || 0}</td>
       <td className="stats-error">{team.reception_errors || 0}</td>
       <td className="stats-error">{team.assist_errors || 0}</td>
+      {/* NEW: Add these two cells */}
+      <td className="stats-error">{team.blocking_errors || 0}</td>
+      <td className="stats-error">{team.ball_handling_errors || 0}</td>
       <td className={getPerformanceColor(team.eff, 'eff')}>
         {team.eff || 0}
       </td>
@@ -1339,7 +1340,7 @@ const renderVolleyballTeamRows = () => {
                     <th>Fouls</th>
                     <th>TO</th>
                   </>
-               ) : (
+              ) : (
                 <>
                   <th>Kills</th>
                   <th>Assists</th>
@@ -1351,6 +1352,8 @@ const renderVolleyballTeamRows = () => {
                   <th>Attack Errors</th>
                   <th>Reception Errors</th>
                   <th>Assist Errors</th>
+                  <th>Blocking Errors</th>  {/* NEW */}
+                  <th>Ball Handling Errors</th>  {/* NEW */}
                   <th>Eff</th>
                 </>
               )}
@@ -1359,8 +1362,17 @@ const renderVolleyballTeamRows = () => {
             <tbody>
               {filteredPlayerStats.map((player) => {
                 const jerseyNumber = player.jersey_number || player.jerseyNumber || "N/A";
-                const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0);
-                const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
+                const totalErrors = (player.serve_errors || 0) + 
+                                 (player.attack_errors || 0) + 
+                                 (player.reception_errors || 0) + 
+                                 (player.assist_errors || 0) +
+                                 (player.blocking_errors || 0) +  // NEW
+                                 (player.ball_handling_errors || 0);  // NEW
+                const efficiency = (player.kills || 0) + 
+                                (player.digs || 0) + 
+                                (player.volleyball_blocks || 0) + 
+                                (player.service_aces || 0) - 
+                                totalErrors;
                 
                 return (
                   <tr key={player.player_id}>
@@ -1391,6 +1403,8 @@ const renderVolleyballTeamRows = () => {
                         <td>{player.attack_errors || 0}</td>
                         <td>{player.reception_errors || 0}</td>
                         <td>{player.assist_errors || 0}</td>
+                        <td>{player.blocking_errors || 0}</td>  {/* NEW */}
+                        <td>{player.ball_handling_errors || 0}</td>  {/* NEW */}
                         <td className={getPerformanceColor(efficiency, 'eff')}>{efficiency}</td>
                       </>
                     )}
@@ -1414,7 +1428,8 @@ const renderVolleyballTeamRows = () => {
     if (isBasketball) {
       csvContent += "Player,Team,Jersey,PTS,AST,REB,STL,BLK,3PM,Fouls,TO\n";
     } else {
-      csvContent += "Player,Team,Jersey,Kills,Assists,Digs,Blocks,Aces,Receptions,Service Errors,Attack Errors,Reception Errors,Assist Errors,Eff\n";
+      // UPDATED: Add new error columns
+      csvContent += "Player,Team,Jersey,Kills,Assists,Digs,Blocks,Aces,Receptions,Service Errors,Attack Errors,Reception Errors,Assist Errors,Blocking Errors,Ball Handling Errors,Eff\n";
     }
 
     playerStats.forEach(player => {
@@ -1422,9 +1437,18 @@ const renderVolleyballTeamRows = () => {
       if (isBasketball) {
         csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.points || 0},${player.assists || 0},${player.rebounds || 0},${player.steals || 0},${player.blocks || 0},${player.three_points_made || 0},${player.fouls || 0},${player.turnovers || 0}\n`;
       } else {
-        const totalErrors = (player.serve_errors || 0) + (player.attack_errors || 0) + (player.reception_errors || 0) + (player.assist_errors || 0);
-        const efficiency = (player.kills || 0) + (player.digs || 0) + (player.volleyball_blocks || 0) + (player.service_aces || 0) - totalErrors;
-        csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.kills || 0},${player.volleyball_assists || 0},${player.digs || 0},${player.volleyball_blocks || 0},${player.service_aces || 0},${player.receptions || 0},${player.serve_errors || 0},${player.attack_errors || 0},${player.reception_errors || 0},${player.assist_errors || 0},${efficiency}\n`;
+        const totalErrors = (player.serve_errors || 0) + 
+                         (player.attack_errors || 0) + 
+                         (player.reception_errors || 0) + 
+                         (player.assist_errors || 0) +
+                         (player.blocking_errors || 0) +  // NEW
+                         (player.ball_handling_errors || 0);  // NEW
+        const efficiency = (player.kills || 0) + 
+                        (player.digs || 0) + 
+                        (player.volleyball_blocks || 0) + 
+                        (player.service_aces || 0) - 
+                        totalErrors;
+        csvContent += `${player.player_name},${player.team_name},${jerseyNumber},${player.kills || 0},${player.volleyball_assists || 0},${player.digs || 0},${player.volleyball_blocks || 0},${player.service_aces || 0},${player.receptions || 0},${player.serve_errors || 0},${player.attack_errors || 0},${player.reception_errors || 0},${player.assist_errors || 0},${player.blocking_errors || 0},${player.ball_handling_errors || 0},${efficiency}\n`;
       }
     });
     
