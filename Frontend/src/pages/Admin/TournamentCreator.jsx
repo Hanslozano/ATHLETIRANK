@@ -12,6 +12,8 @@ const TournamentCreator = ({ sidebarOpen }) => {
   const [validationError, setValidationError] = useState("");
   const validationMessageRef = React.useRef(null);
   const dashboardContentRef = React.useRef(null);
+
+  const maxTeams = eventData.numberOfBrackets * 10;
   
   // Scroll to validation message when error appears
  useEffect(() => {
@@ -636,7 +638,7 @@ Jane Smith,12,${currentTeam.sport === 'Basketball' ? 'Shooting Guard' : 'Outside
 };
 
 const handleAddTeam = async () => {
-  if (createdTeams.length >= 10 && !editingTeamId) {
+ if (createdTeams.length >= maxTeams && !editingTeamId) {
     setValidationError("Maximum 10 teams allowed per tournament. Please remove a team before adding a new one.");
     return;
   }
@@ -712,10 +714,10 @@ const handleAddTeam = async () => {
       return;
     }
 
-     if (createdTeams.length > 10) {
-    setValidationError("Maximum 10 teams allowed per tournament");
-    return;
-  }
+if (createdTeams.length > maxTeams) {
+  setValidationError(`Maximum ${maxTeams} teams allowed for ${eventData.numberOfBrackets} bracket(s)`);
+  return;
+}
 
     // Validate sport consistency for each bracket
     if (eventData.numberOfBrackets === 1) {
@@ -771,7 +773,7 @@ const handleAddTeam = async () => {
 
   // Handle selecting existing team with bracket assignment
   const handleSelectExistingTeam = (teamId, bracketId = null) => {
-     if (createdTeams.length >= 10) {
+     if (createdTeams.length >= maxTeams) {
     setValidationError("Maximum 10 teams allowed per tournament. Please remove a team before adding a new one.");
     return;
   }
@@ -1242,8 +1244,8 @@ const handleAddTeam = async () => {
                   {/* Created/Selected Teams Summary */}
                   {createdTeams.length > 0 && (
                     <div className="created-teams-summary">
-                      <h3>Selected Teams ({createdTeams.length}/10)</h3>
-                      {createdTeams.length >= 10 && (
+                    <h3>Selected Teams ({createdTeams.length}/{maxTeams})</h3>
+                     {createdTeams.length >= maxTeams && (
                         <div style={{
                           background: 'rgba(251, 191, 36, 0.1)',
                           border: '1px solid rgba(251, 191, 36, 0.3)',
@@ -1254,7 +1256,7 @@ const handleAddTeam = async () => {
                           fontSize: '14px',
                           textAlign: 'center'
                         }}>
-                          ⚠️ Maximum team limit reached (10/10). Remove a team to add another.
+                          ⚠️ Maximum team limit reached ({createdTeams.length}/{maxTeams}). Remove a team to add another.
                         </div>
                       )}
 
@@ -1537,11 +1539,11 @@ const handleAddTeam = async () => {
                         <button 
                           onClick={handleAddTeam}
                           className="bracket-submit-btn"
-                          disabled={loading || validPlayerCount < 12 || validPlayerCount > 15 || (createdTeams.length >= 10 && !editingTeamId)}
+                  disabled={loading || validPlayerCount < 12 || validPlayerCount > 15 || (createdTeams.length >= maxTeams && !editingTeamId)}
                         >
-                          {loading ? (editingTeamId ? "Updating..." : "Adding...") : 
+                         {loading ? (editingTeamId ? "Updating..." : "Adding...") : 
                           editingTeamId ? "Update Team" :
-                          createdTeams.length >= 10 ? "Team Limit Reached (10/10)" : "Add Team"}
+                          createdTeams.length >= maxTeams ? `Team Limit Reached (${maxTeams}/${maxTeams})` : "Add Team"}
                         </button>
                         <button
                           type="button"
