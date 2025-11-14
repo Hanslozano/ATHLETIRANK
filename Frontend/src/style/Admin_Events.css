@@ -23,6 +23,107 @@
   --border-radius-lg: 12px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.bracket-view-btn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Prevent button wrapping in actions column */
+.event-brackets-table-container td:last-child > div {
+  flex-wrap: nowrap !important;
+}
+/* Event Group Styles */
+.events-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.event-group-container {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--background-card);
+  transition: all 0.3s ease;
+}
+
+.event-group-container:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.event-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(92, 94, 194, 0.1) 100%);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.event-group-header:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+}
+
+.event-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.event-expand-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px;
+}
+
+.event-header-info {
+  flex: 1;
+}
+
+.event-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.event-brackets-table-container {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.event-brackets-table-container table {
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+/* Animation for expand/collapse */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .event-group-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .event-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
 /* Breadcrumb Styles */
 .bracket-breadcrumb {
   display: flex;
