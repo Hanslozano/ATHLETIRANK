@@ -259,6 +259,38 @@ const getPositionLimits = (teamSize, sport) => {
     }
   }, [currentStep, eventData.numberOfBrackets, teamBracketAssignments, createdTeams]);
 
+  // Check for pre-selected event from Admin Events page
+useEffect(() => {
+  const storedEvent = sessionStorage.getItem('selectedEventForBracket');
+  
+  if (storedEvent) {
+    try {
+      const eventData = JSON.parse(storedEvent);
+      
+      // Set the event data
+      setEventData({
+        name: eventData.name,
+        startDate: eventData.start_date.split('T')[0], // Format for date input
+        endDate: eventData.end_date.split('T')[0],     // Format for date input
+        numberOfBrackets: 1 // Default to 1 bracket
+      });
+      
+      // Set created event (since it already exists)
+      setCreatedEvent(eventData);
+      
+      // Move to step 2 immediately
+      setCurrentStep(2);
+      
+      // Clear the session storage
+      sessionStorage.removeItem('selectedEventForBracket');
+      
+      console.log('Loaded event from Admin Events:', eventData);
+    } catch (err) {
+      console.error('Error loading event data:', err);
+    }
+  }
+}, []);
+
   // NEW: Toggle team details expansion
   const toggleTeamDetails = (teamId) => {
     setExpandedTeams(prev => ({
@@ -877,8 +909,8 @@ const handleAddTeam = async () => {
       (!otherBracketsTeams.includes(team.id) || currentBracket.selectedTeamIds.includes(team.id))
     );
   };
-const handleCreateAllBrackets = async () => {
-  console.log("=== CREATING EVENT AND BRACKETS ===");
+  const handleCreateAllBrackets = async () => {
+  console.log("=== CREATING BRACKETS FOR EVENT ===");
   
   // Validate event data
   if (!eventData.name.trim() || !eventData.startDate || !eventData.endDate) {
@@ -905,51 +937,56 @@ const handleCreateAllBrackets = async () => {
     }
   }
 
- 
   setLoading(true);
   const createdBracketsList = [];
 
   try {
-    // STEP 1: Create the event FIRST (existing code)
-    console.log("Creating event:", eventData);
-    const eventRes = await fetch("http://localhost:5000/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    let eventToUse = createdEvent; // Use existing event if available
+    
+    // STEP 1: Create event ONLY if it doesn't exist yet
+    if (!createdEvent) {
+      console.log("Creating new event:", eventData);
+      const eventRes = await fetch("http://localhost:5000/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: eventData.name,
+          start_date: eventData.startDate,
+          end_date: eventData.endDate
+        })
+      });
+      
+      if (!eventRes.ok) {
+        const error = await eventRes.json();
+        throw new Error(error.message || "Failed to create event");
+      }
+
+      const eventResponse = await eventRes.json();
+      eventToUse = {
+        id: eventResponse.id || eventResponse.eventId,
         name: eventData.name,
         start_date: eventData.startDate,
         end_date: eventData.endDate
-      })
-    });
-    
-    if (!eventRes.ok) {
-      const error = await eventRes.json();
-      throw new Error(error.message || "Failed to create event");
+      };
+      
+      console.log("Event created:", eventToUse);
+      setCreatedEvent(eventToUse);
+    } else {
+      console.log("Using existing event:", eventToUse);
     }
 
-    const eventResponse = await eventRes.json();
-    const newEvent = {
-      id: eventResponse.id || eventResponse.eventId,
-      name: eventData.name,
-      start_date: eventData.startDate,
-      end_date: eventData.endDate
-    };
-    
-    console.log("Event created:", newEvent);
-    setCreatedEvent(newEvent);
-
-    // STEP 2: Create all brackets for the event
+    // STEP 2: Create all brackets for the event (use eventToUse instead of newEvent)
     for (let i = 0; i < brackets.length; i++) {
       const bracket = brackets[i];
       const sportType = bracket.sport.toLowerCase();
       const bracketName = bracket.bracketName || 
-        `${newEvent.name} - ${capitalize(bracket.sport)} Bracket`;
+        `${eventToUse.name} - ${capitalize(bracket.sport)} Bracket`;
       
       const requestBody = {
-        event_id: newEvent.id,
+        event_id: eventToUse.id,  // Changed from newEvent.id to eventToUse.id
         name: bracketName,
         sport_type: sportType,
-        elimination_type: bracket.bracketType // This will now include 'round_robin'
+        elimination_type: bracket.bracketType
       };
 
       console.log(`Creating bracket ${i + 1}:`, requestBody);
@@ -980,7 +1017,7 @@ const handleCreateAllBrackets = async () => {
         });
       }
 
-      // UPDATED: Route to correct endpoint based on bracket type
+      // Generate matches based on bracket type
       let generateEndpoint;
       if (bracket.bracketType === 'round_robin') {
         generateEndpoint = `http://localhost:5000/api/round-robin/${newBracket.id}/generate`;
@@ -1006,7 +1043,7 @@ const handleCreateAllBrackets = async () => {
         ...newBracket,
         selectedTeams: bracket.selectedTeamIds.length,
         team_count: bracket.selectedTeamIds.length,
-        bracket_type: bracket.bracketType // Store bracket type for reference
+        bracket_type: bracket.bracketType
       });
     }
 
@@ -1019,7 +1056,7 @@ const handleCreateAllBrackets = async () => {
   } finally {
     setLoading(false);
   }
-  };
+};
   
   const handleStartNew = () => {
     setCurrentStep(1);
@@ -1909,9 +1946,10 @@ const handleCreateAllBrackets = async () => {
                         if (createdEvent && createdBrackets.length > 0) {
                           sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
                             selectedEvent: createdEvent,
-                            selectedBracket: createdBrackets[0], // Navigate to first bracket
-                            contentTab: 'matches', // Go to Manage Matches tab
-                            bracketViewType: 'list' // Set to list view
+                            selectedBracket: createdBrackets[0],
+                            contentTab: 'matches',
+                            bracketViewType: 'list',
+                            refreshEvents: true // Add this flag
                           }));
                         }
                         window.location.href = '/AdminDashboard/events';

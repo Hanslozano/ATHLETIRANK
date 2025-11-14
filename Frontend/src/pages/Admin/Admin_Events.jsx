@@ -179,42 +179,59 @@ const [editTeamModal, setEditTeamModal] = useState({
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
   // Fetch events with brackets
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch("http://localhost:5000/api/events");
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      
-      // Fetch brackets for each event
-      const eventsWithBrackets = await Promise.all(
-        data.map(async (event) => {
-          try {
-            const bracketsRes = await fetch(`http://localhost:5000/api/events/${event.id}/brackets`);
-            const brackets = await bracketsRes.json();
-            return { ...event, brackets: brackets || [] };
-          } catch (err) {
-            console.error(`Error fetching brackets for event ${event.id}:`, err);
-            return { ...event, brackets: [] };
-          }
-        })
-      );
-      
-      setEvents(eventsWithBrackets);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+const fetchEvents = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    const res = await fetch("http://localhost:5000/api/events");
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+    
+    // Fetch brackets for each event
+    const eventsWithBrackets = await Promise.all(
+      data.map(async (event) => {
+        try {
+          const bracketsRes = await fetch(`http://localhost:5000/api/events/${event.id}/brackets`);
+          const brackets = await bracketsRes.json();
+          return { ...event, brackets: brackets || [] };
+        } catch (err) {
+          console.error(`Error fetching brackets for event ${event.id}:`, err);
+          return { ...event, brackets: [] };
+        }
+      })
+    );
+    
+    // Use a Set to remove duplicates based on event ID
+    const uniqueEvents = eventsWithBrackets.reduce((acc, event) => {
+      const existingIndex = acc.findIndex(e => e.id === event.id);
+      if (existingIndex === -1) {
+        acc.push(event);
+      } else {
+        // If event already exists, merge the brackets
+        acc[existingIndex].brackets = [
+          ...new Map(
+            [...acc[existingIndex].brackets, ...event.brackets]
+              .map(b => [b.id, b])
+          ).values()
+        ];
+      }
+      return acc;
+    }, []);
+    
+    setEvents(uniqueEvents);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
     fetchEvents();
   }, []);
 
   // Check for return context from AdminStats
-  useEffect(() => {
+  // Check for return context from AdminStats
+useEffect(() => {
   const checkReturnContext = async () => {
     const returnContext = sessionStorage.getItem('adminEventsReturnContext');
     
@@ -224,8 +241,14 @@ const [editTeamModal, setEditTeamModal] = useState({
           selectedEvent: eventContext, 
           selectedBracket: bracketContext,
           contentTab: tabContext,
-          bracketViewType: viewTypeContext
+          bracketViewType: viewTypeContext,
+          refreshEvents // Check for this flag
         } = JSON.parse(returnContext);
+        
+        // Refresh events first if flag is set
+        if (refreshEvents) {
+          await fetchEvents();
+        }
         
         if (eventContext && bracketContext) {
           setSelectedEvent(eventContext);
@@ -238,26 +261,26 @@ const [editTeamModal, setEditTeamModal] = useState({
             setBracketViewType(viewTypeContext);
           }
             
-            setLoadingDetails(true);
+          setLoadingDetails(true);
+          
+          try {
+            const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             
-            try {
-              const res = await fetch(`http://localhost:5000/api/brackets/${bracketContext.id}/matches`);
-              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-              
-              const data = await res.json();
-              const visibleMatches = data.filter(match => match.status !== 'hidden');
-              setMatches(visibleMatches);
-              setBracketMatches(visibleMatches);
+            const data = await res.json();
+            const visibleMatches = data.filter(match => match.status !== 'hidden');
+            setMatches(visibleMatches);
+            setBracketMatches(visibleMatches);
 
-              if (visibleMatches.length === 0) {
-                setError("No matches found for this bracket.");
-              }
-            } catch (err) {
-              setError("Failed to load matches: " + err.message);
-            } finally {
-              setLoadingDetails(false);
+            if (visibleMatches.length === 0) {
+              setError("No matches found for this bracket.");
             }
-              }
+          } catch (err) {
+            setError("Failed to load matches: " + err.message);
+          } finally {
+            setLoadingDetails(false);
+          }
+        }
       } catch (err) {
         console.error("Error loading return context:", err);
       } finally {
@@ -1341,7 +1364,7 @@ const closeEditTeamModal = () => {
     });
   };
 
-  const confirmDelete = async () => {
+ const confirmDelete = async () => {
     const { type, id } = deleteConfirm;
     
     try {
@@ -1358,11 +1381,16 @@ const closeEditTeamModal = () => {
         setSelectedEvent(null);
         setSelectedBracket(null);
       } else if (type === 'bracket') {
+        // Refresh events to update bracket counts
         await fetchEvents();
+        
+        // Only clear selected bracket if it was the one deleted
+        // Stay on events tab, don't clear selectedEvent
         if (selectedBracket?.id === id) {
-          setActiveTab("events");
           setSelectedBracket(null);
+          setActiveTab("events");
         }
+        // If we're on events tab, just refresh the view
       }
 
       setDeleteConfirm({ show: false, type: '', id: null, name: '' });
@@ -1585,33 +1613,55 @@ const closeEditTeamModal = () => {
                             </div>
 
                             <div className="event-header-actions">
-                              <span style={{ 
-                                fontSize: '14px', 
-                                color: 'var(--text-muted)',
-                                marginRight: '16px',
-                                fontWeight: '600'
-                              }}>
-                                [{event.brackets?.length || 0} Bracket{event.brackets?.length !== 1 ? 's' : ''}]
-                              </span>
-                              
-                              <button
-                                onClick={() => handleCreateBracket(event)}
-                                className="bracket-view-btn"
-                                style={{ 
-                                  fontSize: '13px', 
-                                  padding: '8px 16px',
-                                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  whiteSpace: 'nowrap',
-                                  boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
-                                }}
-                                title="Add Bracket"
-                              >
-                                <FaPlus /> Add Bracket
-                              </button>
-                            </div>
+  <span style={{ 
+    fontSize: '14px', 
+    color: 'var(--text-muted)',
+    marginRight: '16px',
+    fontWeight: '600'
+  }}>
+    [{event.brackets?.length || 0} Bracket{event.brackets?.length !== 1 ? 's' : ''}]
+  </span>
+  
+  {/* Edit Event Button */}
+ 
+  
+  {/* Delete Event Button */}
+  <button
+    onClick={() => handleDeleteEvent(event)}
+    className="bracket-view-btn"
+    style={{ 
+      fontSize: '13px', 
+      padding: '8px 14px',
+      background: 'var(--error-color)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      whiteSpace: 'nowrap'
+    }}
+    title="Delete Event"
+  >
+    <FaTrash />
+  </button>
+  
+  {/* Add Bracket Button */}
+  <button
+    onClick={() => handleCreateBracket(event)}
+    className="bracket-view-btn"
+    style={{ 
+      fontSize: '13px', 
+      padding: '8px 16px',
+      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      whiteSpace: 'nowrap',
+      boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
+    }}
+    title="Add Bracket"
+  >
+    <FaPlus /> Add Bracket
+  </button>
+</div>
                           </div>
 
                           {/* Brackets Table (Expandable) */}
