@@ -1633,7 +1633,7 @@ if (createdTeams.length > maxTeams) {
                                             handleSelectExistingTeam(team.id, bracketId);
                                           }
                                         }}
-                                         disabled={createdTeams.length >= 10}
+                                     disabled={createdTeams.length >= maxTeams}
                                         className="bracket-assignment-select"
                                         style={{
                                           padding: '8px 12px',
@@ -1643,12 +1643,12 @@ if (createdTeams.length > maxTeams) {
                                           color: '#e2e8f0',
                                           fontSize: '16px',
                                           width: '100%',
-                                          opacity: createdTeams.length >= 10 ? 0.5 : 1,  // ADD THIS
-                                          cursor: createdTeams.length >= 10 ? 'not-allowed' : 'pointer'  // ADD THIS
+                                        opacity: createdTeams.length >= maxTeams ? 0.5 : 1,
+cursor: createdTeams.length >= maxTeams ? 'not-allowed' : 'pointer'
                                         }}
                                       >
-                                         <option value="">{createdTeams.length >= 10 ? "Team limit reached" : "Select bracket first"}</option>  // CHANGE THIS
-                                          {createdTeams.length < 10 && getBracketOptions().map(bracket => (
+                                      <option value="">{createdTeams.length >= maxTeams ? "Team limit reached" : "Select bracket first"}</option>
+{createdTeams.length < maxTeams && getBracketOptions().map(bracket => (
                                           <option key={bracket.id} value={bracket.id}>
                                             {bracket.name}
                                           </option>
@@ -1661,11 +1661,11 @@ if (createdTeams.length > maxTeams) {
                                       <button
                                         className="add-team-btn"
                                           onClick={() => handleSelectExistingTeam(team.id)}
-                                          disabled={createdTeams.length >= 10}  // ADD THIS
-                                          title={createdTeams.length >= 10 ? "Maximum team limit reached" : "Add Team"}  // ADD THIS
+                                       disabled={createdTeams.length >= maxTeams}
+title={createdTeams.length >= maxTeams ? "Maximum team limit reached" : "Add Team"}
                                           style={{ fontSize: '16px' }}
                                         >
-                                        {createdTeams.length >= 10 ? "Limit Reached" : "Add Team"}   
+                                     {createdTeams.length >= maxTeams ? "Limit Reached" : "Add Team"}
                                       </button>
                                     </td>
                                   )}
