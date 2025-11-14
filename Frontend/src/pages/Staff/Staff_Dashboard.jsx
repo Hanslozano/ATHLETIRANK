@@ -1,14 +1,14 @@
 import "../../style/Admin_Dashboard.css";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaTrophy, FaCalendarAlt, FaChartBar, FaBasketballBall, FaVolleyballBall, FaArrowRight, FaClock, FaFire, FaClipboardList } from "react-icons/fa";
+import { FaTrophy, FaCalendarAlt, FaChartBar, FaBasketballBall, FaVolleyballBall, FaArrowRight, FaClock, FaFire } from "react-icons/fa";
 
 const StaffDashboard = ({ sidebarOpen }) => {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState({
     events: [],
     brackets: [],
-    schedules: [],
+    upcomingMatches: [],
     recentMatches: [],
     loading: true
   });
@@ -16,34 +16,46 @@ const StaffDashboard = ({ sidebarOpen }) => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [eventsRes, bracketsRes, schedulesRes] = await Promise.all([
+        const [eventsRes, bracketsRes] = await Promise.all([
           fetch("http://localhost:5000/api/events"),
-          fetch("http://localhost:5000/api/brackets"),
-          fetch("http://localhost:5000/api/schedules")
+          fetch("http://localhost:5000/api/brackets")
         ]);
 
         const events = await eventsRes.json();
         const brackets = await bracketsRes.json();
-        const schedules = await schedulesRes.json();
 
-        // Fetch recent completed matches from all brackets
-        const recentMatchesPromises = brackets.slice(0, 3).map(bracket =>
+        // Fetch all matches from all brackets
+        const allMatchesPromises = brackets.map(bracket =>
           fetch(`http://localhost:5000/api/brackets/${bracket.id}/matches`)
             .then(res => res.json())
-            .then(matches => matches.map(m => ({ ...m, bracket_name: bracket.name, sport_type: bracket.sport_type })))
+            .then(matches => matches.map(m => ({ 
+              ...m, 
+              bracket_name: bracket.name, 
+              sport_type: bracket.sport_type,
+              bracket_id: bracket.id,
+              event_id: bracket.event_id
+            })))
         );
 
-        const matchesArrays = await Promise.all(recentMatchesPromises);
-        const allMatches = matchesArrays.flat();
+        const matchesArrays = await Promise.all(allMatchesPromises);
+        const allMatches = matchesArrays.flat().filter(m => m.status !== 'hidden');
+        
+        // Recent completed matches
         const recentMatches = allMatches
           .filter(m => m.status === "completed")
           .sort((a, b) => new Date(b.updated_at || b.scheduled_at) - new Date(a.updated_at || a.scheduled_at))
           .slice(0, 5);
 
+        // Upcoming matches (pending or scheduled)
+        const upcomingMatches = allMatches
+          .filter(m => m.status === "pending" || m.status === "scheduled")
+          .sort((a, b) => a.round_number - b.round_number)
+          .slice(0, 5);
+
         setDashboardData({
           events,
           brackets,
-          schedules,
+          upcomingMatches,
           recentMatches,
           loading: false
         });
@@ -56,16 +68,11 @@ const StaffDashboard = ({ sidebarOpen }) => {
     fetchDashboardData();
   }, []);
 
-  const { events, brackets, schedules, recentMatches, loading } = dashboardData;
+  const { events, brackets, upcomingMatches, recentMatches, loading } = dashboardData;
 
   // Calculate statistics
   const ongoingEvents = events.filter(e => e.status === "ongoing").length;
-  const upcomingSchedules = schedules.filter(s => {
-    const scheduleDate = new Date(s.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return scheduleDate >= today;
-  }).length;
+  const upcomingMatchesCount = upcomingMatches.length;
   const completedMatches = recentMatches.length;
   const activeBrackets = brackets.filter(b => {
     const event = events.find(e => e.id === b.event_id);
@@ -82,12 +89,12 @@ const StaffDashboard = ({ sidebarOpen }) => {
       link: "/StaffDashboard/events"
     },
     {
-      title: "Upcoming Schedules",
-      value: upcomingSchedules,
-      subtitle: `${schedules.length} total schedules`,
-      icon: <FaClipboardList />,
+      title: "Upcoming Matches",
+      value: upcomingMatchesCount,
+      subtitle: `Pending matches to score`,
+      icon: <FaClock />,
       color: "#34a853",
-      link: "/StaffDashboard/schedule"
+      link: "/StaffDashboard/events"
     },
     {
       title: "Active Brackets",
@@ -103,7 +110,7 @@ const StaffDashboard = ({ sidebarOpen }) => {
       subtitle: `Recent statistics recorded`,
       icon: <FaChartBar />,
       color: "#ea4335",
-      link: "/StaffDashboard/stats"
+      link: "/StaffDashboard/events"
     }
   ];
 
@@ -207,16 +214,7 @@ const StaffDashboard = ({ sidebarOpen }) => {
                         {events.filter(e => e.status === "ongoing").slice(0, 3).map(event => (
                           <div
                             key={event.id}
-                            className="event-item"
-                            onClick={() => {
-                              // Navigate to events page and set context to show this event's brackets
-                              sessionStorage.setItem('staffEventsContext', JSON.stringify({
-                                selectedEvent: event,
-                                selectedBracket: null,
-                                activeTab: 'events'
-                              }));
-                              navigate("/StaffDashboard/events");
-                            }}
+                            className="event-item no-hover"
                           >
                             <div className="event-info">
                               <div className="event-name">{event.name}</div>
@@ -225,7 +223,7 @@ const StaffDashboard = ({ sidebarOpen }) => {
                               </div>
                             </div>
                             <div className={`event-status status-${event.status}`}>
-                              <FaFire /> {event.status}
+                              <FaFire />
                             </div>
                           </div>
                         ))}
@@ -238,12 +236,7 @@ const StaffDashboard = ({ sidebarOpen }) => {
                 <div className="dashboard-section">
                   <div className="section-header">
                     <h2>Recent Match Results</h2>
-                    <button
-                      className="view-all-btn"
-                      onClick={() => navigate("/StaffDashboard/stats")}
-                    >
-                      Record Stats <FaArrowRight />
-                    </button>
+                    
                   </div>
                   <div className="section-content">
                     {recentMatches.length === 0 ? (
@@ -252,28 +245,49 @@ const StaffDashboard = ({ sidebarOpen }) => {
                       </div>
                     ) : (
                       <div className="matches-list">
-                        {recentMatches.map(match => (
-                          <div key={match.id} className="match-item">
-                            <div className="match-sport-icon">
-                              {match.sport_type?.toLowerCase() === "basketball" ? (
-                                <FaBasketballBall style={{ color: "#ff6b35" }} />
-                              ) : (
-                                <FaVolleyballBall style={{ color: "#4ecdc4" }} />
-                              )}
-                            </div>
-                            <div className="match-details">
-                              <div className="match-teams">
-                                {match.team1_name} vs {match.team2_name}
+                        {recentMatches.map(match => {
+                          const matchEvent = events.find(e => e.id === match.event_id);
+                          const matchBracket = brackets.find(b => b.id === match.bracket_id);
+                          
+                          return (
+                            <div 
+                              key={match.id} 
+                              className="match-item"
+                              onClick={() => {
+                                if (matchEvent && matchBracket) {
+                                  // Navigate to the specific match in list view
+                                  sessionStorage.setItem('staffEventsContext', JSON.stringify({
+                                    selectedEvent: matchEvent,
+                                    selectedBracket: matchBracket,
+                                    activeTab: 'results',
+                                    bracketViewType: 'list'
+                                  }));
+                                  navigate("/StaffDashboard/events");
+                                }
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <div className="match-sport-icon">
+                                {match.sport_type?.toLowerCase() === "basketball" ? (
+                                  <FaBasketballBall style={{ color: "#ff6b35" }} />
+                                ) : (
+                                  <FaVolleyballBall style={{ color: "#4ecdc4" }} />
+                                )}
                               </div>
-                              <div className="match-bracket">
-                                {match.bracket_name} - {formatRoundDisplay(match)}
+                              <div className="match-details">
+                                <div className="match-teams">
+                                  {match.team1_name} vs {match.team2_name}
+                                </div>
+                                <div className="match-bracket">
+                                  {match.bracket_name} - {formatRoundDisplay(match)}
+                                </div>
+                              </div>
+                              <div className="match-score">
+                                {match.score_team1} - {match.score_team2}
                               </div>
                             </div>
-                            <div className="match-score">
-                              {match.score_team1} - {match.score_team2}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -282,61 +296,61 @@ const StaffDashboard = ({ sidebarOpen }) => {
 
               {/* Schedules & Brackets Overview */}
               <div className="dashboard-grid">
-                {/* Upcoming Schedules */}
+                {/* Upcoming Matches */}
                 <div className="dashboard-section">
                   <div className="section-header">
-                    <h2>Upcoming Schedules</h2>
-                    <button
-                      className="view-all-btn"
-                      onClick={() => navigate("/StaffDashboard/schedule")}
-                    >
-                      View Schedule <FaArrowRight />
-                    </button>
+                    <h2>Upcoming Matches</h2>
+                    
                   </div>
                   <div className="section-content">
-                    {schedules.filter(s => {
-                      const scheduleDate = new Date(s.date);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return scheduleDate >= today;
-                    }).length === 0 ? (
+                    {upcomingMatches.length === 0 ? (
                       <div className="empty-state">
-                        <p>No upcoming schedules</p>
+                        <p>No upcoming matches</p>
                         <button
                           className="create-btn"
-                          onClick={() => navigate("/StaffDashboard/schedule")}
+                          onClick={() => navigate("/StaffDashboard/events")}
                         >
-                          View All Schedules
+                          View All Matches
                         </button>
                       </div>
                     ) : (
                       <div className="brackets-list">
-                        {schedules
-                          .filter(s => {
-                            const scheduleDate = new Date(s.date);
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            return scheduleDate >= today;
-                          })
-                          .sort((a, b) => new Date(a.date) - new Date(b.date))
-                          .slice(0, 4)
-                          .map(schedule => (
-                            <div key={schedule.id} className="bracket-item">
+                        {upcomingMatches.map(match => {
+                          const matchEvent = events.find(e => e.id === match.event_id);
+                          const matchBracket = brackets.find(b => b.id === match.bracket_id);
+                          
+                          return (
+                            <div 
+                              key={match.id} 
+                              className="bracket-item hover-enabled"
+                              onClick={() => {
+                                if (matchEvent && matchBracket) {
+                                  // Navigate to stats page to record statistics
+                                  sessionStorage.setItem('selectedMatchData', JSON.stringify({
+                                    matchId: match.id,
+                                    eventId: matchEvent.id,
+                                    bracketId: matchBracket.id,
+                                    match: match
+                                  }));
+                                  navigate('/StaffDashboard/stats');
+                                }
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            >
                               <div className="bracket-info">
                                 <div className="bracket-name">
-                                  {schedule.team1_name && schedule.team2_name 
-                                    ? `${schedule.team1_name} vs ${schedule.team2_name}`
-                                    : schedule.bracket_name || "Match"}
+                                  {match.team1_name && match.team2_name 
+                                    ? `${match.team1_name} vs ${match.team2_name}`
+                                    : match.bracket_name || "Match"}
                                 </div>
                                 <div className="bracket-meta">
-                                  {new Date(schedule.date).toLocaleDateString()} • {schedule.venue}
+                                  {match.bracket_name} • {formatRoundDisplay(match)}
                                 </div>
                               </div>
-                              <div className="active-badge">
-                                <FaClock /> Upcoming
-                              </div>
+                              
                             </div>
-                          ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -346,12 +360,7 @@ const StaffDashboard = ({ sidebarOpen }) => {
                 <div className="dashboard-section">
                   <div className="section-header">
                     <h2>Active Brackets</h2>
-                    <button
-                      className="view-all-btn"
-                      onClick={() => navigate("/StaffDashboard/events")}
-                    >
-                      View Brackets <FaArrowRight />
-                    </button>
+                    
                   </div>
                   <div className="section-content">
                     {brackets.filter(b => {
@@ -378,18 +387,27 @@ const StaffDashboard = ({ sidebarOpen }) => {
                           .map(bracket => {
                             const event = events.find(e => e.id === bracket.event_id);
                             return (
-                              <div key={bracket.id} className="bracket-item">
+                              <div 
+                                key={bracket.id} 
+                                className="bracket-item hover-enabled"
+                                onClick={() => {
+                                  // Navigate to events page and show this bracket
+                                  sessionStorage.setItem('staffEventsContext', JSON.stringify({
+                                    selectedEvent: event,
+                                    selectedBracket: bracket,
+                                    activeTab: 'results'
+                                  }));
+                                  navigate("/StaffDashboard/events");
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 <div className="bracket-info">
                                   <div className="bracket-name">{bracket.name}</div>
                                   <div className="bracket-meta">
-                                    {capitalize(bracket.sport_type)} • {bracket.elimination_type === "single" ? "Single" : "Double"} Elimination
+                                    {capitalize(bracket.sport_type)} • {bracket.elimination_type === "single" ? "Single" : bracket.elimination_type === "double" ? "Double" : "Round Robin"} Elimination
                                   </div>
                                 </div>
-                                {event?.status === "ongoing" && (
-                                  <div className="active-badge">
-                                    <FaFire /> Active
-                                  </div>
-                                )}
+                               
                               </div>
                             );
                           })}
@@ -408,29 +426,10 @@ const StaffDashboard = ({ sidebarOpen }) => {
                     onClick={() => navigate("/StaffDashboard/events")}
                   >
                     <FaCalendarAlt />
-                    <span>View Events</span>
+                    <span>View Events & Brackets</span>
                   </button>
-                  <button
-                    className="action-btn"
-                    onClick={() => navigate("/StaffDashboard/schedule")}
-                  >
-                    <FaClipboardList />
-                    <span>View Schedules</span>
-                  </button>
-                  <button
-                    className="action-btn"
-                    onClick={() => navigate("/StaffDashboard/stats")}
-                  >
-                    <FaChartBar />
-                    <span>Record Statistics</span>
-                  </button>
-                  <button
-                    className="action-btn"
-                    onClick={() => navigate("/StaffDashboard/events")}
-                  >
-                    <FaTrophy />
-                    <span>View Brackets</span>
-                  </button>
+                  
+                  
                 </div>
               </div>
             </>

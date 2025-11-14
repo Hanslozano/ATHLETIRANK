@@ -307,6 +307,7 @@
   margin-bottom: 40px;
 }
 
+/* UPDATED: Removed clickable and hover effects */
 .stat-card {
   background: var(--background-card);
   border: 1px solid var(--border-color);
@@ -315,15 +316,22 @@
   display: flex;
   gap: 20px;
   align-items: center;
-  transition: var(--transition);
-  cursor: pointer;
   box-shadow: var(--shadow-light);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Remove ALL transitions and hover effects */
+.stat-card,
+.stat-card * {
+  transition: none !important;
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-medium);
-  border-color: var(--border-focus);
+  transform: none !important;
+  box-shadow: var(--shadow-light) !important;
+  border-color: var(--border-color) !important;
+  background: var(--background-card) !important;
 }
 
 .stat-icon {
@@ -526,6 +534,10 @@
   transition: var(--transition);
 }
 
+.clickable-match {
+  cursor: pointer;
+}
+
 .match-item:hover {
   background: rgba(59, 130, 246, 0.05);
   border-color: var(--primary-color);
@@ -552,12 +564,18 @@
 .match-bracket {
   font-size: 0.8rem;
   color: var(--text-muted);
+  margin-bottom: 4px;
 }
 
-.match-score {
-  font-size: 1.1rem;
-  font-weight: 700;
+.match-score-small {
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--primary-color);
+}
+
+.match-arrow {
+  color: var(--text-muted);
+  font-size: 1.2rem;
 }
 
 /* Teams Overview */
@@ -572,6 +590,17 @@
   background: var(--background-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.clickable-sport {
+  cursor: pointer;
+}
+
+.clickable-sport:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: var(--primary-color);
+  transform: translateX(4px);
 }
 
 .category-header {
@@ -595,7 +624,7 @@
   color: var(--text-secondary);
 }
 
-/* Brackets List */
+/* Brackets List - UPDATED: Removed hover effects */
 .brackets-list {
   display: flex;
   flex-direction: column;
@@ -610,12 +639,14 @@
   background: var(--background-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
-  transition: var(--transition);
+  cursor: default;
 }
 
+/* Remove hover effects from bracket items */
 .bracket-item:hover {
-  background: rgba(59, 130, 246, 0.05);
-  border-color: var(--primary-color);
+  background: var(--background-secondary);
+  border-color: var(--border-color);
+  transform: none;
 }
 
 .bracket-info {
@@ -646,7 +677,7 @@
   font-weight: 600;
 }
 
-/* Quick Actions */
+/* Quick Actions - UPDATED: 3 buttons instead of 4 */
 .quick-actions {
   margin-top: 20px;
 }
@@ -812,3 +843,55 @@
   }
 }
 
+/* Add these CSS rules to your Admin_Dashboard.css file */
+
+/* Active Events - No hover */
+.event-item.no-hover {
+  cursor: default;
+  pointer-events: none;
+}
+
+.event-item.no-hover:hover {
+  background: var(--background-secondary);
+  border-color: var(--border-color);
+  transform: none;
+}
+
+/* Upcoming Matches - With hover */
+.bracket-item.hover-enabled {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.bracket-item.hover-enabled:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+/* Active Brackets - With hover */
+.bracket-item.hover-enabled {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.bracket-item.hover-enabled:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+/* Recent Matches - Keep existing hover (already working) */
+.match-item {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.match-item:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}

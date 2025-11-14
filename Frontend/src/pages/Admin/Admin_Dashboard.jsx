@@ -1,7 +1,7 @@
-import "../../style/Admin_Dashboard.css";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaTrophy, FaUsers, FaCalendarAlt, FaChartBar, FaBasketballBall, FaVolleyballBall, FaArrowRight, FaClock, FaFire } from "react-icons/fa";
+import "../../style/Admin_Dashboard.css";
 
 const AdminDashboard = ({ sidebarOpen }) => {
   const navigate = useNavigate();
@@ -64,33 +64,27 @@ const AdminDashboard = ({ sidebarOpen }) => {
 
   const { events, teams, brackets, recentMatches, loading } = dashboardData;
 
-  // Handle match click - navigate to stats with match data
+  // Handle match click - navigate to AdminEvents with match context
   const handleMatchClick = (match) => {
     // Find the event and bracket for this match
     const bracket = brackets.find(b => b.id === match.bracket_id);
     const event = events.find(e => e.id === match.event_id);
     
-    // Store match data and context in session storage
-    const matchData = {
-      matchId: match.id,
-      match: match,
-      eventId: match.event_id,
-      bracketId: match.bracket_id
-    };
-    
+    // Store context for AdminEvents to restore state
     const contextData = {
       selectedEvent: event,
-      selectedBracket: bracket
+      selectedBracket: bracket,
+      contentTab: 'matches',  // Set to matches tab
+      bracketViewType: 'list'  // Set to list view
     };
     
-    sessionStorage.setItem('selectedMatchData', JSON.stringify(matchData));
-    sessionStorage.setItem('adminEventsContext', JSON.stringify(contextData));
+    sessionStorage.setItem('adminEventsReturnContext', JSON.stringify(contextData));
     
-    // Navigate to stats page
-    navigate("/AdminDashboard/stats");
+    // Navigate to AdminEvents page which will restore the state
+    navigate("/AdminDashboard/events");
   };
 
-  // NEW FUNCTION: Handle sport category click in Teams Overview
+  // Handle sport category click in Teams Overview
   const handleSportCategoryClick = (sport) => {
     // Store the selected sport filter in session storage
     sessionStorage.setItem('teamSportFilter', sport);
@@ -98,7 +92,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
     navigate("/AdminDashboard/teams");
   };
 
-  // Calculate statistics (your existing code remains the same)
+  // Calculate statistics
   const ongoingEvents = events.filter(e => e.status === "ongoing").length;
   const completedEvents = events.filter(e => e.status === "completed").length;
   const basketballTeams = teams.filter(t => t.sport?.toLowerCase() === "basketball").length;
@@ -115,32 +109,28 @@ const AdminDashboard = ({ sidebarOpen }) => {
       value: events.length,
       subtitle: `${ongoingEvents} ongoing, ${completedEvents} completed`,
       icon: <FaCalendarAlt />,
-      color: "var(--primary-color)",
-      link: "/AdminDashboard/events"
+      color: "var(--primary-color)"
     },
     {
       title: "Total Teams",
       value: teams.length,
       subtitle: `${basketballTeams} basketball, ${volleyballTeams} volleyball`,
       icon: <FaUsers />,
-      color: "#34a853",
-      link: "/AdminDashboard/teams"
+      color: "#34a853"
     },
     {
       title: "Total Brackets",
       value: brackets.length,
       subtitle: `${activeBrackets} active tournaments`,
       icon: <FaTrophy />,
-      color: "#fbbc04",
-      link: "/AdminDashboard/brackets"
+      color: "#fbbc04"
     },
     {
       title: "Total Players",
       value: totalPlayers,
       subtitle: `Across ${teams.length} teams`,
       icon: <FaChartBar />,
-      color: "#ea4335",
-      link: "/AdminDashboard/teams"
+      color: "#ea4335"
     }
   ];
 
@@ -175,8 +165,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
                 {statsCards.map((card, index) => (
                   <div
                     key={index}
-                    className="stat-card"
-                    onClick={() => navigate(card.link)}
+                    className="stat-card stat-card-no-hover"
                     style={{ borderTop: `3px solid ${card.color}` }}
                   >
                     <div className="stat-icon" style={{ color: card.color }}>
@@ -239,16 +228,11 @@ const AdminDashboard = ({ sidebarOpen }) => {
                   </div>
                 </div>
 
-                {/* Recent Matches - UPDATED */}
+                {/* Recent Matches */}
                 <div className="dashboard-section">
                   <div className="section-header">
                     <h2>Recent Matches</h2>
-                    <button
-                      className="view-all-btn"
-                      onClick={() => navigate("/AdminDashboard/stats")}
-                    >
-                      View All <FaArrowRight />
-                    </button>
+                    
                   </div>
                   <div className="section-content">
                     {recentMatches.length === 0 ? (
@@ -292,7 +276,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
 
               {/* Teams & Brackets Overview */}
               <div className="dashboard-grid">
-                {/* Teams by Sport - UPDATED */}
+                {/* Teams by Sport */}
                 <div className="dashboard-section">
                   <div className="section-header">
                     <h2>Teams Overview</h2>
@@ -316,7 +300,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
                       </div>
                     ) : (
                       <div className="teams-overview">
-                        {/* Basketball Category - Now Clickable */}
+                        {/* Basketball Category - Clickable */}
                         <div 
                           className="sport-category clickable-sport"
                           onClick={() => handleSportCategoryClick("Basketball")}
@@ -334,7 +318,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
                           </div>
                         </div>
                         
-                        {/* Volleyball Category - Now Clickable */}
+                        {/* Volleyball Category - Clickable */}
                         <div 
                           className="sport-category clickable-sport"
                           onClick={() => handleSportCategoryClick("Volleyball")}
@@ -362,9 +346,9 @@ const AdminDashboard = ({ sidebarOpen }) => {
                     <h2>Active Brackets</h2>
                     <button
                       className="view-all-btn"
-                      onClick={() => navigate("/AdminDashboard/brackets")}
+                      onClick={() => navigate("/AdminDashboard/events")}
                     >
-                      Manage Brackets <FaArrowRight />
+                    View All <FaArrowRight />
                     </button>
                   </div>
                   <div className="section-content">
@@ -373,7 +357,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
                         <p>No brackets created yet</p>
                         <button
                           className="create-btn"
-                          onClick={() => navigate("/AdminDashboard/brackets")}
+                          onClick={() => navigate("/AdminDashboard/tournament-creator")}
                         >
                           Create First Bracket
                         </button>
@@ -387,7 +371,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
                               <div className="bracket-info">
                                 <div className="bracket-name">{bracket.name}</div>
                                 <div className="bracket-meta">
-                                  {capitalize(bracket.sport_type)} • {bracket.elimination_type === "single" ? "Single" : "Double"} Elimination
+                                  {capitalize(bracket.sport_type)} • {bracket.elimination_type === "single" ? "Single" : bracket.elimination_type === "double" ? "Double" : "Round Robin"} Elimination
                                 </div>
                               </div>
                               {event?.status === "ongoing" && (
@@ -410,31 +394,24 @@ const AdminDashboard = ({ sidebarOpen }) => {
                 <div className="actions-grid">
                   <button
                     className="action-btn"
-                    onClick={() => navigate("/AdminDashboard/events")}
+                    onClick={() => navigate("/AdminDashboard/tournament-creator")}
                   >
-                    <FaCalendarAlt />
-                    <span>Create Event</span>
+                    <FaTrophy />
+                    <span>Create Tournament</span>
                   </button>
                   <button
                     className="action-btn"
                     onClick={() => navigate("/AdminDashboard/teams")}
                   >
                     <FaUsers />
-                    <span>Add Team</span>
-                  </button>
-                  <button
-                    className="action-btn"
-                    onClick={() => navigate("/AdminDashboard/brackets")}
-                  >
-                    <FaTrophy />
-                    <span>Generate Bracket</span>
+                    <span>Edit Team</span>
                   </button>
                   <button
                     className="action-btn"
                     onClick={() => navigate("/AdminDashboard/stats")}
                   >
                     <FaChartBar />
-                    <span>View Statistics</span>
+                    <span>View Seasonal Leaders</span>
                   </button>
                 </div>
               </div>
