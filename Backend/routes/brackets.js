@@ -371,6 +371,92 @@ router.post("/:id/generate", async (req, res) => {
         });
       }
 
+      // SPECIAL HANDLING FOR 6 TEAMS - ADDED
+      if (totalTeams === 6) {
+        console.log('Generating single elimination for 6 teams (5 matches total)');
+        
+        // Round 1: 2 matches (Teams 1-4 compete, Teams 5-6 get byes)
+        const round1Matches = [
+          { team1: shuffledTeams[0], team2: shuffledTeams[1], matchOrder: 0 }, // Game 1
+          { team1: shuffledTeams[2], team2: shuffledTeams[3], matchOrder: 1 }  // Game 2
+        ];
+
+        for (const { team1, team2, matchOrder } of round1Matches) {
+          const [result] = await db.pool.query(
+            `INSERT INTO matches (bracket_id, round_number, bracket_type, team1_id, team2_id, winner_id, status, match_order) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [bracketId, 1, 'winner', team1.id, team2.id, null, 'scheduled', matchOrder]
+          );
+          allMatches.push({
+            id: result.insertId,
+            bracket_id: bracketId,
+            round_number: 1,
+            bracket_type: 'winner',
+            team1_id: team1.id,
+            team2_id: team2.id,
+            winner_id: null,
+            status: 'scheduled',
+            match_order: matchOrder
+          });
+        }
+
+        // Round 2: 2 matches (semifinals)
+        // Game 3: Winner(Game 1) vs Team 5 (bye)
+        // Game 4: Winner(Game 2) vs Team 6 (bye)
+        const round2Matches = [
+          { team1: null, team2: shuffledTeams[4], matchOrder: 0 }, // Game 3
+          { team1: null, team2: shuffledTeams[5], matchOrder: 1 }  // Game 4
+        ];
+
+        for (const { team1, team2, matchOrder } of round2Matches) {
+          const [result] = await db.pool.query(
+            `INSERT INTO matches (bracket_id, round_number, bracket_type, team1_id, team2_id, winner_id, status, match_order) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [bracketId, 2, 'winner', team1?.id || null, team2.id, null, 'scheduled', matchOrder]
+          );
+          allMatches.push({
+            id: result.insertId,
+            bracket_id: bracketId,
+            round_number: 2,
+            bracket_type: 'winner',
+            team1_id: team1?.id || null,
+            team2_id: team2.id,
+            winner_id: null,
+            status: 'scheduled',
+            match_order: matchOrder
+          });
+        }
+
+        // Round 3: Finals (1 match)
+        // Game 5: Winner(Game 3) vs Winner(Game 4)
+        const [finals] = await db.pool.query(
+          `INSERT INTO matches (bracket_id, round_number, bracket_type, team1_id, team2_id, winner_id, status, match_order) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [bracketId, 3, 'winner', null, null, null, 'scheduled', 0]
+        );
+        allMatches.push({
+          id: finals.insertId,
+          bracket_id: bracketId,
+          round_number: 3,
+          bracket_type: 'winner',
+          team1_id: null,
+          team2_id: null,
+          winner_id: null,
+          status: 'scheduled',
+          match_order: 0
+        });
+
+        console.log(`✅ Generated 5 matches for 6-team single elimination`);
+
+        return res.json({
+          success: true,
+          message: `Generated 5 matches for single elimination (6 teams)`,
+          matches: allMatches,
+          elimination_type: eliminationType,
+          team_count: totalTeams
+        });
+      }
+
       // STANDARD LOGIC FOR OTHER TEAM COUNTS
       const nextPowerOfTwo = Math.pow(2, Math.ceil(Math.log2(shuffledTeams.length)));
       while (shuffledTeams.length < nextPowerOfTwo) {
@@ -799,7 +885,52 @@ router.post("/matches/:id/complete", async (req, res) => {
           );
           tournamentComplete = true;
         }
-      } else {
+      } 
+      // SPECIAL HANDLING FOR 6 TEAMS - ADDED
+      else if (totalTeams === 6) {
+        if (match.round_number === 1) {
+          // Round 1 winners advance to Round 2
+          const [nextMatches] = await db.pool.query(
+            `SELECT * FROM matches 
+             WHERE bracket_id = ? AND bracket_type = 'winner' 
+             AND round_number = 2 AND match_order = ?`,
+            [match.bracket_id, match.match_order]
+          );
+          
+          if (nextMatches.length > 0) {
+            await db.pool.query(
+              `UPDATE matches SET team1_id = ? WHERE id = ?`,
+              [winner_id, nextMatches[0].id]
+            );
+            winnerAdvanced = true;
+          }
+        } else if (match.round_number === 2) {
+          // Round 2 (semifinals) winners advance to Finals
+          const [finalsMatch] = await db.pool.query(
+            `SELECT * FROM matches 
+             WHERE bracket_id = ? AND bracket_type = 'winner' 
+             AND round_number = 3 AND match_order = 0`,
+            [match.bracket_id]
+          );
+          
+          if (finalsMatch.length > 0) {
+            const updateField = match.match_order === 0 ? 'team1_id' : 'team2_id';
+            await db.pool.query(
+              `UPDATE matches SET ${updateField} = ? WHERE id = ?`,
+              [winner_id, finalsMatch[0].id]
+            );
+            winnerAdvanced = true;
+          }
+        } else if (match.round_number === 3) {
+          // Finals - tournament complete
+          await db.pool.query(
+            "UPDATE brackets SET winner_team_id = ? WHERE id = ?",
+            [winner_id, match.bracket_id]
+          );
+          tournamentComplete = true;
+        }
+      }
+      else {
         // STANDARD LOGIC FOR OTHER TEAM COUNTS
         const [nextMatches] = await db.pool.query(
           `SELECT * FROM matches 
@@ -1425,7 +1556,7 @@ router.get("/", async (req, res) => {
 // GET single bracket with teams
 router.get("/:id", async (req, res) => {
   try {
-    const [bracketRows] = awaitdb.pool.query(
+    const [bracketRows] = await db.pool.query(
       `SELECT b.*, t.name as winner_team_name 
        FROM brackets b
        LEFT JOIN teams t ON b.winner_team_id = t.id
