@@ -34,10 +34,13 @@ const Login = () => {
 
         try {
             const response = await login(formData);
+            // Updated navigation logic for new role name
             if (response?.user?.role === 'admin') {
                 navigate('/AdminDashboard');
-            } else {
+            } else if (response?.user?.role === 'sports_committee') {
                 navigate('/StaffDashboard');
+            } else {
+                setError('Unknown user role');
             }
         } catch (error) {
             setError(error.message || 'Login failed');
@@ -93,8 +96,6 @@ const Login = () => {
                     <h1 className="brand-name">Arellano University</h1>
                     <p className="brand-subtitle">ATHLETIRANK</p>
                 </div>
-
-              
 
                 <div className="auth-form-container">
                     <h2 className="form-title">Welcome Back</h2>

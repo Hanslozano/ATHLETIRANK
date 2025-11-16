@@ -180,8 +180,8 @@ function App() {
             />
           </Route>
 
-          {/* Staff protected routes */}
-          <Route element={<ProtectedRoute requiredRole="staff" />}>
+          {/* Sports Committee protected routes */}
+          <Route element={<ProtectedRoute requiredRole="sports_committee" />}>
             <Route
               path="/StaffDashboard"
               element={
@@ -212,6 +212,15 @@ function App() {
               }
             />
           </Route>
+
+          {/* Add unauthorized route */}
+          <Route path="/unauthorized" element={
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              <h1>Unauthorized Access</h1>
+              <p>You don't have permission to access this page.</p>
+              <button onClick={() => window.history.back()}>Go Back</button>
+            </div>
+          } />
         </Routes>
       </Router>
     </AuthProvider>

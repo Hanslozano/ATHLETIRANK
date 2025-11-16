@@ -42,12 +42,18 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
         { icon: <HiUsers />, label: "Users", id: "users", path: "/AdminDashboard/users" },
     ];
     
-    const staffMenuItems = [
+    const sportsCommitteeMenuItems = [
         { icon: <IoIosHome />, label: "Dashboard", id: "dashboard", path: "/StaffDashboard" },
         { icon: <IoStatsChart />, label: "Events", id: "events", path: "/StaffDashboard/events" },
     ];
 
-    const menuItems = user?.role === 'admin' ? adminMenuItems : staffMenuItems;
+    // Format role for display
+    const formatRole = (role) => {
+        return role === 'sports_committee' ? 'Sports Committee' : 
+               role === 'admin' ? 'Admin' : role;
+    };
+
+    const menuItems = user?.role === 'admin' ? adminMenuItems : sportsCommitteeMenuItems;
 
     // Ultra-fast animation variants
     const sidebarVariants = {
@@ -171,7 +177,7 @@ const SideBar = ({ isOpen, toggleSidebar }) => {
                                         {user?.username}
                                     </div>
                                     <div className="sidebar-user-role">
-                                        {user?.role}
+                                        {formatRole(user?.role)}
                                     </div>
                                 </motion.div>
                             )}

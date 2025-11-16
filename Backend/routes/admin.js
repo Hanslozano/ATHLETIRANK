@@ -361,7 +361,7 @@ router.get('/stats', verifyAdminToken, async (req, res) => {
             SELECT 
                 COUNT(*) as total_users,
                 SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as admin_users,
-                SUM(CASE WHEN role = 'staff' THEN 1 ELSE 0 END) as staff_users
+                SUM(CASE WHEN role = 'sports_committee' THEN 1 ELSE 0 END) as sports_committee_users
             FROM users
         `);
 

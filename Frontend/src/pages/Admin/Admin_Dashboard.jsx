@@ -206,23 +206,31 @@ const AdminDashboard = ({ sidebarOpen }) => {
                       </div>
                     ) : (
                       <div className="events-list">
-                        {events.slice(0, 3).map(event => (
-                          <div
-                            key={event.id}
-                            className="event-item"
-                            onClick={() => navigate(`/AdminDashboard/events/${event.id}`)}
-                          >
-                            <div className="event-info">
-                              <div className="event-name">{event.name}</div>
-                              <div className="event-dates">
-                                <FaClock /> {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <div className={`event-status status-${event.status}`}>
-                              {event.status}
+                       {events.slice(0, 3).map(event => (
+                        <div
+                          key={event.id}
+                          className="event-item"
+                          onClick={() => {
+                            // Store context for AdminEvents to expand this event
+                            sessionStorage.setItem('adminEventsReturnContext', JSON.stringify({
+                              expandEventId: event.id,
+                              scrollToEvent: true
+                            }));
+                            // Navigate to AdminEvents
+                            navigate("/AdminDashboard/events");
+                          }}
+                        >
+                          <div className="event-info">
+                            <div className="event-name">{event.name}</div>
+                            <div className="event-dates">
+                              <FaClock /> {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
                             </div>
                           </div>
-                        ))}
+                          <div className={`event-status status-${event.status}`}>
+                            {event.status}
+                          </div>
+                        </div>
+                      ))}
                       </div>
                     )}
                   </div>

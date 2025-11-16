@@ -441,9 +441,6 @@ router.get('/verify-reset-token', async (req, res) => {
 });
 
 // ===== RESET PASSWORD =====
-// ===== RESET PASSWORD =====
-// ===== FORGOT PASSWORD - REQUEST RESET =====
-// ===== RESET PASSWORD =====
 router.post('/reset-password', async (req, res) => {
     let connection;
     try {
@@ -625,8 +622,6 @@ router.post('/reset-password', async (req, res) => {
         }
     }
 });
-
-
 
 // ===== TEST ROUTE =====
 router.get('/test', async (req, res) => {

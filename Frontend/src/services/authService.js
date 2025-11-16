@@ -91,9 +91,9 @@ class AuthService {
         return user && user.role === 'admin';
     }
 
-    isStaff() {
+    isSportsCommittee() {
         const user = this.getCurrentUser();
-        return user && user.role === 'staff';
+        return user && user.role === 'sports_committee';
     }
 }
 

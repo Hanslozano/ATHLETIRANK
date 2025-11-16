@@ -23,7 +23,7 @@ const AdminUsers = ({ sidebarOpen }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'staff'
+    role: 'sports_committee'
   });
 
   const [passwordStrength, setPasswordStrength] = useState({
@@ -149,7 +149,7 @@ const AdminUsers = ({ sidebarOpen }) => {
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'staff'
+        role: 'sports_committee'
       });
       setPasswordStrength({
         hasMinLength: false,
@@ -186,7 +186,7 @@ const AdminUsers = ({ sidebarOpen }) => {
 
   const filteredUsers = users.filter(user => {
     // Remove pending and approved filters, keep role filters
-    if (filter === 'staff') return user.role === 'staff';
+    if (filter === 'sports_committee') return user.role === 'sports_committee';
     if (filter === 'admin') return user.role === 'admin';
     return true;
   }).filter(user => {
@@ -197,12 +197,17 @@ const AdminUsers = ({ sidebarOpen }) => {
     );
   });
 
+  // Format role for display
+  const formatRole = (role) => {
+    return role === 'sports_committee' ? 'Sports Committee' : 'Admin';
+  };
+
   return (
     <div className="admin-dashboard">
       <div className={`dashboard-content ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="dashboard-header">
           <h1>User Management</h1>
-          <p>Manage staff and admin accounts</p>
+          <p>Manage Sports Committee and admin accounts</p>
         </div>
         
         <div className="dashboard-main">
@@ -232,7 +237,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                     className="bracket-form-group select-filter"
                   >
                     <option value="all">All Users</option>
-                    <option value="staff">Staff Only</option>
+                    <option value="sports_committee">Sports Committee Only</option>
                     <option value="admin">Admins Only</option>
                   </select>
                   
@@ -297,7 +302,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                             <div className="bracket-card-header">
                               <h3>{user.username}</h3>
                               <span className={`bracket-sport-badge ${user.role}`}>
-                                {user.role}
+                                {formatRole(user.role)}
                               </span>
                             </div>
                             <div className="bracket-card-info">
@@ -338,7 +343,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                               <td>{user.email}</td>
                               <td>
                                 <span className={`bracket-sport-badge ${user.role}`}>
-                                  {user.role}
+                                  {formatRole(user.role)}
                                 </span>
                               </td>
                               <td>
@@ -430,7 +435,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                 border: '1px solid rgba(59, 130, 246, 0.2)' 
               }}>
                 <div style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: '600' }}>
-                  Add a new staff or admin account to the system
+                  Add a new Sports Committee or admin account to the system
                 </div>
               </div>
 
@@ -718,21 +723,21 @@ const AdminUsers = ({ sidebarOpen }) => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleRoleSelect('staff')}
+                      onClick={() => handleRoleSelect('sports_committee')}
                       style={{
                         flex: 1,
                         padding: '16px',
-                        border: `2px solid ${createUserData.role === 'staff' ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                        background: createUserData.role === 'staff' ? 'rgba(59, 130, 246, 0.1)' : 'var(--background-secondary)',
+                        border: `2px solid ${createUserData.role === 'sports_committee' ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                        background: createUserData.role === 'sports_committee' ? 'rgba(59, 130, 246, 0.1)' : 'var(--background-secondary)',
                         borderRadius: '8px',
                         cursor: 'pointer',
                         fontWeight: '600',
                         transition: 'var(--transition)',
-                        color: createUserData.role === 'staff' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                        color: createUserData.role === 'sports_committee' ? 'var(--primary-color)' : 'var(--text-secondary)',
                         fontSize: '14px'
                       }}
                     >
-                      Staff
+                      Sports Committee
                     </button>
                   </div>
                 </div>
