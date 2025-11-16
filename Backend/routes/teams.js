@@ -508,4 +508,28 @@ router.delete("/:id", async (req, res) => {
     conn.release();
   }
 });
+
+// ✅ NEW - Get teams available for an event (not yet registered)
+router.get("/available/event/:eventId", async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    
+    // Get teams NOT yet registered to this event
+    const [teams] = await db.pool.query(`
+      SELECT t.id, t.name, t.sport
+      FROM teams t
+      WHERE t.id NOT IN (
+        SELECT team_id 
+        FROM event_teams 
+        WHERE event_id = ?
+      )
+      ORDER BY t.name
+    `, [eventId]);
+
+    res.json(teams);
+  } catch (err) {
+    console.error("Error fetching available teams:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
 module.exports = router;

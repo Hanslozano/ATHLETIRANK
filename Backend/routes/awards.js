@@ -64,7 +64,7 @@ router.get("/brackets/:bracketId/champion", async (req, res) => {
   }
 });
 
-// GET MVP and awards for a bracket
+// GET MVP and awards for a bracket - UPDATED with snapshot support
 router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
   try {
     const { bracketId } = req.params;
@@ -116,11 +116,11 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
     const statsQuery = sportType === 'basketball' ? `
       SELECT 
         p.id as player_id,
-        p.name as player_name,
-        p.jersey_number,
-        p.position,
+        COALESCE(p.name, ps.player_name_snapshot, 'Deleted Player') as player_name,
+        COALESCE(p.jersey_number, ps.player_jersey_snapshot, 'N/A') as jersey_number,
+        COALESCE(p.position, ps.player_position_snapshot, 'Unknown') as position,
         p.team_id,
-        t.name as team_name,
+        COALESCE(t.name, ps.team_name_snapshot, 'Unknown Team') as team_name,
         COUNT(DISTINCT ps.match_id) as games_played,
         SUM(ps.points) as total_points,
         SUM(ps.assists) as total_assists,
@@ -137,20 +137,21 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
         ROUND(AVG(ps.blocks), 1) as bpg,
         ROUND(AVG(ps.turnovers), 1) as tpg
       FROM player_stats ps
-      JOIN players p ON ps.player_id = p.id
-      JOIN teams t ON p.team_id = t.id
+      LEFT JOIN players p ON ps.player_id = p.id
+      LEFT JOIN teams t ON p.team_id = t.id
       JOIN matches m ON ps.match_id = m.id
       WHERE m.bracket_id = ? AND m.status = 'completed'
-      GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
+      GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name, 
+               ps.player_name_snapshot, ps.player_jersey_snapshot, ps.player_position_snapshot, ps.team_name_snapshot
       HAVING games_played > 0
     ` : `
       SELECT 
         p.id as player_id,
-        p.name as player_name,
-        p.jersey_number,
-        p.position,
+        COALESCE(p.name, ps.player_name_snapshot, 'Deleted Player') as player_name,
+        COALESCE(p.jersey_number, ps.player_jersey_snapshot, 'N/A') as jersey_number,
+        COALESCE(p.position, ps.player_position_snapshot, 'Unknown') as position,
         p.team_id,
-        t.name as team_name,
+        COALESCE(t.name, ps.team_name_snapshot, 'Unknown Team') as team_name,
         COUNT(DISTINCT ps.match_id) as games_played,
         SUM(ps.service_aces) as total_aces,
         SUM(ps.kills) as total_kills,
@@ -196,11 +197,12 @@ router.get("/brackets/:bracketId/mvp-awards", async (req, res) => {
           ELSE 0 
         END as reception_percentage
       FROM player_stats ps
-      JOIN players p ON ps.player_id = p.id
-      JOIN teams t ON p.team_id = t.id
+      LEFT JOIN players p ON ps.player_id = p.id
+      LEFT JOIN teams t ON p.team_id = t.id
       JOIN matches m ON ps.match_id = m.id
       WHERE m.bracket_id = ? AND m.status = 'completed'
-      GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name
+      GROUP BY p.id, p.name, p.jersey_number, p.position, p.team_id, t.name,
+               ps.player_name_snapshot, ps.player_jersey_snapshot, ps.player_position_snapshot, ps.team_name_snapshot
       HAVING games_played > 0
     `;
     

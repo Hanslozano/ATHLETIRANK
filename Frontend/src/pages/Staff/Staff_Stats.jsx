@@ -2187,11 +2187,27 @@ if (selectedGame?.sport_type === "volleyball") {
   // ============================================
   // 6. UPDATED saveStatistics FUNCTION WITH OFFLINE SUPPORT
   // ============================================
-  const saveStatistics = async () => {
-    if (!selectedGame) return;
-    setLoading(true);
+const saveStatistics = async () => {
+  if (!selectedGame) return;
+  setLoading(true);
 
-    try {
+  try {
+    // ✅ Use selectedEvent.id instead
+    const eventId = selectedEvent?.id;
+    
+    // ✅ ADD VALIDATION
+    if (!eventId) {
+      throw new Error("Event ID is missing. Please select a valid event.");
+    }
+
+    // ✅ ADD LOGGING
+    console.log("Saving stats with:", { 
+      eventId, 
+      matchId: selectedGame.id,
+      bracketId: selectedBracket?.id 
+    });
+
+
       // Calculate totals (keep your existing calculation code)
       const regulationTeam1Total = teamScores.team1.reduce((a, b) => a + b, 0);
       const regulationTeam2Total = teamScores.team2.reduce((a, b) => a + b, 0);

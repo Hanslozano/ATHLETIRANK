@@ -211,56 +211,63 @@ const getPositionLimits = (teamSize, sport) => {
 
   // Initialize brackets when moving to step 3 and pre-assign teams
   useEffect(() => {
-    if (currentStep === 3) {
-      const initialBrackets = Array.from({ length: eventData.numberOfBrackets }, (_, index) => ({
-        id: `bracket-${index + 1}`,
-        bracketName: "",
-        bracketType: "single",
-        sport: "",
-        selectedTeamIds: []
-      }));
+  if (currentStep === 3) {
+    const initialBrackets = Array.from({ length: eventData.numberOfBrackets }, (_, index) => ({
+      id: `bracket-${index + 1}`,
+      bracketName: "",
+      bracketType: "single",
+      sport: "",
+      selectedTeamIds: []
+    }));
+    
+    console.log("Team Bracket Assignments:", teamBracketAssignments);
+    console.log("Created Teams:", createdTeams);
+    
+    // Pre-assign teams to brackets based on teamBracketAssignments
+    const updatedBrackets = initialBrackets.map(bracket => {
+      let assignedTeamIds = Object.entries(teamBracketAssignments)
+        .filter(([teamId, bracketId]) => bracketId === bracket.id)
+        .map(([teamId]) => {
+          // ✅ FIX: Ensure team IDs are properly formatted
+          const numericId = typeof teamId === 'string' ? parseInt(teamId) : teamId;
+          console.log(`Assigning team ID ${numericId} to bracket ${bracket.id}`);
+          return numericId;
+        });
       
-      console.log("Team Bracket Assignments:", teamBracketAssignments);
-      console.log("Created Teams:", createdTeams);
+      // SPECIAL CASE: If only 1 bracket and no assignments, assign ALL teams to bracket-1
+      if (eventData.numberOfBrackets === 1 && bracket.id === 'bracket-1' && assignedTeamIds.length === 0) {
+        assignedTeamIds = createdTeams.map(t => {
+          const numericId = typeof t.id === 'string' ? parseInt(t.id) : t.id;
+          return numericId;
+        });
+        console.log(`Single bracket mode - Auto-assigning all ${assignedTeamIds.length} teams to bracket-1`);
+      }
       
-      // Pre-assign teams to brackets based on teamBracketAssignments
-      const updatedBrackets = initialBrackets.map(bracket => {
-        let assignedTeamIds = Object.entries(teamBracketAssignments)
-          .filter(([teamId, bracketId]) => bracketId === bracket.id)
-          .map(([teamId]) => teamId);
-        
-        // SPECIAL CASE: If only 1 bracket and no assignments, assign ALL teams to bracket-1
-        if (eventData.numberOfBrackets === 1 && bracket.id === 'bracket-1' && assignedTeamIds.length === 0) {
-          assignedTeamIds = createdTeams.map(t => String(t.id));
-          console.log(`Single bracket mode - Auto-assigning all ${assignedTeamIds.length} teams to bracket-1`);
+      console.log(`Bracket ${bracket.id} - Assigned Team IDs (numeric):`, assignedTeamIds);
+      
+      // AUTO-DETECT SPORT: If teams are assigned, get the sport from the first team
+      let detectedSport = "";
+      if (assignedTeamIds.length > 0) {
+        const firstTeam = createdTeams.find(t => 
+          parseInt(t.id) === parseInt(assignedTeamIds[0])
+        );
+        if (firstTeam) {
+          detectedSport = firstTeam.sport;
+          console.log(`Bracket ${bracket.id} - Detected Sport:`, detectedSport);
         }
-        
-        console.log(`Bracket ${bracket.id} - Assigned Team IDs:`, assignedTeamIds);
-        
-        // AUTO-DETECT SPORT: If teams are assigned, get the sport from the first team
-        let detectedSport = "";
-        if (assignedTeamIds.length > 0) {
-          const firstTeam = createdTeams.find(t => 
-            String(t.id) === String(assignedTeamIds[0]) || 
-            Number(t.id) === Number(assignedTeamIds[0])
-          );
-          if (firstTeam) {
-            detectedSport = firstTeam.sport;
-            console.log(`Bracket ${bracket.id} - Detected Sport:`, detectedSport);
-          }
-        }
-        
-        return {
-          ...bracket,
-          sport: detectedSport,
-          selectedTeamIds: assignedTeamIds
-        };
-      });
+      }
       
-      console.log("Final Updated Brackets:", updatedBrackets);
-      setBrackets(updatedBrackets);
-    }
-  }, [currentStep, eventData.numberOfBrackets, teamBracketAssignments, createdTeams]);
+      return {
+        ...bracket,
+        sport: detectedSport,
+        selectedTeamIds: assignedTeamIds // Now contains numeric IDs
+      };
+    });
+    
+    console.log("Final Updated Brackets:", updatedBrackets);
+    setBrackets(updatedBrackets);
+  }
+}, [currentStep, eventData.numberOfBrackets, teamBracketAssignments, createdTeams]);
 
   // Check for pre-selected event from Admin Events page
 useEffect(() => {
@@ -638,8 +645,10 @@ Jane Smith,12,${currentTeam.sport === 'Basketball' ? 'Shooting Guard' : 'Outside
     });
 };
 
+
+// ✅ FIXED: Auto-register team to event after creation
 const handleAddTeam = async () => {
- if (createdTeams.length >= maxTeams && !editingTeamId) {
+  if (createdTeams.length >= maxTeams && !editingTeamId) {
     setValidationError("Maximum 10 teams allowed per tournament. Please remove a team before adding a new one.");
     return;
   }
@@ -650,7 +659,6 @@ const handleAddTeam = async () => {
     return;
   }
 
-  // Trim all player data before submitting
   const trimmedPlayers = currentTeam.players.map(player => ({
     name: player.name.trim(),
     position: player.position,
@@ -694,6 +702,24 @@ const handleAddTeam = async () => {
       
       if (res.ok) {
         const newTeam = await res.json();
+        
+        // ✅ NEW: Register team to event immediately if event exists
+        if (createdEvent && createdEvent.id) {
+          try {
+            await fetch("http://localhost:5000/api/eventTeams", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                event_id: createdEvent.id,
+                team_id: newTeam.id
+              })
+            });
+            console.log(`✅ Team ${newTeam.id} registered to event ${createdEvent.id}`);
+          } catch (err) {
+            console.error("Failed to register team to event:", err);
+          }
+        }
+        
         setCreatedTeams(prev => [...prev, newTeam]);
         setCurrentTeam({ teamName: "", sport: "", players: [] });
         setValidationError("");
@@ -772,28 +798,46 @@ if (createdTeams.length > maxTeams) {
     setValidationError("");
   };
 
-  // Handle selecting existing team with bracket assignment
-  const handleSelectExistingTeam = (teamId, bracketId = null) => {
-     if (createdTeams.length >= maxTeams) {
+// ✅ FIXED: Auto-register existing team to event when selected
+const handleSelectExistingTeam = async (teamId, bracketId = null) => {
+  if (createdTeams.length >= maxTeams) {
     setValidationError("Maximum 10 teams allowed per tournament. Please remove a team before adding a new one.");
     return;
   }
-    const team = teams.find(t => t.id === teamId);
-    if (team && !createdTeams.find(t => t.id === team.id)) {
-      setCreatedTeams(prev => [...prev, team]);
-      
-      // If bracketId is provided, assign the team to that bracket
-      if (bracketId) {
-        setTeamBracketAssignments(prev => ({
-          ...prev,
-          [teamId]: bracketId
-        }));
+  
+  const team = teams.find(t => t.id === teamId);
+  if (team && !createdTeams.find(t => t.id === team.id)) {
+    // ✅ NEW: Register team to event first if event exists
+    if (createdEvent && createdEvent.id) {
+      try {
+        await fetch("http://localhost:5000/api/eventTeams", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_id: createdEvent.id,
+            team_id: teamId
+          })
+        });
+        console.log(`✅ Team ${teamId} registered to event ${createdEvent.id}`);
+      } catch (err) {
+        console.error("Failed to register team to event:", err);
+        // Continue anyway - the team will still be in createdTeams
       }
-      
-      setValidationError("");
     }
-  };
-
+    
+    setCreatedTeams(prev => [...prev, team]);
+    
+    // If bracketId is provided, assign the team to that bracket
+    if (bracketId) {
+      setTeamBracketAssignments(prev => ({
+        ...prev,
+        [teamId]: bracketId
+      }));
+    }
+    
+    setValidationError("");
+  }
+};
   // Handle bracket assignment for existing teams
   const handleAssignTeamToBracket = (teamId, bracketId) => {
     setTeamBracketAssignments(prev => ({
@@ -825,11 +869,7 @@ if (createdTeams.length > maxTeams) {
         return false;
       }
       
-      // Check if team is already in a bracket (from database)
-      if (teamsInBracketsFromDB.includes(team.id)) {
-        return false;
-      }
-      
+
       // Check if team is assigned to a bracket in current session
       if (teamBracketAssignments[team.id]) {
         return false;
@@ -912,7 +952,13 @@ if (createdTeams.length > maxTeams) {
       (!otherBracketsTeams.includes(team.id) || currentBracket.selectedTeamIds.includes(team.id))
     );
   };
-  const handleCreateAllBrackets = async () => {
+const handleCreateAllBrackets = async () => {
+  // ✅ Prevent double submission
+  if (loading) {
+    console.log("⚠️ Already creating brackets, ignoring duplicate request");
+    return;
+  }
+
   console.log("=== CREATING BRACKETS FOR EVENT ===");
   
   // Validate event data
@@ -940,11 +986,11 @@ if (createdTeams.length > maxTeams) {
     }
   }
 
-  setLoading(true);
+  setLoading(true); // ✅ Set loading IMMEDIATELY to block duplicate calls
   const createdBracketsList = [];
 
   try {
-    let eventToUse = createdEvent; // Use existing event if available
+    let eventToUse = createdEvent;
     
     // STEP 1: Create event ONLY if it doesn't exist yet
     if (!createdEvent) {
@@ -978,77 +1024,121 @@ if (createdTeams.length > maxTeams) {
       console.log("Using existing event:", eventToUse);
     }
 
-    // STEP 2: Create all brackets for the event (use eventToUse instead of newEvent)
-    for (let i = 0; i < brackets.length; i++) {
-      const bracket = brackets[i];
-      const sportType = bracket.sport.toLowerCase();
-      const bracketName = bracket.bracketName || 
-        `${eventToUse.name} - ${capitalize(bracket.sport)} Bracket`;
-      
-      const requestBody = {
-        event_id: eventToUse.id,  // Changed from newEvent.id to eventToUse.id
-        name: bracketName,
-        sport_type: sportType,
-        elimination_type: bracket.bracketType
-      };
-
-      console.log(`Creating bracket ${i + 1}:`, requestBody);
-      
-      const bracketRes = await fetch("http://localhost:5000/api/brackets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!bracketRes.ok) {
-        const errorData = await bracketRes.json();
-        throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to create bracket"}`);
-      }
-
-      const newBracket = await bracketRes.json();
-      console.log(`Bracket ${i + 1} created:`, newBracket);
-
-      // Add teams to bracket
-      for (let team_id of bracket.selectedTeamIds) {
-        await fetch("http://localhost:5000/api/bracketTeams", {
+    // ✅ Register all teams to event FIRST (before creating brackets)
+    console.log("Registering teams to event...");
+    for (const team of createdTeams) {
+      try {
+        await fetch("http://localhost:5000/api/eventTeams", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            bracket_id: newBracket.id,
-            team_id
+            event_id: eventToUse.id,
+            team_id: team.id
           })
         });
+        console.log(`✅ Registered team ${team.id} (${team.name}) to event ${eventToUse.id}`);
+      } catch (err) {
+        // Team might already be registered, continue
+        console.log(`Team ${team.id} might already be registered`);
       }
-
-      // Generate matches based on bracket type
-      let generateEndpoint;
-      if (bracket.bracketType === 'round_robin') {
-        generateEndpoint = `http://localhost:5000/api/round-robin/${newBracket.id}/generate`;
-      } else {
-        generateEndpoint = `http://localhost:5000/api/brackets/${newBracket.id}/generate`;
-      }
-
-      console.log(`Generating matches for ${bracket.bracketType} bracket at: ${generateEndpoint}`);
-
-      const generateRes = await fetch(generateEndpoint, {
-        method: "POST"
-      });
-
-      if (!generateRes.ok) {
-        const errorData = await generateRes.json();
-        throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to generate matches"}`);
-      }
-
-      const generateData = await generateRes.json();
-      console.log(`Generated ${generateData.matches?.length || 0} matches for bracket ${i + 1}`);
-
-      createdBracketsList.push({
-        ...newBracket,
-        selectedTeams: bracket.selectedTeamIds.length,
-        team_count: bracket.selectedTeamIds.length,
-        bracket_type: bracket.bracketType
-      });
     }
+
+    // STEP 2: Create all brackets for the event
+    for (let i = 0; i < brackets.length; i++) {
+  const bracket = brackets[i];
+  const sportType = bracket.sport.toLowerCase();
+  const bracketName = bracket.bracketName || 
+    `${eventToUse.name} - ${capitalize(bracket.sport)} Bracket`;
+  
+  const requestBody = {
+    event_id: eventToUse.id,
+    name: bracketName,
+    sport_type: sportType,
+    elimination_type: bracket.bracketType
+  };
+
+  console.log(`Creating bracket ${i + 1}:`, requestBody);
+  
+  const bracketRes = await fetch("http://localhost:5000/api/brackets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!bracketRes.ok) {
+    const errorData = await bracketRes.json();
+    throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to create bracket"}`);
+  }
+
+  const newBracket = await bracketRes.json();
+  console.log(`Bracket ${i + 1} created:`, newBracket);
+
+  // ✅ FIX: Ensure team IDs are numbers and add them to bracket
+  console.log(`Assigning ${bracket.selectedTeamIds.length} teams to bracket ${newBracket.id}`);
+  
+  for (let team_id of bracket.selectedTeamIds) {
+    const numericTeamId = typeof team_id === 'string' ? parseInt(team_id) : team_id;
+    
+    console.log(`Assigning team ${numericTeamId} to bracket ${newBracket.id}`);
+    
+    const assignRes = await fetch("http://localhost:5000/api/bracketTeams", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bracket_id: newBracket.id,
+        team_id: numericTeamId
+      })
+    });
+
+    if (!assignRes.ok) {
+      const errorData = await assignRes.json();
+      console.error(`Failed to assign team ${numericTeamId}:`, errorData);
+      throw new Error(`Bracket ${i + 1}: Failed to assign team - ${errorData.error}`);
+    }
+    
+    const assignResult = await assignRes.json();
+    console.log(`✅ Team ${numericTeamId} assigned:`, assignResult);
+  }
+
+  // ✅ Verify teams were added before generating matches
+  const verifyRes = await fetch(`http://localhost:5000/api/bracketTeams/bracket/${newBracket.id}`);
+  const assignedTeams = await verifyRes.json();
+  
+  console.log(`✅ Verified ${assignedTeams.length} teams in bracket ${newBracket.id}`);
+  
+  if (assignedTeams.length < 2) {
+    throw new Error(`Bracket ${i + 1}: Only ${assignedTeams.length} team(s) assigned. Need at least 2 teams to generate matches.`);
+  }
+
+  // Generate matches based on bracket type
+  let generateEndpoint;
+  if (bracket.bracketType === 'round_robin') {
+    generateEndpoint = `http://localhost:5000/api/round-robin/${newBracket.id}/generate`;
+  } else {
+    generateEndpoint = `http://localhost:5000/api/brackets/${newBracket.id}/generate`;
+  }
+
+  console.log(`Generating matches for ${bracket.bracketType} bracket at: ${generateEndpoint}`);
+
+  const generateRes = await fetch(generateEndpoint, {
+    method: "POST"
+  });
+
+  if (!generateRes.ok) {
+    const errorData = await generateRes.json();
+    throw new Error(`Bracket ${i + 1}: ${errorData.error || "Failed to generate matches"}`);
+  }
+
+  const generateData = await generateRes.json();
+  console.log(`Generated ${generateData.matches?.length || 0} matches for bracket ${i + 1}`);
+
+  createdBracketsList.push({
+    ...newBracket,
+    selectedTeams: assignedTeams.length,
+    team_count: assignedTeams.length,
+    bracket_type: bracket.bracketType
+  });
+}
 
     setCreatedBrackets(createdBracketsList);
     setCurrentStep(4);
@@ -1057,7 +1147,7 @@ if (createdTeams.length > maxTeams) {
     console.error("Error creating tournament:", err);
     setValidationError(err.message);
   } finally {
-    setLoading(false);
+    setLoading(false); // ✅ Always reset loading state
   }
 };
   
@@ -1154,29 +1244,33 @@ if (createdTeams.length > maxTeams) {
                       />
                     </div>
 
-                    <div className="bracket-form-group">
-                      <label htmlFor="startDate">Start Date *</label>
-                      <input
-                        type="date"
-                        id="startDate"
-                        name="startDate"
-                        value={eventData.startDate}
-                        onChange={handleEventInputChange}
-                        required
-                      />
-                    </div>
+                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+  <div className="bracket-form-group">
+    <label htmlFor="startDate">Start Date *</label>
+    <input
+      type="date"
+      id="startDate"
+      name="startDate"
+      value={eventData.startDate}
+      onChange={handleEventInputChange}
+      required
+      style={{ colorScheme: 'dark' }}
+    />
+  </div>
 
-                    <div className="bracket-form-group">
-                      <label htmlFor="endDate">End Date *</label>
-                      <input
-                        type="date"
-                        id="endDate"
-                        name="endDate"
-                        value={eventData.endDate}
-                        onChange={handleEventInputChange}
-                        required
-                      />
-                    </div>
+  <div className="bracket-form-group">
+    <label htmlFor="endDate">End Date *</label>
+    <input
+      type="date"
+      id="endDate"
+      name="endDate"
+      value={eventData.endDate}
+      onChange={handleEventInputChange}
+      required
+      style={{ colorScheme: 'dark' }}
+    />
+  </div>
+</div>
 
                     <div className="bracket-form-group">
                       <label htmlFor="numberOfBrackets">Number of Brackets *</label>
@@ -1678,18 +1772,35 @@ title={createdTeams.length >= maxTeams ? "Maximum team limit reached" : "Add Tea
                     </div>
                   )}
 
-                  {createdTeams.length >= 2 && (
-                    <div className="bracket-form-actions" style={{ marginTop: '20px', borderTop: '2px solid rgba(255, 255, 255, 0.1)', paddingTop: '20px' }}>
-                      <button 
-                        onClick={handleProceedToBracket}
-                        className="bracket-submit-btn"
-                        style={{ width: '100%' }}
-                      >
-                        Proceed to Create Brackets
-                        <FaChevronRight style={{ marginLeft: '8px' }} />
-                      </button>
-                    </div>
+        {createdTeams.length >= 2 && (
+  <div className="bracket-form-actions" style={{ marginTop: '20px', borderTop: '2px solid rgba(255, 255, 255, 0.1)', paddingTop: '20px' }}>
+    <button 
+      onClick={() => setCurrentStep(1)}
+      className="bracket-cancel-btn"
+    >
+      <FaChevronLeft style={{ marginRight: '8px' }} />
+      Back to Event
+    </button>
+    <button 
+      onClick={handleProceedToBracket}
+      className="bracket-submit-btn"
+    >
+      Proceed to Create Brackets
+      <FaChevronRight style={{ marginLeft: '8px' }} />
+    </button>
+  </div>
                   )}
+                  {createdTeams.length < 2 && (
+  <div className="bracket-form-actions" style={{ marginTop: '20px', borderTop: '2px solid rgba(255, 255, 255, 0.1)', paddingTop: '20px' }}>
+    <button 
+      onClick={() => setCurrentStep(1)}
+      className="bracket-cancel-btn"
+    >
+      <FaChevronLeft style={{ marginRight: '8px' }} />
+      Back to Event
+    </button>
+  </div>
+)}
                 </div>
               </div>
             )}
@@ -1894,17 +2005,21 @@ title={createdTeams.length >= maxTeams ? "Maximum team limit reached" : "Add Tea
                       <FaChevronLeft style={{ marginRight: '8px' }} />
                       Back to Teams
                     </button>
-                    <button 
-                      onClick={handleCreateAllBrackets}
-                      className="bracket-submit-btn"
-                      disabled={loading}
-                    >
-                      {loading 
-                        ? "Creating Tournament..." 
-                        : eventData.numberOfBrackets === 1 
-                          ? "Create Tournament" 
-                          : "Create Tournament"}
-                    </button>
+                  <button 
+  onClick={handleCreateAllBrackets}
+  className="bracket-submit-btn"
+  disabled={loading} // ✅ Disable button when loading
+  style={{
+    opacity: loading ? 0.6 : 1, // ✅ Visual feedback
+    cursor: loading ? 'not-allowed' : 'pointer' // ✅ Change cursor
+  }}
+>
+  {loading 
+    ? "Creating Tournament..." 
+    : eventData.numberOfBrackets === 1 
+      ? "Create Tournament" 
+      : "Create Tournament"}
+</button>
                   </div>
                 </div>
               </div>

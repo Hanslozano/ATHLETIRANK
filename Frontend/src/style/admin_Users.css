@@ -130,7 +130,7 @@
 }
 
 .search-input {
-  padding: 12px 16px 12px 40px;
+  padding: 12px 16px;  /* Changed from: padding: 12px 16px 12px 40px; */
   border: 2px solid var(--border-color);
   border-radius: var(--border-radius);
   font-size: 16px;
@@ -250,6 +250,13 @@
   padding: 15px;
   border-bottom: 1px solid var(--border-color);
   font-size: 14px;
+  vertical-align: middle;  /* ADD THIS LINE */
+}
+
+.users-table th:nth-child(4),
+.users-table td:nth-child(4) {
+  text-align: center;
+  vertical-align: middle;
 }
 
 .users-table td {
@@ -383,6 +390,11 @@
 .bracket-sport-badge.admin {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
+}
+
+.bracket-sport-badge.sports_committee {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--primary-color);
 }
 
 .bracket-sport-badge.staff {

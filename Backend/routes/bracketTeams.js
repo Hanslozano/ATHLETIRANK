@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
 
-// POST - Assign team to bracket
+// ✅ UPDATE POST - Add validation that team must be in event first
 router.post("/", async (req, res) => {
   const { bracket_id, team_id, bracketId, teamId } = req.body;
   
@@ -14,14 +14,41 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    // Check if this team is already assigned to this bracket
+    // ✅ Get bracket's event_id
+    const [bracket] = await db.pool.query(
+      "SELECT event_id FROM brackets WHERE id = ?",
+      [finalBracketId]
+    );
+
+    if (bracket.length === 0) {
+      return res.status(404).json({ error: "Bracket not found" });
+    }
+
+    const eventId = bracket[0].event_id;
+// ✅ AUTO-REGISTER team to event if not already registered
+const [eventTeam] = await db.pool.query(
+  "SELECT id FROM event_teams WHERE event_id = ? AND team_id = ?",
+  [eventId, finalTeamId]
+);
+
+if (eventTeam.length === 0) {
+  // Automatically register team to event
+  await db.pool.query(
+    "INSERT INTO event_teams (event_id, team_id) VALUES (?, ?)",
+    [eventId, finalTeamId]
+  );
+  console.log(`✅ Auto-registered team ${finalTeamId} to event ${eventId}`);
+}
+    // Check if team is already in this bracket
     const [existing] = await db.pool.query(
       "SELECT id FROM bracket_teams WHERE bracket_id = ? AND team_id = ?",
       [finalBracketId, finalTeamId]
     );
 
     if (existing.length > 0) {
-      return res.status(400).json({ error: "Team already assigned to this bracket" });
+      return res.status(400).json({ 
+        error: "Team already assigned to this bracket" 
+      });
     }
 
     // Insert the assignment
@@ -45,67 +72,72 @@ router.post("/", async (req, res) => {
 
 // ✅ COMPLETE FIX - GET available teams (excludes teams from ALL brackets)
 // ✅ COMPLETE FIX - GET available teams (excludes teams from ALL brackets including current)
+// ✅ NEW LOGIC - Get available teams (only from event_teams, exclude same bracket)
 router.get("/bracket/:bracketId/available", async (req, res) => {
   try {
     const { bracketId } = req.params;
     
     console.log(`\n🔍 [BACKEND] Fetching available teams for bracket: ${bracketId}`);
     
-    // First get the bracket's sport type
+    // Get bracket info including event_id
     const [bracketInfo] = await db.pool.query(
-      "SELECT sport_type FROM brackets WHERE id = ?",
+      "SELECT event_id, sport_type FROM brackets WHERE id = ?",
       [bracketId]
     );
 
     if (bracketInfo.length === 0) {
-      console.log(`❌ [BACKEND] Bracket ${bracketId} not found`);
       return res.status(404).json({ error: "Bracket not found" });
     }
 
-    const sportType = bracketInfo[0].sport_type.toLowerCase();
-    console.log(`✅ [BACKEND] Bracket sport type: ${sportType}`);
+    const { event_id, sport_type } = bracketInfo[0];
+    const sportType = sport_type.toLowerCase();
+    
+    console.log(`✅ [BACKEND] Event: ${event_id}, Sport: ${sportType}`);
 
-    // ✅ FIX: Get ALL teams already in ANY bracket (including this one)
-    const [allAssignedTeams] = await db.pool.query(
-      "SELECT DISTINCT team_id FROM bracket_teams"
+    // ✅ Get teams already in THIS bracket
+    const [teamsInBracket] = await db.pool.query(
+      "SELECT DISTINCT team_id FROM bracket_teams WHERE bracket_id = ?",
+      [bracketId]
     );
     
-    const allAssignedTeamIds = allAssignedTeams.map(t => t.team_id);
-    console.log(`📊 [BACKEND] ALL assigned team IDs (including this bracket):`, allAssignedTeamIds);
+    const teamsInBracketIds = teamsInBracket.map(t => t.team_id);
+    console.log(`📊 [BACKEND] Teams in THIS bracket:`, teamsInBracketIds);
 
     let availableTeams;
     
-    if (allAssignedTeamIds.length > 0) {
-      // Exclude ALL teams that are in ANY bracket (including this one)
-      const placeholders = allAssignedTeamIds.map(() => '?').join(',');
+    if (teamsInBracketIds.length > 0) {
+      const placeholders = teamsInBracketIds.map(() => '?').join(',');
       
+      // ✅ Get teams registered to THIS event, matching sport, NOT in this bracket
       const query = `
         SELECT t.id, t.name, t.sport 
-        FROM teams t 
-        WHERE LOWER(t.sport) = ?
+        FROM teams t
+        JOIN event_teams et ON t.id = et.team_id
+        WHERE et.event_id = ?
+        AND LOWER(t.sport) = ?
         AND t.id NOT IN (${placeholders})
         ORDER BY t.name
       `;
       
-      [availableTeams] = await db.pool.query(query, [sportType, ...allAssignedTeamIds]);
-      
-      console.log(`🔍 [BACKEND] Excluded ${allAssignedTeamIds.length} teams that are already in brackets`);
+      [availableTeams] = await db.pool.query(
+        query, 
+        [event_id, sportType, ...teamsInBracketIds]
+      );
     } else {
-      // No teams assigned anywhere, return all teams of matching sport
+      // No teams in bracket yet, return all event teams matching sport
       [availableTeams] = await db.pool.query(`
         SELECT t.id, t.name, t.sport 
-        FROM teams t 
-        WHERE LOWER(t.sport) = ?
+        FROM teams t
+        JOIN event_teams et ON t.id = et.team_id
+        WHERE et.event_id = ?
+        AND LOWER(t.sport) = ?
         ORDER BY t.name
-      `, [sportType]);
-      
-      console.log(`🔍 [BACKEND] No teams assigned to any bracket yet`);
+      `, [event_id, sportType]);
     }
     
     console.log(`✅ [BACKEND] Available teams count:`, availableTeams.length);
-    console.log(`📤 [BACKEND] Available teams:`, availableTeams.map(t => t.name));
-    
     res.json(availableTeams);
+    
   } catch (err) {
     console.error("❌ [BACKEND] Error fetching available teams:", err);
     res.status(500).json({ error: "Database error: " + err.message });

@@ -252,7 +252,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                         </button>
                         {showSearch && (
                           <div className="search-container">
-                            <FaSearch className="search-icon" />
+                     
                             <input
                               type="text"
                               placeholder="Search users..."
@@ -265,7 +265,7 @@ const AdminUsers = ({ sidebarOpen }) => {
                       </div>
                     ) : (
                       <div className="search-container">
-                        <FaSearch className="search-icon" />
+                    
                         <input
                           type="text"
                           placeholder="Search users..."

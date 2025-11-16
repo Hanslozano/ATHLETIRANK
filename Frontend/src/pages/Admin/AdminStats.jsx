@@ -236,92 +236,50 @@ const AdminStats = ({ sidebarOpen, preselectedEvent, preselectedBracket, embedde
 
   // Handle event selection
   const handleEventSelect = async (event) => {
-    setSelectedEvent(event);
-    setSelectedBracket(null);
-    setLoading(true);
-    setCurrentPage(1);
-    triggerContentAnimation();
-    try {
-      const bracketRes = await fetch(`http://localhost:5000/api/stats/events/${event.id}/brackets`);
-      const bracketData = await bracketRes.json();
-      setBrackets(bracketData);
+  setSelectedEvent(event);
+  setSelectedBracket(null); // ✅ IMPORTANT: Clear the selected bracket
+  setLoading(true);
+  setCurrentPage(1);
+  triggerContentAnimation();
+  try {
+    const bracketRes = await fetch(`http://localhost:5000/api/stats/events/${event.id}/brackets`);
+    const bracketData = await bracketRes.json();
+    setBrackets(bracketData);
 
-      const allMatches = [];
-      for (const bracket of bracketData) {
-        try {
-          const matchRes = await fetch(`http://localhost:5000/api/stats/${bracket.id}/matches`);
-          const matchData = await matchRes.json();
-          const matchesWithBracket = matchData.map(match => ({
-            ...match,
-            bracket_name: bracket.name,
-            sport_type: bracket.sport_type,
-            bracket_type: match.bracket_type || bracket.bracket_type || bracket.elimination_type
-          }));
-          allMatches.push(...matchesWithBracket);
-        } catch (err) {
-          console.error(`Error fetching matches for bracket ${bracket.id}:`, err);
-        }
-      }
-      setMatches(allMatches);
-
-      setEventStatistics({
-        total_players: 0,
-        total_games: 0,
-        sport_type: 'basketball',
-        avg_ppg: 0,
-        avg_rpg: 0,
-        avg_apg: 0,
-        avg_bpg: 0,
-        avg_kills: 0,
-        avg_digs: 0,
-        avg_total_errors: 0
-      });
-      setAllPlayersData([]);
-      setAllTeamsData([]);
-      
-      if (statsViewMode === "players") {
-        setActiveTab("players");
-      } else if (statsViewMode === "teams") {
-        setActiveTab("teams");
-      } else {
-        setActiveTab("brackets");
-      }
-    } catch (err) {
-      console.error("Error fetching event data:", err);
-      
-      const mockBrackets = [
-        { id: 1, name: "Men's Basketball Bracket", sport_type: "basketball", event_id: 1, elimination_type: "double" },
-        { id: 2, name: "Women's Volleyball Bracket", sport_type: "volleyball", event_id: 2, elimination_type: "single" }
-      ];
-      setBrackets(mockBrackets);
-      
-      const mockMatches = [
-        { 
-          id: 1, 
-          bracket_id: 1, 
-          team1_name: "Team A", 
-          team2_name: "Team B", 
-          winner_name: "Team A", 
-          score_team1: 85, 
-          score_team2: 70, 
-          status: "completed", 
-          round_number: 1, 
-          bracket_name: "Men's Basketball Bracket", 
-          sport_type: "basketball",
-          bracket_type: "winner"
-        }
-      ];
-      setMatches(mockMatches);
-      
-      if (statsViewMode === "players") {
-        setActiveTab("players");
-      } else if (statsViewMode === "teams") {
-        setActiveTab("teams");
-      }
-    } finally {
-      setLoading(false);
+    // ✅ DO NOT load statistics here without a specific bracket
+    // Remove or comment out these lines:
+    // setEventStatistics(...);
+    // setAllPlayersData([]);
+    // setAllTeamsData([]);
+    
+    // ✅ Instead, clear the data
+    setEventStatistics({
+      total_players: 0,
+      total_games: 0,
+      sport_type: 'basketball',
+      avg_ppg: 0,
+      avg_rpg: 0,
+      avg_apg: 0,
+      avg_bpg: 0,
+      avg_kills: 0,
+      avg_digs: 0,
+      avg_total_errors: 0
+    });
+    setAllPlayersData([]);
+    setAllTeamsData([]);
+    
+    // ✅ Only load data when a bracket is selected
+    if (statsViewMode === "players" || statsViewMode === "teams") {
+      setActiveTab(statsViewMode);
+    } else {
+      setActiveTab("brackets");
     }
-  };
+  } catch (err) {
+    console.error("Error fetching event data:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Handle bracket selection to load specific bracket data
   const handleBracketSelect = async (bracket) => {
@@ -805,21 +763,24 @@ const renderVolleyballPlayerHeaders = () => {
 };
 
   // Render Basketball Players Table Rows
-  const renderBasketballPlayerRows = () => {
-    return currentPlayers.map((player, index) => (
-      <tr key={player.id} className="stats-player-row">
-        <td className="stats-rank-cell">
-          <div className={`stats-rank-badge ${
-            indexOfFirstItem + index === 0 ? 'stats-rank-1' : 
-            indexOfFirstItem + index === 1 ? 'stats-rank-2' :
-            indexOfFirstItem + index === 2 ? 'stats-rank-3' : 'stats-rank-other'
-          }`}>
-            {indexOfFirstItem + index + 1}
-          </div>
-        </td>
-        <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>{player.name}</td>
-        <td className="stats-team-name" style={{ fontSize: '0.9rem' }}>{player.team_name}</td>
-        <td className="stats-jersey-number">{player.jersey_number}</td>
+ const renderBasketballPlayerRows = () => {
+  return currentPlayers.map((player, index) => (
+    <tr key={player.id} className={`stats-player-row ${player.is_deleted ? 'deleted-player' : ''}`}>
+      <td className="stats-rank-cell">
+        <div className={`stats-rank-badge ${
+          indexOfFirstItem + index === 0 ? 'stats-rank-1' : 
+          indexOfFirstItem + index === 1 ? 'stats-rank-2' :
+          indexOfFirstItem + index === 2 ? 'stats-rank-3' : 'stats-rank-other'
+        }`}>
+          {indexOfFirstItem + index + 1}
+        </div>
+      </td>
+      <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>
+        {player.name}
+        {player.is_deleted && <span style={{ color: '#f59e0b', marginLeft: '8px', fontSize: '0.75rem' }}>(Deleted)</span>}
+      </td>
+      <td className="stats-team-name" style={{ fontSize: '0.9rem' }}>{player.team_name}</td>
+      <td className="stats-jersey-number">{player.jersey_number}</td>
         <td className="stats-games-played">{player.games_played}</td>
         <td className={getPerformanceColor(player.overall_score, 'overall_score')}>
           {player.overall_score || 0}
@@ -835,7 +796,7 @@ const renderVolleyballPlayerHeaders = () => {
   // Render Volleyball Players Table Rows
 const renderVolleyballPlayerRows = () => {
   return currentPlayers.map((player, index) => (
-    <tr key={player.id} className="stats-player-row">
+    <tr key={player.id} className={`stats-player-row ${player.is_deleted ? 'deleted-player' : ''}`}>
       <td className="stats-rank-cell">
         <div className={`stats-rank-badge ${
           indexOfFirstItem + index === 0 ? 'stats-rank-1' : 
@@ -845,7 +806,10 @@ const renderVolleyballPlayerRows = () => {
           {indexOfFirstItem + index + 1}
         </div>
       </td>
-      <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>{player.name}</td>
+      <td className="stats-player-name" style={{ fontSize: '0.95rem' }}>
+        {player.name}
+        {player.is_deleted && <span style={{ color: '#f59e0b', marginLeft: '8px', fontSize: '0.75rem' }}>(Deleted)</span>}
+      </td>
       <td className="stats-team-name" style={{ fontSize: '0.9rem' }}>{player.team_name}</td>
       <td className="stats-jersey-number">{player.jersey_number}</td>
       <td className="stats-games-played">{player.games_played}</td>
@@ -952,9 +916,9 @@ const renderVolleyballTeamHeaders = () => {
 
   
   // Render Basketball Teams Table Rows
-  const renderBasketballTeamRows = () => {
-    return currentTeams.map((team, index) => (
-      <tr key={team.team_id} className="stats-player-row">
+const renderBasketballTeamRows = () => {
+  return currentTeams.map((team, index) => (
+    <tr key={team.team_id} className="stats-player-row">
         <td className="stats-rank-cell">
           <div className={`stats-rank-badge ${
             indexOfFirstItem + index === 0 ? 'stats-rank-1' : 

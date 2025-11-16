@@ -49,6 +49,37 @@ const getStatArray = (primary, fallback, length) => {
   return normalizeArray([], length);
 };
 
+// Helper function to get player snapshot data
+const getPlayerSnapshot = async (conn, playerId) => {
+  try {
+    const [playerDetails] = await conn.query(
+      `SELECT p.name, p.jersey_number, p.position, t.name as team_name
+       FROM players p
+       JOIN teams t ON p.team_id = t.id
+       WHERE p.id = ?`,
+      [playerId]
+    );
+    
+    if (playerDetails.length > 0) {
+      return {
+        name: playerDetails[0].name,
+        jersey_number: playerDetails[0].jersey_number || 'N/A',
+        position: playerDetails[0].position || 'Unknown',
+        team_name: playerDetails[0].team_name
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching player snapshot:', err);
+  }
+  
+  return {
+    name: 'Unknown Player',
+    jersey_number: 'N/A',
+    position: 'Unknown',
+    team_name: 'Unknown Team'
+  };
+};
+
 // Get all events
 router.get("/events", async (req, res) => {
   try {
@@ -67,7 +98,7 @@ router.get("/events/:eventId/brackets", async (req, res) => {
     console.log("Fetching brackets for event:", eventId);
     
     const query = `
-      SELECT b.*, COUNT(bt.team_id) as team_count 
+      SELECT b.*, b.event_id, COUNT(bt.team_id) as team_count 
       FROM brackets b
       LEFT JOIN bracket_teams bt ON b.id = bt.bracket_id
       WHERE b.event_id = ?
@@ -177,15 +208,16 @@ router.get("/teams/:teamId/players", async (req, res) => {
   }
 });
 
-// Get existing stats for a match - UPDATED to include assist_errors
+// Get existing stats for a match - UPDATED with snapshot support
 router.get("/matches/:matchId/stats", async (req, res) => {
   try {
     const query = `
       SELECT 
         ps.*,
-        p.name as player_name,
-        p.position as player_position,
-        t.name as team_name,
+        COALESCE(p.name, ps.player_name_snapshot, 'Deleted Player') as player_name,
+        COALESCE(p.position, ps.player_position_snapshot, 'Unknown') as player_position,
+        COALESCE(p.jersey_number, ps.player_jersey_snapshot, 'N/A') as jersey_number,
+        COALESCE(t.name, ps.team_name_snapshot, 'Unknown Team') as team_name,
         COALESCE(ps.overtime_periods, 0) as overtime_periods,
         COALESCE(ps.overtime_two_points_made, '[]') as overtime_two_points_made,
         COALESCE(ps.overtime_three_points_made, '[]') as overtime_three_points_made,
@@ -221,10 +253,10 @@ router.get("/matches/:matchId/stats", async (req, res) => {
         COALESCE(ps.assist_errors_per_set, '[]') as assist_errors_per_set,
         COALESCE(ps.assist_errors, 0) as assist_errors
       FROM player_stats ps
-      JOIN players p ON ps.player_id = p.id
-      JOIN teams t ON p.team_id = t.id
+      LEFT JOIN players p ON ps.player_id = p.id
+      LEFT JOIN teams t ON p.team_id = t.id
       WHERE ps.match_id = ?
-      ORDER BY t.name, p.name
+      ORDER BY COALESCE(t.name, ps.team_name_snapshot), COALESCE(p.name, ps.player_name_snapshot)
     `;
     const [rows] = await db.pool.query(query, [req.params.matchId]);
     
@@ -286,7 +318,7 @@ router.get("/matches/:matchId/stats", async (req, res) => {
   }
 });
 
-// Enhanced Save stats for a match - FIXED: Corrected INSERT query
+// Enhanced Save stats for a match - UPDATED with snapshot support
 router.post("/matches/:matchId/stats", async (req, res) => {
   const { players, team1_id, team2_id, awards = [] } = req.body;
   const matchId = req.params.matchId;
@@ -326,7 +358,7 @@ router.post("/matches/:matchId/stats", async (req, res) => {
 
     // Get match details first to know the bracket and round info
     const [matchDetails] = await conn.query(
-      `SELECT m.*, b.elimination_type, b.sport_type 
+      `SELECT m.*, b.elimination_type, b.sport_type, b.event_id 
        FROM matches m 
        JOIN brackets b ON m.bracket_id = b.id 
        WHERE m.id = ?`, 
@@ -338,7 +370,15 @@ router.post("/matches/:matchId/stats", async (req, res) => {
     }
 
     const match = matchDetails[0];
+    const eventId = match.event_id;
+
     console.log("Match details:", match);
+    console.log("Event ID:", eventId);
+
+    // Validate eventId
+    if (!eventId) {
+      throw new Error("Event ID is missing from match data");
+    }
 
     // Clear existing stats and awards
     await conn.query("DELETE FROM player_stats WHERE match_id = ?", [matchId]);
@@ -364,189 +404,261 @@ router.post("/matches/:matchId/stats", async (req, res) => {
       }
       
       try {
+        // Get player snapshot data
+        const playerSnapshot = await getPlayerSnapshot(conn, playerId);
 
-      const twoPointsPerQuarter = getStatArray(player.two_points_made_per_quarter, player.two_points_made, 4);
-      const threePointsPerQuarter = getStatArray(player.three_points_made_per_quarter, player.three_points_made, 4);
-      const freeThrowsPerQuarter = getStatArray(player.free_throws_made_per_quarter, player.free_throws_made, 4);
-      const assistsPerQuarter = getStatArray(player.assists_per_quarter, player.assists, 4);
-      const reboundsPerQuarter = getStatArray(player.rebounds_per_quarter, player.rebounds, 4);
-      const stealsPerQuarter = getStatArray(player.steals_per_quarter, player.steals, 4);
-      const blocksPerQuarter = getStatArray(player.blocks_per_quarter, player.blocks, 4);
-      const foulsPerQuarter = getStatArray(player.fouls_per_quarter, player.fouls, 4);
-      const technicalFoulsPerQuarter = getStatArray(player.technical_fouls_per_quarter, player.technical_fouls, 4);
-      const turnoversPerQuarter = getStatArray(player.turnovers_per_quarter, player.turnovers, 4);
+        const twoPointsPerQuarter = getStatArray(player.two_points_made_per_quarter, player.two_points_made, 4);
+        const threePointsPerQuarter = getStatArray(player.three_points_made_per_quarter, player.three_points_made, 4);
+        const freeThrowsPerQuarter = getStatArray(player.free_throws_made_per_quarter, player.free_throws_made, 4);
+        const assistsPerQuarter = getStatArray(player.assists_per_quarter, player.assists, 4);
+        const reboundsPerQuarter = getStatArray(player.rebounds_per_quarter, player.rebounds, 4);
+        const stealsPerQuarter = getStatArray(player.steals_per_quarter, player.steals, 4);
+        const blocksPerQuarter = getStatArray(player.blocks_per_quarter, player.blocks, 4);
+        const foulsPerQuarter = getStatArray(player.fouls_per_quarter, player.fouls, 4);
+        const technicalFoulsPerQuarter = getStatArray(player.technical_fouls_per_quarter, player.technical_fouls, 4);
+        const turnoversPerQuarter = getStatArray(player.turnovers_per_quarter, player.turnovers, 4);
 
-      const overtimeTwoPoints = normalizeArray(player.overtime_two_points_made);
-      const overtimeThreePoints = normalizeArray(player.overtime_three_points_made);
-      const overtimeFreeThrows = normalizeArray(player.overtime_free_throws_made);
-      const overtimeAssists = normalizeArray(player.overtime_assists);
-      const overtimeRebounds = normalizeArray(player.overtime_rebounds);
-      const overtimeSteals = normalizeArray(player.overtime_steals);
-      const overtimeBlocks = normalizeArray(player.overtime_blocks);
-      const overtimeFouls = normalizeArray(player.overtime_fouls);
-      const overtimeTechnicalFouls = normalizeArray(player.overtime_technical_fouls);
-      const overtimeTurnovers = normalizeArray(player.overtime_turnovers);
+        const overtimeTwoPoints = normalizeArray(player.overtime_two_points_made);
+        const overtimeThreePoints = normalizeArray(player.overtime_three_points_made);
+        const overtimeFreeThrows = normalizeArray(player.overtime_free_throws_made);
+        const overtimeAssists = normalizeArray(player.overtime_assists);
+        const overtimeRebounds = normalizeArray(player.overtime_rebounds);
+        const overtimeSteals = normalizeArray(player.overtime_steals);
+        const overtimeBlocks = normalizeArray(player.overtime_blocks);
+        const overtimeFouls = normalizeArray(player.overtime_fouls);
+        const overtimeTechnicalFouls = normalizeArray(player.overtime_technical_fouls);
+        const overtimeTurnovers = normalizeArray(player.overtime_turnovers);
 
-      const killsPerSet = getStatArray(player.kills_per_set, player.kills, 5);
-      const attackAttemptsPerSet = getStatArray(player.attack_attempts_per_set, player.attack_attempts, 5);
-      const attackErrorsPerSet = getStatArray(player.attack_errors_per_set, player.attack_errors, 5);
-      const servesPerSet = getStatArray(player.serves_per_set, player.serves, 5);
-      const serviceAcesPerSet = getStatArray(player.service_aces_per_set, player.service_aces, 5);
-      const serveErrorsPerSet = getStatArray(player.serve_errors_per_set, player.serve_errors, 5);
-      const receptionsPerSet = getStatArray(player.receptions_per_set, player.receptions, 5);
-      const receptionErrorsPerSet = getStatArray(player.reception_errors_per_set, player.reception_errors, 5);
-      const digsPerSet = getStatArray(player.digs_per_set, player.digs, 5);
-      const volleyballAssistsPerSet = getStatArray(player.volleyball_assists_per_set, player.volleyball_assists, 5);
-      const volleyballBlocksPerSet = getStatArray(player.volleyball_blocks_per_set, player.volleyball_blocks, 5);
-      const assistErrorsPerSet = getStatArray(player.assist_errors_per_set, player.assist_errors, 5);
+        const killsPerSet = getStatArray(player.kills_per_set, player.kills, 5);
+        const attackAttemptsPerSet = getStatArray(player.attack_attempts_per_set, player.attack_attempts, 5);
+        const attackErrorsPerSet = getStatArray(player.attack_errors_per_set, player.attack_errors, 5);
+        const servesPerSet = getStatArray(player.serves_per_set, player.serves, 5);
+        const serviceAcesPerSet = getStatArray(player.service_aces_per_set, player.service_aces, 5);
+        const serveErrorsPerSet = getStatArray(player.serve_errors_per_set, player.serve_errors, 5);
+        const receptionsPerSet = getStatArray(player.receptions_per_set, player.receptions, 5);
+        const receptionErrorsPerSet = getStatArray(player.reception_errors_per_set, player.reception_errors, 5);
+        const digsPerSet = getStatArray(player.digs_per_set, player.digs, 5);
+        const volleyballAssistsPerSet = getStatArray(player.volleyball_assists_per_set, player.volleyball_assists, 5);
+        const volleyballBlocksPerSet = getStatArray(player.volleyball_blocks_per_set, player.volleyball_blocks, 5);
+        const assistErrorsPerSet = getStatArray(player.assist_errors_per_set, player.assist_errors, 5);
+        // ADD THESE TWO LINES:
+const blockingErrorsPerSet = getStatArray(player.blocking_errors_per_set, player.blocking_errors, 5);
+        const ballHandlingErrorsPerSet = getStatArray(player.ball_handling_errors_per_set, player.ball_handling_errors, 5);
+        
+        
 
-      const regulationTwoPointsTotal = sumNumbers(twoPointsPerQuarter);
-      const regulationThreePointsTotal = sumNumbers(threePointsPerQuarter);
-      const regulationFreeThrowsTotal = sumNumbers(freeThrowsPerQuarter);
-      const regulationAssistsTotal = sumNumbers(assistsPerQuarter);
-      const regulationReboundsTotal = sumNumbers(reboundsPerQuarter);
-      const regulationStealsTotal = sumNumbers(stealsPerQuarter);
-      const regulationBlocksTotal = sumNumbers(blocksPerQuarter);
-      const regulationFoulsTotal = sumNumbers(foulsPerQuarter);
-      const regulationTechnicalFoulsTotal = sumNumbers(technicalFoulsPerQuarter);
-      const regulationTurnoversTotal = sumNumbers(turnoversPerQuarter);
+        const regulationTwoPointsTotal = sumNumbers(twoPointsPerQuarter);
+        const regulationThreePointsTotal = sumNumbers(threePointsPerQuarter);
+        const regulationFreeThrowsTotal = sumNumbers(freeThrowsPerQuarter);
+        const regulationAssistsTotal = sumNumbers(assistsPerQuarter);
+        const regulationReboundsTotal = sumNumbers(reboundsPerQuarter);
+        const regulationStealsTotal = sumNumbers(stealsPerQuarter);
+        const regulationBlocksTotal = sumNumbers(blocksPerQuarter);
+        const regulationFoulsTotal = sumNumbers(foulsPerQuarter);
+        const regulationTechnicalFoulsTotal = sumNumbers(technicalFoulsPerQuarter);
+        const regulationTurnoversTotal = sumNumbers(turnoversPerQuarter);
 
-      const overtimeTwoPointsTotal = sumNumbers(overtimeTwoPoints);
-      const overtimeThreePointsTotal = sumNumbers(overtimeThreePoints);
-      const overtimeFreeThrowsTotal = sumNumbers(overtimeFreeThrows);
-      const overtimeAssistsTotal = sumNumbers(overtimeAssists);
-      const overtimeReboundsTotal = sumNumbers(overtimeRebounds);
-      const overtimeStealsTotal = sumNumbers(overtimeSteals);
-      const overtimeBlocksTotal = sumNumbers(overtimeBlocks);
-      const overtimeFoulsTotal = sumNumbers(overtimeFouls);
-      const overtimeTechnicalFoulsTotal = sumNumbers(overtimeTechnicalFouls);
-      const overtimeTurnoversTotal = sumNumbers(overtimeTurnovers);
+        const overtimeTwoPointsTotal = sumNumbers(overtimeTwoPoints);
+        const overtimeThreePointsTotal = sumNumbers(overtimeThreePoints);
+        const overtimeFreeThrowsTotal = sumNumbers(overtimeFreeThrows);
+        const overtimeAssistsTotal = sumNumbers(overtimeAssists);
+        const overtimeReboundsTotal = sumNumbers(overtimeRebounds);
+        const overtimeStealsTotal = sumNumbers(overtimeSteals);
+        const overtimeBlocksTotal = sumNumbers(overtimeBlocks);
+        const overtimeFoulsTotal = sumNumbers(overtimeFouls);
+        const overtimeTechnicalFoulsTotal = sumNumbers(overtimeTechnicalFouls);
+        const overtimeTurnoversTotal = sumNumbers(overtimeTurnovers);
 
-      const totalTwoPointsMade = regulationTwoPointsTotal + overtimeTwoPointsTotal;
-      const totalThreePointsMade = regulationThreePointsTotal + overtimeThreePointsTotal;
-      const totalFreeThrowsMade = regulationFreeThrowsTotal + overtimeFreeThrowsTotal;
-      const totalAssists = regulationAssistsTotal + overtimeAssistsTotal;
-      const totalRebounds = regulationReboundsTotal + overtimeReboundsTotal;
-      const totalSteals = regulationStealsTotal + overtimeStealsTotal;
-      const totalBlocks = regulationBlocksTotal + overtimeBlocksTotal;
-      const totalFouls = regulationFoulsTotal + overtimeFoulsTotal;
-      const totalTechnicalFouls = regulationTechnicalFoulsTotal + overtimeTechnicalFoulsTotal;
-      const totalTurnovers = regulationTurnoversTotal + overtimeTurnoversTotal;
+        const totalTwoPointsMade = regulationTwoPointsTotal + overtimeTwoPointsTotal;
+        const totalThreePointsMade = regulationThreePointsTotal + overtimeThreePointsTotal;
+        const totalFreeThrowsMade = regulationFreeThrowsTotal + overtimeFreeThrowsTotal;
+        const totalAssists = regulationAssistsTotal + overtimeAssistsTotal;
+        const totalRebounds = regulationReboundsTotal + overtimeReboundsTotal;
+        const totalSteals = regulationStealsTotal + overtimeStealsTotal;
+        const totalBlocks = regulationBlocksTotal + overtimeBlocksTotal;
+        const totalFouls = regulationFoulsTotal + overtimeFoulsTotal;
+        const totalTechnicalFouls = regulationTechnicalFoulsTotal + overtimeTechnicalFoulsTotal;
+        const totalTurnovers = regulationTurnoversTotal + overtimeTurnoversTotal;
 
-      const totalKills = sumNumbers(killsPerSet);
-      const totalAttackAttempts = sumNumbers(attackAttemptsPerSet);
-      const totalAttackErrors = sumNumbers(attackErrorsPerSet);
-      const totalServes = sumNumbers(servesPerSet);
-      const totalServiceAces = sumNumbers(serviceAcesPerSet);
-      const totalServeErrors = sumNumbers(serveErrorsPerSet);
-      const totalReceptions = sumNumbers(receptionsPerSet);
-      const totalReceptionErrors = sumNumbers(receptionErrorsPerSet);
-      const totalDigs = sumNumbers(digsPerSet);
-      const totalVolleyballAssists = sumNumbers(volleyballAssistsPerSet);
-      const totalVolleyballBlocks = sumNumbers(volleyballBlocksPerSet);
-      const totalAssistErrors = sumNumbers(assistErrorsPerSet);
+        const totalKills = sumNumbers(killsPerSet);
+        const totalAttackAttempts = sumNumbers(attackAttemptsPerSet);
+        const totalAttackErrors = sumNumbers(attackErrorsPerSet);
+        const totalServes = sumNumbers(servesPerSet);
+        const totalServiceAces = sumNumbers(serviceAcesPerSet);
+        const totalServeErrors = sumNumbers(serveErrorsPerSet);
+        const totalReceptions = sumNumbers(receptionsPerSet);
+        const totalReceptionErrors = sumNumbers(receptionErrorsPerSet);
+        const totalDigs = sumNumbers(digsPerSet);
+        const totalVolleyballAssists = sumNumbers(volleyballAssistsPerSet);
+        const totalVolleyballBlocks = sumNumbers(volleyballBlocksPerSet);
+        const totalAssistErrors = sumNumbers(assistErrorsPerSet);
+        const totalBlockingErrors = sumNumbers(blockingErrorsPerSet);
+const totalBallHandlingErrors = sumNumbers(ballHandlingErrorsPerSet);
 
-      const regulationPointsForPlayer = (regulationTwoPointsTotal * 2) + (regulationThreePointsTotal * 3) + regulationFreeThrowsTotal;
-      const overtimePointsForPlayer = (overtimeTwoPointsTotal * 2) + (overtimeThreePointsTotal * 3) + overtimeFreeThrowsTotal;
-      const totalPointsForPlayer = regulationPointsForPlayer + overtimePointsForPlayer;
+        const regulationPointsForPlayer = (regulationTwoPointsTotal * 2) + (regulationThreePointsTotal * 3) + regulationFreeThrowsTotal;
+        const overtimePointsForPlayer = (overtimeTwoPointsTotal * 2) + (overtimeThreePointsTotal * 3) + overtimeFreeThrowsTotal;
+        const totalPointsForPlayer = regulationPointsForPlayer + overtimePointsForPlayer;
 
-      const playerOvertimePeriods = Math.max(
-        Number(player.overtime_periods) || 0,
-        overtimeTwoPoints.length,
-        overtimeThreePoints.length,
-        overtimeFreeThrows.length,
-        overtimeAssists.length,
-        overtimeRebounds.length,
-        overtimeSteals.length,
-        overtimeBlocks.length,
-        overtimeFouls.length,
-        overtimeTechnicalFouls.length,
-        overtimeTurnovers.length
-      );
+        const playerOvertimePeriods = Math.max(
+          Number(player.overtime_periods) || 0,
+          overtimeTwoPoints.length,
+          overtimeThreePoints.length,
+          overtimeFreeThrows.length,
+          overtimeAssists.length,
+          overtimeRebounds.length,
+          overtimeSteals.length,
+          overtimeBlocks.length,
+          overtimeFouls.length,
+          overtimeTechnicalFouls.length,
+          overtimeTurnovers.length
+        );
 
-      overtimePeriods = Math.max(overtimePeriods, playerOvertimePeriods);
+        overtimePeriods = Math.max(overtimePeriods, playerOvertimePeriods);
 
-      // FIXED: Build INSERT statement with correct column order (58 columns total)
-      const insertQuery = `
-        INSERT INTO player_stats (
-          match_id, player_id, points, assists, rebounds, two_points_made, three_points_made, 
-          free_throws_made, steals, blocks, fouls, turnovers, technical_fouls,
-          serves, service_aces, serve_errors, receptions, reception_errors, digs, 
-          kills, attack_attempts, attack_errors, volleyball_assists, volleyball_blocks, assist_errors,
-          overtime_periods, overtime_two_points_made, overtime_three_points_made, 
-          overtime_free_throws_made, overtime_assists, overtime_rebounds, overtime_steals, 
-          overtime_blocks, overtime_fouls, overtime_technical_fouls, overtime_turnovers,
-          two_points_made_per_quarter, three_points_made_per_quarter, free_throws_made_per_quarter,
-          assists_per_quarter, rebounds_per_quarter, steals_per_quarter, blocks_per_quarter,
-          fouls_per_quarter, technical_fouls_per_quarter, turnovers_per_quarter,
-          kills_per_set, attack_attempts_per_set, attack_errors_per_set, serves_per_set,
-          service_aces_per_set, serve_errors_per_set, receptions_per_set, reception_errors_per_set,
-          digs_per_set, volleyball_assists_per_set, volleyball_blocks_per_set, assist_errors_per_set
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
 
-      // Prepare all values in the correct order (58 values total)
-      const insertValues = [
-        matchId,                                                    // 1
-        playerId,                                                   // 2
-        totalPointsForPlayer,                                       // 3
-        totalAssists,                                               // 4
-        totalRebounds,                                              // 5
-        totalTwoPointsMade,                                         // 6
-        totalThreePointsMade,                                       // 7
-        totalFreeThrowsMade,                                        // 8
-        totalSteals,                                                // 9
-        totalBlocks,                                                // 10
-        totalFouls,                                                 // 11
-        totalTurnovers,                                             // 12
-        totalTechnicalFouls,                                       // 13
-        totalServes,                                                // 14
-        totalServiceAces,                                           // 15
-        totalServeErrors,                                           // 16
-        totalReceptions,                                            // 17
-        totalReceptionErrors,                                       // 18
-        totalDigs,                                                  // 19
-        totalKills,                                                // 20
-        totalAttackAttempts,                                        // 21
-        totalAttackErrors,                                          // 22
-        totalVolleyballAssists,                                     // 23
-        totalVolleyballBlocks,                                      // 24
-        totalAssistErrors,                                          // 25
-        playerOvertimePeriods,                                      // 26
-        serializeArray(overtimeTwoPoints),                          // 27
-        serializeArray(overtimeThreePoints),                        // 28
-        serializeArray(overtimeFreeThrows),                         // 29
-        serializeArray(overtimeAssists),                            // 30
-        serializeArray(overtimeRebounds),                           // 31
-        serializeArray(overtimeSteals),                             // 32
-        serializeArray(overtimeBlocks),                             // 33
-        serializeArray(overtimeFouls),                              // 34
-        serializeArray(overtimeTechnicalFouls),                     // 35
-        serializeArray(overtimeTurnovers),                           // 36
-        serializeArray(twoPointsPerQuarter, 4),                     // 37
-        serializeArray(threePointsPerQuarter, 4),                   // 38
-        serializeArray(freeThrowsPerQuarter, 4),                    // 39
-        serializeArray(assistsPerQuarter, 4),                        // 40
-        serializeArray(reboundsPerQuarter, 4),                      // 41
-        serializeArray(stealsPerQuarter, 4),                        // 42
-        serializeArray(blocksPerQuarter, 4),                        // 43
-        serializeArray(foulsPerQuarter, 4),                         // 44
-        serializeArray(technicalFoulsPerQuarter, 4),               // 45
-        serializeArray(turnoversPerQuarter, 4),                      // 46
-        serializeArray(killsPerSet, 5),                              // 47
-        serializeArray(attackAttemptsPerSet, 5),                     // 48
-        serializeArray(attackErrorsPerSet, 5),                       // 49
-        serializeArray(servesPerSet, 5),                             // 50
-        serializeArray(serviceAcesPerSet, 5),                       // 51
-        serializeArray(serveErrorsPerSet, 5),                       // 52
-        serializeArray(receptionsPerSet, 5),                         // 53
-        serializeArray(receptionErrorsPerSet, 5),                   // 54
-        serializeArray(digsPerSet, 5),                               // 55
-        serializeArray(volleyballAssistsPerSet, 5),                 // 56
-        serializeArray(volleyballBlocksPerSet, 5),                   // 57
-        serializeArray(assistErrorsPerSet, 5)                        // 58
-      ];
+        // UPDATED INSERT query with snapshot columns
+ const insertQuery = `
+  INSERT INTO player_stats (
+    event_id,
+    match_id, 
+    player_id,
+    points, 
+    assists, 
+    rebounds, 
+    three_points_made, 
+    steals, 
+    blocks, 
+    fouls, 
+    turnovers, 
+    serves, 
+    service_aces, 
+    serve_errors, 
+    receptions, 
+    reception_errors, 
+    digs, 
+    kills, 
+    attack_attempts, 
+    attack_errors, 
+    volleyball_assists, 
+    assist_errors, 
+    ball_handling_errors, 
+    two_points_made, 
+    free_throws_made, 
+    overtime_periods, 
+    overtime_two_points_made, 
+    overtime_three_points_made, 
+    overtime_free_throws_made, 
+    overtime_assists, 
+    overtime_rebounds, 
+    overtime_steals, 
+    overtime_blocks, 
+    overtime_fouls, 
+    overtime_turnovers, 
+    volleyball_blocks, 
+    blocking_errors, 
+    technical_fouls,
+    two_points_made_per_quarter, 
+    three_points_made_per_quarter, 
+    free_throws_made_per_quarter,
+    assists_per_quarter, 
+    rebounds_per_quarter, 
+    steals_per_quarter, 
+    blocks_per_quarter,
+    fouls_per_quarter, 
+    technical_fouls_per_quarter, 
+    turnovers_per_quarter,
+    kills_per_set, 
+    attack_attempts_per_set, 
+    attack_errors_per_set, 
+    serves_per_set,
+    service_aces_per_set, 
+    serve_errors_per_set, 
+    receptions_per_set, 
+    reception_errors_per_set,
+    digs_per_set, 
+    volleyball_assists_per_set, 
+    volleyball_blocks_per_set, 
+    blocking_errors_per_set,
+    assist_errors_per_set,
+    ball_handling_errors_per_set,
+    overtime_technical_fouls,
+    player_name_snapshot,
+    player_jersey_snapshot,
+    player_position_snapshot,
+    team_name_snapshot
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
 
+
+const insertValues = [
+  eventId,
+  matchId,
+  playerId,
+  totalPointsForPlayer,
+  totalAssists,
+  totalRebounds,
+  totalThreePointsMade,
+  totalSteals,
+  totalBlocks,
+  totalFouls,
+  totalTurnovers,
+  totalServes,
+  totalServiceAces,
+  totalServeErrors,
+  totalReceptions,
+  totalReceptionErrors,
+  totalDigs,
+  totalKills,
+  totalAttackAttempts,
+  totalAttackErrors,
+  totalVolleyballAssists,
+  totalAssistErrors,
+  totalBallHandlingErrors,
+  totalTwoPointsMade,
+  totalFreeThrowsMade,
+  playerOvertimePeriods,
+  serializeArray(overtimeTwoPoints),
+  serializeArray(overtimeThreePoints),
+  serializeArray(overtimeFreeThrows),
+  serializeArray(overtimeAssists),
+  serializeArray(overtimeRebounds),
+  serializeArray(overtimeSteals),
+  serializeArray(overtimeBlocks),
+  serializeArray(overtimeFouls),
+  serializeArray(overtimeTurnovers),
+  totalVolleyballBlocks,
+  totalBlockingErrors,
+  totalTechnicalFouls,
+  serializeArray(twoPointsPerQuarter, 4),
+  serializeArray(threePointsPerQuarter, 4),
+  serializeArray(freeThrowsPerQuarter, 4),
+  serializeArray(assistsPerQuarter, 4),
+  serializeArray(reboundsPerQuarter, 4),
+  serializeArray(stealsPerQuarter, 4),
+  serializeArray(blocksPerQuarter, 4),
+  serializeArray(foulsPerQuarter, 4),
+  serializeArray(technicalFoulsPerQuarter, 4),
+  serializeArray(turnoversPerQuarter, 4),
+  serializeArray(killsPerSet, 5),
+  serializeArray(attackAttemptsPerSet, 5),
+  serializeArray(attackErrorsPerSet, 5),
+  serializeArray(servesPerSet, 5),
+  serializeArray(serviceAcesPerSet, 5),
+  serializeArray(serveErrorsPerSet, 5),
+  serializeArray(receptionsPerSet, 5),
+  serializeArray(receptionErrorsPerSet, 5),
+  serializeArray(digsPerSet, 5),
+  serializeArray(volleyballAssistsPerSet, 5),
+  serializeArray(volleyballBlocksPerSet, 5),
+  serializeArray(blockingErrorsPerSet, 5),
+  serializeArray(assistErrorsPerSet, 5),
+  serializeArray(ballHandlingErrorsPerSet, 5),
+  serializeArray(overtimeTechnicalFouls),
+  playerSnapshot.name,
+  playerSnapshot.jersey_number,
+  playerSnapshot.position,
+  playerSnapshot.team_name
+];
         try {
           await conn.query(insertQuery, insertValues);
           console.log(`Successfully saved stats for player ${playerId} (index ${i})`);
@@ -573,37 +685,51 @@ router.post("/matches/:matchId/stats", async (req, res) => {
           throw insertErr;
         }
 
-      if (match.sport_type === 'basketball') {
-        if (teamId === team1_id) {
-          team1Total += totalPointsForPlayer;
-          team1RegulationTotal += regulationPointsForPlayer;
-          team1OvertimeTotal += overtimePointsForPlayer;
-        } else if (teamId === team2_id) {
-          team2Total += totalPointsForPlayer;
-          team2RegulationTotal += regulationPointsForPlayer;
-          team2OvertimeTotal += overtimePointsForPlayer;
+        if (match.sport_type === 'basketball') {
+          if (teamId === team1_id) {
+            team1Total += totalPointsForPlayer;
+            team1RegulationTotal += regulationPointsForPlayer;
+            team1OvertimeTotal += overtimePointsForPlayer;
+          } else if (teamId === team2_id) {
+            team2Total += totalPointsForPlayer;
+            team2RegulationTotal += regulationPointsForPlayer;
+            team2OvertimeTotal += overtimePointsForPlayer;
+          }
+        } else {
+          const positiveScoring = totalKills + totalServiceAces + totalVolleyballBlocks;
+          if (teamId === team1_id) {
+            team1Total += positiveScoring;
+          } else if (teamId === team2_id) {
+            team2Total += positiveScoring;
+          }
         }
-      } else {
-        const positiveScoring = totalKills + totalServiceAces + totalVolleyballBlocks;
-        if (teamId === team1_id) {
-          team1Total += positiveScoring;
-        } else if (teamId === team2_id) {
-          team2Total += positiveScoring;
-        }
-      }
       } catch (playerErr) {
         console.error(`Error processing player ${i} (ID: ${playerId}):`, playerErr);
         throw new Error(`Error processing player ${playerId}: ${playerErr.message}`);
       }
     }
 
-    // Save match awards if provided
+    // Save match awards if provided - UPDATED with snapshot support
     for (const award of awards) {
       if (award.player_id && award.award_type) {
+        // Fetch player details for snapshot
+        const playerSnapshot = await getPlayerSnapshot(conn, award.player_id);
+        
         await conn.query(
-          `INSERT INTO match_awards (match_id, player_id, award_type) 
-           VALUES (?, ?, ?)`,
-          [matchId, award.player_id, award.award_type]
+          `INSERT INTO match_awards (
+            match_id, 
+            player_id, 
+            player_name_snapshot,
+            team_name_snapshot,
+            award_type
+          ) VALUES (?, ?, ?, ?, ?)`,
+          [
+            matchId, 
+            award.player_id,
+            playerSnapshot.name,
+            playerSnapshot.team_name,
+            award.award_type
+          ]
         );
       }
     }
@@ -665,14 +791,17 @@ router.post("/matches/:matchId/stats", async (req, res) => {
   }
 });
 
-// Get match awards
+// Get match awards - UPDATED with snapshot support
 router.get("/matches/:matchId/awards", async (req, res) => {
   try {
     const [rows] = await db.pool.query(
-      `SELECT ma.*, p.name as player_name, t.name as team_name
+      `SELECT 
+        ma.*,
+        COALESCE(p.name, ma.player_name_snapshot, 'Deleted Player') as player_name,
+        COALESCE(t.name, ma.team_name_snapshot, 'Unknown Team') as team_name
        FROM match_awards ma
-       JOIN players p ON ma.player_id = p.id
-       JOIN teams t ON p.team_id = t.id
+       LEFT JOIN players p ON ma.player_id = p.id
+       LEFT JOIN teams t ON p.team_id = t.id
        WHERE ma.match_id = ?
        ORDER BY ma.award_type`,
       [req.params.matchId]
@@ -808,8 +937,7 @@ router.get("/events/:eventId/statistics", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch event statistics" });
   }
 });
-
-// UPDATED: Get comprehensive player statistics - WITH assist_errors
+// GET comprehensive player statistics - FIXED to show deleted players
 router.get("/events/:eventId/players-statistics", async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -817,18 +945,20 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
     
     console.log(`Fetching player statistics for event ${eventId}, bracket: ${bracketId || 'all'}`);
     
-    const bracketFilter = bracketId ? 'AND b.id = ?' : '';
-    const queryParams = bracketId ? [eventId, bracketId] : [eventId];
+    if (!bracketId) {
+      return res.status(400).json({ 
+        error: "bracketId is required for player statistics" 
+      });
+    }
     
-    let sportTypeQuery = `
-      SELECT DISTINCT b.sport_type 
-      FROM brackets b 
-      WHERE b.event_id = ?
-      ${bracketFilter}
-      LIMIT 1
-    `;
-    
-    const [sportTypeResult] = await db.pool.query(sportTypeQuery, queryParams);
+    // Get sport type for the specific bracket
+    const [sportTypeResult] = await db.pool.query(
+      `SELECT DISTINCT b.sport_type 
+       FROM brackets b 
+       WHERE b.event_id = ? AND b.id = ?
+       LIMIT 1`,
+      [eventId, bracketId]
+    );
     
     if (sportTypeResult.length === 0) {
       console.log('No brackets found for this event/bracket combination');
@@ -839,134 +969,228 @@ router.get("/events/:eventId/players-statistics", async (req, res) => {
     console.log(`Sport type detected: ${sportType}`);
     
     let query;
+    
     if (sportType === 'basketball') {
       query = `
         SELECT 
-          p.id,
-          p.name,
-          p.jersey_number,
-          p.position,
-          t.name as team_name,
+          COALESCE(p.id, ps.player_id) as id,
+          COALESCE(p.name, ps.player_name_snapshot) as name,
+          COALESCE(p.jersey_number, ps.player_jersey_snapshot) as jersey_number,
+          COALESCE(p.position, ps.player_position_snapshot) as position,
+          COALESCE(t.name, ps.team_name_snapshot) as team_name,
           b.id as bracket_id,
           b.name as bracket_name,
           '${sportType}' as sport_type,
-          COUNT(DISTINCT ps.match_id) as games_played,
-          SUM(ps.points) as total_points,
-          SUM(ps.assists) as total_assists,
-          SUM(ps.rebounds) as total_rebounds,
-          SUM(ps.steals) as total_steals,
-          SUM(ps.blocks) as total_blocks,
-          SUM(ps.three_points_made) as total_three_points,
-          SUM(ps.turnovers) as total_turnovers,
-          SUM(ps.fouls) as total_fouls,
-          ROUND(SUM(ps.points) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
-          ROUND(SUM(ps.rebounds) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
-          ROUND(SUM(ps.assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
-          ROUND(SUM(ps.steals) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as spg,
-          ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
-          ROUND(SUM(ps.turnovers) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as tpg,
+          COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END) as games_played,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.points ELSE 0 END), 0) as total_points,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.assists ELSE 0 END), 0) as total_assists,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.rebounds ELSE 0 END), 0) as total_rebounds,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.steals ELSE 0 END), 0) as total_steals,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.blocks ELSE 0 END), 0) as total_blocks,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.three_points_made ELSE 0 END), 0) as total_three_points,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.turnovers ELSE 0 END), 0) as total_turnovers,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.fouls ELSE 0 END), 0) as total_fouls,
+          ROUND(COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.points ELSE 0 END), 0) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1) as ppg,
+          ROUND(COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.rebounds ELSE 0 END), 0) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1) as rpg,
+          ROUND(COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.assists ELSE 0 END), 0) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1) as apg,
+          ROUND(COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.steals ELSE 0 END), 0) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1) as spg,
+          ROUND(COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.blocks ELSE 0 END), 0) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1) as bpg,
+          ROUND(COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.turnovers ELSE 0 END), 0) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1) as tpg,
           ROUND(
             CASE 
-              WHEN COUNT(DISTINCT ps.match_id) > 0 
-              THEN (SUM(ps.points) / COUNT(DISTINCT ps.match_id)) / 2.5
+              WHEN COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END) > 0 
+              THEN (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.points ELSE 0 END), 0) / 
+                    COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END)) / 2.5
               ELSE 0 
             END, 1
           ) as fg,
           ROUND(
-            (SUM(ps.points) + SUM(ps.rebounds) + SUM(ps.assists) + 
-             SUM(ps.steals) + SUM(ps.blocks) - SUM(ps.turnovers)) / 
-            NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
-          ) as overall_score
+            (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.points ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.rebounds ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.assists ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.steals ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.blocks ELSE 0 END), 0) - 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.turnovers ELSE 0 END), 0)) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1
+          ) as overall_score,
+          CASE WHEN p.id IS NULL THEN 1 ELSE 0 END as is_deleted
         FROM player_stats ps
-        JOIN players p ON ps.player_id = p.id
-        JOIN teams t ON p.team_id = t.id
-        JOIN matches m ON ps.match_id = m.id
-        JOIN brackets b ON m.bracket_id = b.id
-        WHERE m.status = 'completed' 
-          AND b.event_id = ?
-          ${bracketFilter}
-        GROUP BY p.id, p.name, p.jersey_number, p.position, t.name, b.id, b.name
+        INNER JOIN matches m ON ps.match_id = m.id
+        INNER JOIN brackets b ON m.bracket_id = b.id
+        LEFT JOIN players p ON ps.player_id = p.id
+        LEFT JOIN teams t ON p.team_id = t.id
+        WHERE b.event_id = ?
+          AND b.id = ?
+          AND ps.event_id = ?
+        GROUP BY 
+          COALESCE(p.id, ps.player_id),
+          COALESCE(p.name, ps.player_name_snapshot),
+          COALESCE(p.jersey_number, ps.player_jersey_snapshot),
+          COALESCE(p.position, ps.player_position_snapshot),
+          COALESCE(t.name, ps.team_name_snapshot),
+          b.id, 
+          b.name,
+          p.id
         HAVING games_played > 0
         ORDER BY overall_score DESC, ppg DESC, rpg DESC, apg DESC
       `;
+      
+      const params = [
+        bracketId, // games_played
+        bracketId, // total_points
+        bracketId, // total_assists
+        bracketId, // total_rebounds
+        bracketId, // total_steals
+        bracketId, // total_blocks
+        bracketId, // total_three_points
+        bracketId, // total_turnovers
+        bracketId, // total_fouls
+        bracketId, bracketId, // ppg
+        bracketId, bracketId, // rpg
+        bracketId, bracketId, // apg
+        bracketId, bracketId, // spg
+        bracketId, bracketId, // bpg
+        bracketId, bracketId, // tpg
+        bracketId, bracketId, bracketId, // fg
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, // overall_score
+        eventId,   // WHERE b.event_id
+        bracketId, // WHERE b.id
+        eventId    // WHERE ps.event_id
+      ];
+      
+      const [players] = await db.pool.query(query, params);
+      console.log(`Found ${players.length} players with statistics`);
+      res.json(players);
+      
     } else {
-      // Volleyball - UPDATED: Added assist_errors
+      // Volleyball - Same pattern
       query = `
         SELECT 
-          p.id,
-          p.name,
-          p.jersey_number,
-          p.position,
-          t.name as team_name,
+          COALESCE(p.id, ps.player_id) as id,
+          COALESCE(p.name, ps.player_name_snapshot) as name,
+          COALESCE(p.jersey_number, ps.player_jersey_snapshot) as jersey_number,
+          COALESCE(p.position, ps.player_position_snapshot) as position,
+          COALESCE(t.name, ps.team_name_snapshot) as team_name,
           b.id as bracket_id,
           b.name as bracket_name,
           '${sportType}' as sport_type,
-          COUNT(DISTINCT ps.match_id) as games_played,
-          -- TOTAL COUNTS
-          SUM(ps.kills) as kills,
-          SUM(ps.volleyball_assists) as assists,
-          SUM(ps.digs) as digs,
-          SUM(ps.volleyball_blocks) as blocks,
-          SUM(ps.service_aces) as service_aces,
-          SUM(ps.receptions) as receptions,
-          -- INDIVIDUAL ERROR COLUMNS
-          SUM(ps.serve_errors) as serve_errors,
-          SUM(ps.attack_errors) as attack_errors,
-          SUM(ps.reception_errors) as reception_errors,
-          SUM(COALESCE(ps.assist_errors, 0)) as assist_errors,
-          -- Total counts for export
-          SUM(ps.kills) as total_kills,
-          SUM(ps.volleyball_assists) as total_volleyball_assists,
-          SUM(ps.digs) as total_digs,
-          SUM(ps.volleyball_blocks) as total_volleyball_blocks,
-          SUM(ps.service_aces) as total_service_aces,
-          SUM(ps.receptions) as total_receptions,
-          -- Hitting Percentage
+          COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END) as games_played,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END), 0) as kills,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_assists ELSE 0 END), 0) as assists,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.digs ELSE 0 END), 0) as digs,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_blocks ELSE 0 END), 0) as blocks,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.service_aces ELSE 0 END), 0) as service_aces,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.receptions ELSE 0 END), 0) as receptions,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.serve_errors ELSE 0 END), 0) as serve_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END), 0) as attack_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.reception_errors ELSE 0 END), 0) as reception_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.assist_errors, 0) ELSE 0 END), 0) as assist_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.blocking_errors, 0) ELSE 0 END), 0) as blocking_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.ball_handling_errors, 0) ELSE 0 END), 0) as ball_handling_errors,
           ROUND(
             CASE 
-              WHEN SUM(ps.attack_attempts) > 0 
-              THEN (SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100
+              WHEN SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_attempts ELSE 0 END) > 0 
+              THEN (SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END) - 
+                    SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END)) / 
+                   SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_attempts ELSE 0 END) * 100
               ELSE 0 
             END, 1
           ) as hitting_percentage,
-          -- Efficiency calculation - UPDATED to include assist_errors
           ROUND(
-            (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
-             SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors) + SUM(COALESCE(ps.assist_errors, 0)))) / 
-            NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
+            (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_blocks ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.service_aces ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_assists ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.digs ELSE 0 END), 0) - 
+             (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.serve_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.reception_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.assist_errors, 0) ELSE 0 END), 0) +
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.blocking_errors, 0) ELSE 0 END), 0) +
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.ball_handling_errors, 0) ELSE 0 END), 0))) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 2
           ) as eff,
-          -- Overall Score - UPDATED to include assist_errors
           ROUND(
-            (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
-             SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors) + SUM(COALESCE(ps.assist_errors, 0)))) / 
-            NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
-          ) as overall_score
+            (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_blocks ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.service_aces ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_assists ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.digs ELSE 0 END), 0) - 
+             (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.serve_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.reception_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.assist_errors, 0) ELSE 0 END), 0) +
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.blocking_errors, 0) ELSE 0 END), 0) +
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.ball_handling_errors, 0) ELSE 0 END), 0))) / 
+            NULLIF(COUNT(DISTINCT CASE WHEN m.bracket_id = ? AND m.status = 'completed' THEN ps.match_id END), 0), 1
+          ) as overall_score,
+          CASE WHEN p.id IS NULL THEN 1 ELSE 0 END as is_deleted
         FROM player_stats ps
-        JOIN players p ON ps.player_id = p.id
-        JOIN teams t ON p.team_id = t.id
-        JOIN matches m ON ps.match_id = m.id
-        JOIN brackets b ON m.bracket_id = b.id
-        WHERE m.status = 'completed' 
-          AND b.event_id = ?
-          ${bracketFilter}
-        GROUP BY p.id, p.name, p.jersey_number, p.position, t.name, b.id, b.name
+        INNER JOIN matches m ON ps.match_id = m.id
+        INNER JOIN brackets b ON m.bracket_id = b.id
+        LEFT JOIN players p ON ps.player_id = p.id
+        LEFT JOIN teams t ON p.team_id = t.id
+        WHERE b.event_id = ?
+          AND b.id = ?
+          AND ps.event_id = ?
+        GROUP BY 
+          COALESCE(p.id, ps.player_id),
+          COALESCE(p.name, ps.player_name_snapshot),
+          COALESCE(p.jersey_number, ps.player_jersey_snapshot),
+          COALESCE(p.position, ps.player_position_snapshot),
+          COALESCE(t.name, ps.team_name_snapshot),
+          b.id, 
+          b.name,
+          p.id
         HAVING games_played > 0
         ORDER BY overall_score DESC, kills DESC, digs DESC, assists DESC
       `;
+      
+      const params = [
+        bracketId, // games_played
+        bracketId, // kills
+        bracketId, // assists
+        bracketId, // digs
+        bracketId, // blocks
+        bracketId, // service_aces
+        bracketId, // receptions
+        bracketId, // serve_errors
+        bracketId, // attack_errors
+        bracketId, // reception_errors
+        bracketId, // assist_errors
+        bracketId, // blocking_errors
+        bracketId, // ball_handling_errors
+        bracketId, bracketId, bracketId, bracketId, // hitting_percentage
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, // eff
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, // overall_score
+        eventId,   // WHERE b.event_id
+        bracketId, // WHERE b.id
+        eventId    // WHERE ps.event_id
+      ];
+      
+      const [players] = await db.pool.query(query, params);
+      console.log(`Found ${players.length} players with statistics`);
+      res.json(players);
     }
-    
-    const [players] = await db.pool.query(query, queryParams);
-    console.log(`Found ${players.length} players with statistics`);
-    res.json(players);
   } catch (err) {
     console.error("Error fetching player statistics:", err);
     res.status(500).json({ error: "Failed to fetch player statistics" });
   }
 });
 
-// UPDATED: Get comprehensive team statistics - WITH assist_errors
+// GET comprehensive team statistics - COMPLETELY FIXED
 router.get("/events/:eventId/teams-statistics", async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -974,29 +1198,33 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
     
     console.log(`Fetching team statistics for event ${eventId}, bracket: ${bracketId || 'all'}`);
     
-    const bracketFilter = bracketId ? 'AND b.id = ?' : '';
-    const queryParams = bracketId ? [eventId, bracketId] : [eventId];
+    // ✅ Make bracket filter mandatory
+    if (!bracketId) {
+      return res.status(400).json({ 
+        error: "bracketId is required for team statistics" 
+      });
+    }
     
-    let sportTypeQuery = `
-      SELECT DISTINCT b.sport_type 
-      FROM brackets b 
-      WHERE b.event_id = ?
-      ${bracketFilter}
-      LIMIT 1
-    `;
-    
-    const [sportTypeResult] = await db.pool.query(sportTypeQuery, queryParams);
+    // Get sport type for the specific bracket
+    const [sportTypeResult] = await db.pool.query(
+      `SELECT b.sport_type, b.id, b.name
+       FROM brackets b 
+       WHERE b.event_id = ? AND b.id = ?
+       LIMIT 1`,
+      [eventId, bracketId]
+    );
     
     if (sportTypeResult.length === 0) {
-      console.log('No brackets found for this event/bracket combination');
+      console.log('No bracket found for event:', eventId, 'bracket:', bracketId);
       return res.json([]);
     }
     
     const sportType = sportTypeResult[0].sport_type;
-    console.log(`Sport type detected: ${sportType}`);
+    console.log(`Sport type detected: ${sportType} for bracket ${bracketId}`);
     
     let query;
-    if (sportType === 'basketball') {
+    
+    if (sportType === "basketball") {
       query = `
         SELECT 
           t.id as team_id,
@@ -1004,57 +1232,177 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
           b.id as bracket_id,
           b.name as bracket_name,
           '${sportType}' as sport_type,
-          COUNT(DISTINCT ps.match_id) as games_played,
-          SUM(ps.points) as total_points,
-          SUM(ps.assists) as total_assists,
-          SUM(ps.rebounds) as total_rebounds,
-          SUM(ps.steals) as total_steals,
-          SUM(ps.blocks) as total_blocks,
-          SUM(ps.three_points_made) as total_three_points,
-          SUM(ps.turnovers) as total_turnovers,
-          SUM(ps.fouls) as total_fouls,
-          ROUND(SUM(ps.points) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as ppg,
-          ROUND(SUM(ps.rebounds) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as rpg,
-          ROUND(SUM(ps.assists) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as apg,
-          ROUND(SUM(ps.steals) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as spg,
-          ROUND(SUM(ps.blocks) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as bpg,
-          ROUND(SUM(ps.turnovers) / NULLIF(COUNT(DISTINCT ps.match_id), 0), 1) as tpg,
+          COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END) as games_played,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.points 
+            ELSE 0 
+          END), 0) as total_points,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.assists 
+            ELSE 0 
+          END), 0) as total_assists,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.rebounds 
+            ELSE 0 
+          END), 0) as total_rebounds,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.steals 
+            ELSE 0 
+          END), 0) as total_steals,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.blocks 
+            ELSE 0 
+          END), 0) as total_blocks,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.three_points_made 
+            ELSE 0 
+          END), 0) as total_three_points,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.turnovers 
+            ELSE 0 
+          END), 0) as total_turnovers,
+          COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.fouls 
+            ELSE 0 
+          END), 0) as total_fouls,
+          ROUND(COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.points 
+            ELSE 0 
+          END), 0) / NULLIF(COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END), 0), 1) as ppg,
+          ROUND(COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.rebounds 
+            ELSE 0 
+          END), 0) / NULLIF(COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END), 0), 1) as rpg,
+          ROUND(COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.assists 
+            ELSE 0 
+          END), 0) / NULLIF(COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END), 0), 1) as apg,
+          ROUND(COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.steals 
+            ELSE 0 
+          END), 0) / NULLIF(COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END), 0), 1) as spg,
+          ROUND(COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.blocks 
+            ELSE 0 
+          END), 0) / NULLIF(COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END), 0), 1) as bpg,
+          ROUND(COALESCE(SUM(CASE 
+            WHEN m.bracket_id = ? 
+            THEN ps.turnovers 
+            ELSE 0 
+          END), 0) / NULLIF(COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END), 0), 1) as tpg,
           ROUND(
-            AVG(
-              CASE 
-                WHEN ps.points > 0 
-                THEN ps.points / 2.5
-                ELSE 0 
-              END
-            ), 1
-          ) as fg,
-          ROUND(
-            (SUM(ps.points) + SUM(ps.rebounds) + SUM(ps.assists) + 
-             SUM(ps.steals) + SUM(ps.blocks) - SUM(ps.turnovers)) / 
-            NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
+            (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.points ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.rebounds ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.assists ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.steals ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.blocks ELSE 0 END), 0) - 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.turnovers ELSE 0 END), 0)) / 
+            NULLIF(COUNT(DISTINCT CASE 
+              WHEN m.bracket_id = ? AND m.status = 'completed' 
+              THEN ps.match_id 
+            END), 0), 1
           ) as overall_score,
-          (SELECT COUNT(*) FROM matches m 
-           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
-           AND m.winner_id = t.id 
-           AND m.status = 'completed') as wins,
-          (SELECT COUNT(*) FROM matches m 
-           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
-           AND m.winner_id != t.id 
-           AND m.status = 'completed') as losses
+          (SELECT COUNT(*) FROM matches m2
+           WHERE (m2.team1_id = t.id OR m2.team2_id = t.id) 
+           AND m2.winner_id = t.id 
+           AND m2.status = 'completed'
+           AND m2.bracket_id = ?) as wins,
+          (SELECT COUNT(*) FROM matches m2
+           WHERE (m2.team1_id = t.id OR m2.team2_id = t.id) 
+           AND m2.winner_id != t.id 
+           AND m2.status = 'completed'
+           AND m2.bracket_id = ?) as losses
         FROM teams t
-        JOIN bracket_teams bt ON t.id = bt.team_id
-        JOIN brackets b ON bt.bracket_id = b.id
+        INNER JOIN bracket_teams bt ON t.id = bt.team_id AND bt.bracket_id = ?
+        INNER JOIN brackets b ON bt.bracket_id = b.id
         LEFT JOIN players p ON p.team_id = t.id
-        LEFT JOIN player_stats ps ON ps.player_id = p.id
-        LEFT JOIN matches m ON ps.match_id = m.id AND m.status = 'completed'
+        LEFT JOIN player_stats ps ON ps.player_id = p.id AND ps.event_id = ?
+        LEFT JOIN matches m ON ps.match_id = m.id
         WHERE b.event_id = ?
-          ${bracketFilter}
+          AND b.id = ?
         GROUP BY t.id, t.name, b.id, b.name
         HAVING games_played > 0
         ORDER BY overall_score DESC, ppg DESC, rpg DESC, apg DESC
       `;
+      
+      // All the bracketId references in the query
+      const params = [
+        bracketId, // games_played COUNT
+        bracketId, // total_points
+        bracketId, // total_assists
+        bracketId, // total_rebounds
+        bracketId, // total_steals
+        bracketId, // total_blocks
+        bracketId, // total_three_points
+        bracketId, // total_turnovers
+        bracketId, // total_fouls
+        bracketId, // ppg numerator
+        bracketId, // ppg denominator
+        bracketId, // rpg numerator
+        bracketId, // rpg denominator
+        bracketId, // apg numerator
+        bracketId, // apg denominator
+        bracketId, // spg numerator
+        bracketId, // spg denominator
+        bracketId, // bpg numerator
+        bracketId, // bpg denominator
+        bracketId, // tpg numerator
+        bracketId, // tpg denominator
+        bracketId, // overall_score points
+        bracketId, // overall_score rebounds
+        bracketId, // overall_score assists
+        bracketId, // overall_score steals
+        bracketId, // overall_score blocks
+        bracketId, // overall_score turnovers
+        bracketId, // overall_score denominator
+        bracketId, // wins subquery
+        bracketId, // losses subquery
+        bracketId, // bracket_teams filter
+        eventId,   // player_stats event filter
+        eventId,   // WHERE b.event_id
+        bracketId  // WHERE b.id
+      ];
+      
+      const [teams] = await db.pool.query(query, params);
+      console.log(`Found ${teams.length} teams with statistics for bracket ${bracketId}`);
+      res.json(teams);
+      
     } else {
-      // Volleyball - UPDATED: Added assist_errors
+      // Volleyball - Similar pattern
       query = `
         SELECT 
           t.id as team_id,
@@ -1062,74 +1410,103 @@ router.get("/events/:eventId/teams-statistics", async (req, res) => {
           b.id as bracket_id,
           b.name as bracket_name,
           '${sportType}' as sport_type,
-          COUNT(DISTINCT ps.match_id) as games_played,
-          -- TOTAL COUNTS
-          SUM(ps.kills) as kills,
-          SUM(ps.volleyball_assists) as assists,
-          SUM(ps.digs) as digs,
-          SUM(ps.volleyball_blocks) as blocks,
-          SUM(ps.service_aces) as service_aces,
-          SUM(ps.receptions) as receptions,
-          -- INDIVIDUAL ERROR COLUMNS
-          SUM(ps.serve_errors) as serve_errors,
-          SUM(ps.attack_errors) as attack_errors,
-          SUM(ps.reception_errors) as reception_errors,
-          SUM(COALESCE(ps.assist_errors, 0)) as assist_errors,
-          -- Total counts for export
-          SUM(ps.kills) as total_kills,
-          SUM(ps.volleyball_assists) as total_volleyball_assists,
-          SUM(ps.digs) as total_digs,
-          SUM(ps.volleyball_blocks) as total_volleyball_blocks,
-          SUM(ps.service_aces) as total_service_aces,
-          SUM(ps.receptions) as total_receptions,
-          -- Hitting Percentage
+          COUNT(DISTINCT CASE 
+            WHEN m.bracket_id = ? AND m.status = 'completed' 
+            THEN ps.match_id 
+          END) as games_played,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END), 0) as kills,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_assists ELSE 0 END), 0) as assists,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.digs ELSE 0 END), 0) as digs,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_blocks ELSE 0 END), 0) as blocks,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.service_aces ELSE 0 END), 0) as service_aces,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.receptions ELSE 0 END), 0) as receptions,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.serve_errors ELSE 0 END), 0) as serve_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END), 0) as attack_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.reception_errors ELSE 0 END), 0) as reception_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.assist_errors, 0) ELSE 0 END), 0) as assist_errors,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END), 0) as total_kills,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_assists ELSE 0 END), 0) as total_volleyball_assists,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.digs ELSE 0 END), 0) as total_digs,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_blocks ELSE 0 END), 0) as total_volleyball_blocks,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.service_aces ELSE 0 END), 0) as total_service_aces,
+          COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.receptions ELSE 0 END), 0) as total_receptions,
           ROUND(
             CASE 
-              WHEN SUM(ps.attack_attempts) > 0 
-              THEN (SUM(ps.kills) - SUM(ps.attack_errors)) / SUM(ps.attack_attempts) * 100
+              WHEN SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_attempts ELSE 0 END) > 0 
+              THEN (SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END) - 
+                    SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END)) / 
+                   SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_attempts ELSE 0 END) * 100
               ELSE 0 
             END, 1
           ) as hitting_percentage,
-          -- Efficiency calculation - UPDATED to include assist_errors
           ROUND(
-            (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
-             SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors) + SUM(COALESCE(ps.assist_errors, 0)))) / 
-            NULLIF(COUNT(DISTINCT ps.match_id), 0), 1
+            (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_blocks ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.service_aces ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_assists ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.digs ELSE 0 END), 0) - 
+             (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.serve_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.reception_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.assist_errors, 0) ELSE 0 END), 0))) / 
+            NULLIF(COUNT(DISTINCT CASE 
+              WHEN m.bracket_id = ? AND m.status = 'completed' 
+              THEN ps.match_id 
+            END), 0), 1
           ) as eff,
-          -- Overall Score - UPDATED to include assist_errors
           ROUND(
-            (SUM(ps.kills) + SUM(ps.volleyball_blocks) + SUM(ps.service_aces) + 
-             SUM(ps.volleyball_assists) + SUM(ps.digs) - 
-             (SUM(ps.serve_errors) + SUM(ps.attack_errors) + SUM(ps.reception_errors) + SUM(COALESCE(ps.assist_errors, 0)))) / 
-            NULLIF(COUNT(DISTINCT ps.match_id), 1), 1
+            (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.kills ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_blocks ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.service_aces ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.volleyball_assists ELSE 0 END), 0) + 
+             COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.digs ELSE 0 END), 0) - 
+             (COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.serve_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.attack_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN ps.reception_errors ELSE 0 END), 0) + 
+              COALESCE(SUM(CASE WHEN m.bracket_id = ? THEN COALESCE(ps.assist_errors, 0) ELSE 0 END), 0))) / 
+            NULLIF(COUNT(DISTINCT CASE 
+              WHEN m.bracket_id = ? AND m.status = 'completed' 
+              THEN ps.match_id 
+            END), 0), 1
           ) as overall_score,
-          -- Win/Loss record
-          (SELECT COUNT(*) FROM matches m 
-           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
-           AND m.winner_id = t.id 
-           AND m.status = 'completed') as wins,
-          (SELECT COUNT(*) FROM matches m 
-           WHERE (m.team1_id = t.id OR m.team2_id = t.id) 
-           AND m.winner_id != t.id 
-           AND m.status = 'completed') as losses
+          (SELECT COUNT(*) FROM matches m2
+           WHERE (m2.team1_id = t.id OR m2.team2_id = t.id) 
+           AND m2.winner_id = t.id 
+           AND m2.status = 'completed'
+           AND m2.bracket_id = ?) as wins,
+          (SELECT COUNT(*) FROM matches m2
+           WHERE (m2.team1_id = t.id OR m2.team2_id = t.id) 
+           AND m2.winner_id != t.id 
+           AND m2.status = 'completed'
+           AND m2.bracket_id = ?) as losses
         FROM teams t
-        JOIN bracket_teams bt ON t.id = bt.team_id
-        JOIN brackets b ON bt.bracket_id = b.id
+        INNER JOIN bracket_teams bt ON t.id = bt.team_id AND bt.bracket_id = ?
+        INNER JOIN brackets b ON bt.bracket_id = b.id
         LEFT JOIN players p ON p.team_id = t.id
-        LEFT JOIN player_stats ps ON ps.player_id = p.id
-        LEFT JOIN matches m ON ps.match_id = m.id AND m.status = 'completed'
+        LEFT JOIN player_stats ps ON ps.player_id = p.id AND ps.event_id = ?
+        LEFT JOIN matches m ON ps.match_id = m.id
         WHERE b.event_id = ?
-          ${bracketFilter}
+          AND b.id = ?
         GROUP BY t.id, t.name, b.id, b.name
         HAVING games_played > 0
         ORDER BY overall_score DESC, kills DESC, digs DESC, assists DESC
       `;
+      
+      const params = [
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId,
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId,
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId,
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId,
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId,
+        bracketId, bracketId, bracketId, bracketId, bracketId, bracketId, bracketId,
+        bracketId, bracketId, bracketId, eventId, eventId, bracketId
+      ];
+      
+      const [teams] = await db.pool.query(query, params);
+      console.log(`Found ${teams.length} teams with statistics for bracket ${bracketId}`);
+      res.json(teams);
     }
     
-    const [teams] = await db.pool.query(query, queryParams);
-    console.log(`Found ${teams.length} teams with statistics`);
-    res.json(teams);
   } catch (err) {
     console.error("Error fetching team statistics:", err);
     res.status(500).json({ error: "Failed to fetch team statistics" });
