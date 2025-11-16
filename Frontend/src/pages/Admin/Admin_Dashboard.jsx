@@ -210,7 +210,7 @@ const AdminDashboard = ({ sidebarOpen }) => {
                           <div
                             key={event.id}
                             className="event-item"
-                            
+                            onClick={() => navigate(`/AdminDashboard/events/${event.id}`)}
                           >
                             <div className="event-info">
                               <div className="event-name">{event.name}</div>

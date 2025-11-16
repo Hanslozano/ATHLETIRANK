@@ -225,10 +225,50 @@ const fetchEvents = async () => {
     setLoading(false);
   }
 };
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+ useEffect(() => {
+  fetchEvents();
+}, []);
 
+// Handle navigation from dashboard - expand specific event
+useEffect(() => {
+  const checkDashboardContext = () => {
+    const dashboardContext = sessionStorage.getItem('adminEventsReturnContext');
+    
+    if (dashboardContext) {
+      try {
+        const { expandEventId, scrollToEvent } = JSON.parse(dashboardContext);
+        
+        if (expandEventId) {
+          // Expand the specific event
+          setExpandedEvents(prev => ({
+            ...prev,
+            [expandEventId]: true
+          }));
+          
+          // Scroll to event after a short delay to ensure rendering
+          if (scrollToEvent) {
+            setTimeout(() => {
+              const eventElement = document.querySelector(`[data-event-id="${expandEventId}"]`);
+              if (eventElement) {
+                eventElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 300);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading dashboard context:", err);
+      } finally {
+        // Clear the context after using it
+        sessionStorage.removeItem('adminEventsReturnContext');
+      }
+    }
+  };
+  
+  // Only check after events are loaded
+  if (!loading && events.length > 0) {
+    checkDashboardContext();
+  }
+}, [loading, events]);
   // Check for return context from AdminStats
   // Check for return context from AdminStats
 useEffect(() => {
@@ -1574,8 +1614,8 @@ const closeEditTeamModal = () => {
                   <>
                     {/* NEW GROUPED EVENTS STRUCTURE */}
                     <div className="events-list-container">
-                      {currentEvents.map(event => (
-                        <div key={event.id} className="event-group-container">
+                     {currentEvents.map(event => (
+                        <div key={event.id} className="event-group-container" data-event-id={event.id}>
                           {/* Event Header Row */}
                           <div className="event-group-header">
                             <div className="event-header-left">
