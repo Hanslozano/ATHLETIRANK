@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaEye, FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaEye, FaChevronLeft, FaChevronRight, FaSearch, FaCheckCircle, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import "../../style/Admin_TeamPage.css";
 
 const TeamsPage = ({ sidebarOpen }) => {
   const [activeTab, setActiveTab] = useState("view");
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  
+  // Updated form state to match TournamentCreator
+  const [currentTeam, setCurrentTeam] = useState({
     teamName: "",
     sport: "",
-    players: [],
+    players: []
   });
+
   const [viewModal, setViewModal] = useState({ show: false, team: null });
   const [editingTeamName, setEditingTeamName] = useState(null);
   const [editingPlayer, setEditingPlayer] = useState(null);
@@ -24,9 +27,94 @@ const TeamsPage = ({ sidebarOpen }) => {
   const [showValidationMessage, setShowValidationMessage] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, type: '', id: null, name: '' });
 
+  // NEW: State for expanded team details in view modal
+  const [expandedTeams, setExpandedTeams] = useState({});
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // CSV Import states
+  const [importingCSV, setImportingCSV] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  // Position options
+  const positions = {
+    Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
+    Volleyball: ["Setter", "Outside Hitter", "Middle Blocker", "Opposite Hitter", "Libero", "Defensive Specialist"],
+  };
+
+  // Position limits - Maximum 3 per position
+  const getPositionLimits = (teamSize, sport) => {
+    if (sport === "Basketball") {
+      const limits = {};
+      positions.Basketball.forEach(position => {
+        limits[position] = 3;
+      });
+      return limits;
+    } else if (sport === "Volleyball") {
+      const limits = {};
+      positions.Volleyball.forEach(position => {
+        limits[position] = 3;
+      });
+      return limits;
+    }
+    return {};
+  };
+
+  // Get available positions for a player based on current team composition
+  const getAvailablePositions = (currentIndex) => {
+    if (!currentTeam.sport) return [];
+
+    const positionLimits = getPositionLimits(currentTeam.players.length, currentTeam.sport);
+    const positionCounts = {};
+    
+    // Count current assignments (excluding the current player being edited)
+    currentTeam.players.forEach((player, index) => {
+      if (index !== currentIndex && player.position) {
+        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+      }
+    });
+
+    // Filter positions that haven't reached their limit
+    return positions[currentTeam.sport].filter(position => {
+      const currentCount = positionCounts[position] || 0;
+      const maxAllowed = positionLimits[position] || 0;
+      return currentCount < maxAllowed;
+    });
+  };
+
+  // Check if a position is available
+  const isPositionAvailable = (position, currentIndex) => {
+    if (!currentTeam.sport || !position) return true;
+    
+    const availablePositions = getAvailablePositions(currentIndex);
+    return availablePositions.includes(position);
+  };
+
+  // Get position count display
+  const getPositionCounts = () => {
+    if (!currentTeam.sport) return {};
+    
+    const positionLimits = getPositionLimits(currentTeam.players.length, currentTeam.sport);
+    const positionCounts = {};
+    
+    currentTeam.players.forEach(player => {
+      if (player.position) {
+        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
+      }
+    });
+
+    const result = {};
+    positions[currentTeam.sport].forEach(position => {
+      result[position] = {
+        current: positionCounts[position] || 0,
+        max: positionLimits[position] || 0
+      };
+    });
+    
+    return result;
+  };
 
   // Check for stored sport filter on component mount
   useEffect(() => {
@@ -37,81 +125,6 @@ const TeamsPage = ({ sidebarOpen }) => {
       sessionStorage.removeItem('teamSportFilter');
     }
   }, []);
-
-  // Position options
-  const positions = {
-    Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
-    Volleyball: ["Setter", "Outside Hitter", "Middle Blocker", "Opposite Hitter", "Libero", "Defensive Specialist"],
-  };
-
-  // Position limits - Maximum 3 per position
-  const getPositionLimits = (teamSize, sport) => {
-    const limits = {};
-    if (sport === "Basketball") {
-      positions.Basketball.forEach(position => {
-        limits[position] = 3;
-      });
-    } else if (sport === "Volleyball") {
-      positions.Volleyball.forEach(position => {
-        limits[position] = 3;
-      });
-    }
-    return limits;
-  };
-
-  // Get available positions for a player based on current team composition
-  const getAvailablePositions = (currentIndex) => {
-    if (!formData.sport) return [];
-
-    const positionLimits = getPositionLimits(formData.players.length, formData.sport);
-    const positionCounts = {};
-    
-    // Count current assignments (excluding the current player being edited)
-    formData.players.forEach((player, index) => {
-      if (index !== currentIndex && player.position) {
-        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
-      }
-    });
-
-    // Filter positions that haven't reached their limit
-    return positions[formData.sport].filter(position => {
-      const currentCount = positionCounts[position] || 0;
-      const maxAllowed = positionLimits[position] || 0;
-      return currentCount < maxAllowed;
-    });
-  };
-
-  // Check if a position is available
-  const isPositionAvailable = (position, currentIndex) => {
-    if (!formData.sport || !position) return true;
-    
-    const availablePositions = getAvailablePositions(currentIndex);
-    return availablePositions.includes(position);
-  };
-
-  // Get position count display
-  const getPositionCounts = () => {
-    if (!formData.sport) return {};
-    
-    const positionLimits = getPositionLimits(formData.players.length, formData.sport);
-    const positionCounts = {};
-    
-    formData.players.forEach(player => {
-      if (player.position) {
-        positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
-      }
-    });
-
-    const result = {};
-    positions[formData.sport].forEach(position => {
-      result[position] = {
-        current: positionCounts[position] || 0,
-        max: positionLimits[position] || 0
-      };
-    });
-    
-    return result;
-  };
 
   // Fetch teams with brackets
   useEffect(() => {
@@ -182,16 +195,16 @@ const TeamsPage = ({ sidebarOpen }) => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
-  // Handle form inputs
-  const handleInputChange = (e) => {
+  // Handle form inputs - UPDATED to match TournamentCreator
+  const handleTeamInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setCurrentTeam(prev => ({ ...prev, [name]: value }));
 
     // When sport is selected, create exactly 12 empty player slots
     if (name === "sport" && value) {
-      setFormData(prev => ({
+      setCurrentTeam(prev => ({
         ...prev,
-        players: Array.from({ length: 12 }, () => ({ 
+        players: Array.from({ length: 12 }, (_, index) => ({ 
           name: "", 
           position: "", 
           jerseyNumber: "" 
@@ -199,48 +212,17 @@ const TeamsPage = ({ sidebarOpen }) => {
       }));
     }
     
-    // Clear validation error when user makes changes
-    if (validationError) {
-      setValidationError("");
-      setShowValidationMessage(false);
-    }
+    if (validationError) setValidationError("");
   };
 
-  // Player functions
-  const addPlayer = () => {
-    if (formData.sport && formData.players.length < 15) {
-      setFormData(prev => ({
-        ...prev,
-        players: [...prev.players, { name: "", position: "", jerseyNumber: "" }],
-      }));
-      
-      if (validationError) {
-        setValidationError("");
-        setShowValidationMessage(false);
-      }
-    }
-  };
-
-  const removePlayer = (index) => {
-    if (formData.players.length > 12) {
-      setFormData(prev => ({
-        ...prev,
-        players: prev.players.filter((_, i) => i !== index),
-      }));
-      
-      if (validationError) {
-        setValidationError("");
-        setShowValidationMessage(false);
-      }
-    }
-  };
-
+  // Player functions - UPDATED to match TournamentCreator
   const handlePlayerChange = (index, field, value) => {
     let finalValue = value;
     
     // For player names: remove any non-letter, non-space, non-hyphen characters
     if (field === "name") {
       finalValue = value.replace(/[^a-zA-Z\s-]/g, '');
+      // Don't trim here - allow spaces between names
     }
     
     // For jersey numbers: remove any non-digit characters
@@ -248,62 +230,75 @@ const TeamsPage = ({ sidebarOpen }) => {
       finalValue = value.replace(/[^0-9]/g, '');
     }
     
-    // Trim whitespace from name and jersey number
-    if (field === "name" || field === "jerseyNumber") {
-      finalValue = finalValue.trim();
-    }
-    
-    const newPlayers = [...formData.players];
+    const newPlayers = [...currentTeam.players];
     
     // If changing position, validate it's available
     if (field === "position") {
       if (!isPositionAvailable(finalValue, index)) {
-        setValidationError(`Cannot assign more than ${getPositionLimits(formData.players.length, formData.sport)[finalValue]} players to ${finalValue}`);
-        setShowValidationMessage(true);
+        setValidationError(`Cannot assign more than ${getPositionLimits(currentTeam.players.length, currentTeam.sport)[finalValue]} players to ${finalValue}`);
         return;
       }
     }
     
     newPlayers[index][field] = finalValue;
-    setFormData(prev => ({ ...prev, players: newPlayers }));
+    setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
     
     // Clear validation error if it was about position limits
     if (field === "position" && validationError && validationError.includes("Cannot assign more than")) {
       setValidationError("");
-      setShowValidationMessage(false);
-    }
-    
-    if (validationError) {
-      setValidationError("");
-      setShowValidationMessage(false);
     }
   };
 
-  // Validate form before submission
-  const validateForm = () => {
-    if (!formData.teamName.trim()) {
-      return "Please enter a team name";
+  // Add new player (up to 15 maximum)
+  const handleAddPlayer = () => {
+    if (currentTeam.players.length < 15) {
+      setCurrentTeam(prev => ({
+        ...prev,
+        players: [...prev.players, { name: "", position: "", jerseyNumber: "" }]
+      }));
     }
-    
-    if (!formData.sport) {
-      return "Please select a sport";
+  };
+
+  // Remove player (minimum 12 players required)
+  const handleRemovePlayer = (index) => {
+    if (currentTeam.players.length > 12) {
+      const newPlayers = [...currentTeam.players];
+      newPlayers.splice(index, 1);
+      setCurrentTeam(prev => ({ ...prev, players: newPlayers }));
     }
+  };
+
+  // Validation functions
+  const isValidPlayerName = (name) => {
+    const trimmed = name.trim();
+    return /^[a-zA-Z\s-]+$/.test(trimmed) && trimmed.length > 0;
+  };
+
+  const isValidJerseyNumber = (jersey) => {
+    const trimmed = jersey.trim();
+    return /^\d+$/.test(trimmed) && trimmed.length > 0;
+  };
+
+  const validateTeam = () => {
+    if (!currentTeam.teamName.trim()) return "Please enter a team name";
+    if (!currentTeam.sport) return "Please select a sport";
     
-    const validPlayers = formData.players.filter(p => 
-      p.name.trim() && p.position && p.jerseyNumber
+    // Check if we have between 12-15 players with complete information
+    const validPlayers = currentTeam.players.filter(p => 
+      p.name.trim() && p.position && p.jerseyNumber.trim()
     );
     
     if (validPlayers.length < 12) {
-      return `Team must have at least 12 players. Currently you have ${validPlayers.length} valid players.`;
+      return `Minimum 12 players required. Currently you have ${validPlayers.length} valid players.`;
     }
-    
-    if (formData.players.length > 15) {
-      return "Team cannot have more than 15 players";
+
+    if (validPlayers.length > 15) {
+      return `Maximum 15 players allowed. Currently you have ${validPlayers.length} valid players.`;
     }
     
     // Check for invalid player names (must be letters only)
     const invalidNames = validPlayers.filter(p => {
-      return !/^[a-zA-Z\s-]+$/.test(p.name.trim());
+      return !isValidPlayerName(p.name);
     });
     if (invalidNames.length > 0) {
       return "Player names must contain only letters and spaces. Please check all player names.";
@@ -311,13 +306,14 @@ const TeamsPage = ({ sidebarOpen }) => {
     
     // Check for invalid jersey numbers (must be numbers only)
     const invalidJerseys = validPlayers.filter(p => {
-      return !/^\d+$/.test(p.jerseyNumber.trim());
+      return !isValidJerseyNumber(p.jerseyNumber);
     });
     if (invalidJerseys.length > 0) {
       return "Jersey numbers must contain only numbers. Please check all jersey numbers.";
     }
     
-    const jerseyNumbers = validPlayers.map(p => p.jerseyNumber);
+    // Check for duplicate jersey numbers (only among valid players)
+    const jerseyNumbers = validPlayers.map(p => p.jerseyNumber.trim());
     const uniqueJerseyNumbers = new Set(jerseyNumbers);
     if (jerseyNumbers.length !== uniqueJerseyNumbers.size) {
       return "Duplicate jersey numbers found. Each player must have a unique jersey number.";
@@ -329,7 +325,7 @@ const TeamsPage = ({ sidebarOpen }) => {
       positionCounts[player.position] = (positionCounts[player.position] || 0) + 1;
     });
     
-    const positionLimits = getPositionLimits(formData.players.length, formData.sport);
+    const positionLimits = getPositionLimits(currentTeam.players.length, currentTeam.sport);
     for (const [position, count] of Object.entries(positionCounts)) {
       const maxAllowed = positionLimits[position];
       if (maxAllowed && count > maxAllowed) {
@@ -340,47 +336,36 @@ const TeamsPage = ({ sidebarOpen }) => {
     return null;
   };
 
-  // Submit team
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    const validationError = validateForm();
-    if (validationError) {
-      setValidationError(validationError);
-      setShowValidationMessage(true);
+  // Submit team - UPDATED to match TournamentCreator
+  const handleAddTeam = async () => {
+    const error = validateTeam();
+    if (error) {
+      setValidationError(error);
       return;
     }
 
-    setValidationError("");
-    setShowValidationMessage(false);
-
-    const validPlayers = formData.players.filter(p => 
-      p.name.trim() && p.position && p.jerseyNumber
-    );
-
-    // Trim all player data before submitting
-    const trimmedPlayers = validPlayers.map(player => ({
+    const trimmedPlayers = currentTeam.players.map(player => ({
       name: player.name.trim(),
       position: player.position,
       jerseyNumber: player.jerseyNumber.trim()
     }));
 
+    setLoading(true);
     try {
       const res = await fetch("http://localhost:5000/api/teams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.teamName.trim(),
-          sport: formData.sport,
-          players: trimmedPlayers,
-        }),
+          name: currentTeam.teamName.trim(),
+          sport: currentTeam.sport,
+          players: trimmedPlayers
+        })
       });
       
       if (res.ok) {
         const newTeam = await res.json();
         setTeams(prev => [...prev, newTeam]);
-        setFormData({ teamName: "", sport: "", players: [] });
-        setActiveTab("view");
+        setCurrentTeam({ teamName: "", sport: "", players: [] });
         setValidationError("Team created successfully!");
         setShowValidationMessage(true);
         
@@ -389,14 +374,114 @@ const TeamsPage = ({ sidebarOpen }) => {
           setShowValidationMessage(false);
         }, 3000);
       } else {
-        setValidationError("Error creating team. Please try again.");
-        setShowValidationMessage(true);
+        setValidationError("Failed to create team");
       }
     } catch (err) {
-      console.error("Error creating team:", err);
-      setValidationError("Error creating team. Please check your connection and try again.");
-      setShowValidationMessage(true);
+      console.error("Error saving team:", err);
+      setValidationError("Error saving team");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // CSV Import Functions - UPDATED to match TournamentCreator
+  const handleCSVImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!currentTeam.sport) {
+      setValidationError("Please select a sport first before importing players.");
+      event.target.value = '';
+      return;
+    }
+
+    setImportingCSV(true);
+    setValidationError("");
+
+    try {
+      const text = await file.text();
+      const Papa = await import('papaparse');
+      
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => {
+          const normalized = header.trim().toLowerCase();
+          if (normalized.includes('player') && normalized.includes('name')) return 'Player Name';
+          if (normalized.includes('jersey') && normalized.includes('number')) return 'Jersey Number';
+          if (normalized.includes('position')) return 'Position';
+          return header;
+        },
+        complete: (results) => {
+          const data = results.data;
+          
+          if (data.length === 0) {
+            setValidationError("CSV file is empty or invalid.");
+            setImportingCSV(false);
+            return;
+          }
+
+          const importedPlayers = data.slice(0, 15).map(row => {
+            const playerName = (row['Player Name'] || row['player name'] || row['name'] || '').trim();
+            const jerseyNumber = (row['Jersey Number'] || row['jersey number'] || row['number'] || '').toString().trim();
+            const position = (row['Position'] || row['position'] || '').trim();
+
+            return {
+              name: playerName,
+              jerseyNumber: jerseyNumber,
+              position: position
+            };
+          });
+
+          const validImports = importedPlayers.filter(p => p.name || p.jerseyNumber || p.position);
+          
+          if (validImports.length === 0) {
+            setValidationError("No valid player data found in CSV. Please check the file format.");
+            setImportingCSV(false);
+            return;
+          }
+
+          while (importedPlayers.length < 12) {
+            importedPlayers.push({ name: "", position: "", jerseyNumber: "" });
+          }
+
+          setCurrentTeam(prev => ({
+            ...prev,
+            players: importedPlayers
+          }));
+
+          setValidationError(`Successfully imported ${validImports.length} player(s) from CSV.`);
+          setImportingCSV(false);
+          event.target.value = '';
+        },
+        error: (error) => {
+          setValidationError(`Error parsing CSV: ${error.message}`);
+          setImportingCSV(false);
+          event.target.value = '';
+        }
+      });
+    } catch (err) {
+      setValidationError(`Error reading file: ${err.message}`);
+      setImportingCSV(false);
+      event.target.value = '';
+    }
+  };
+
+  // Download CSV Template - UPDATED to match TournamentCreator
+  const handleDownloadTemplate = () => {
+    const template = `Player Name,Jersey Number,Position
+John Doe,23,${currentTeam.sport === 'Basketball' ? 'Point Guard' : 'Setter'}
+Jane Smith,12,${currentTeam.sport === 'Basketball' ? 'Shooting Guard' : 'Outside Hitter'}`;
+    
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `players_template_${currentTeam.sport.toLowerCase()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   // Open view modal
@@ -474,81 +559,81 @@ const TeamsPage = ({ sidebarOpen }) => {
   };
 
   const handleEditPlayerChange = (field, value) => {
-  setEditingPlayer(prev => ({
-    ...prev,
-    player: {
-      ...prev.player,
-      [field]: value,
-      // If jerseyNumber is being changed, also update jersey_number for backend compatibility
-      ...(field === 'jerseyNumber' ? { jersey_number: value } : {})
-    }
-  }));
-};
+    setEditingPlayer(prev => ({
+      ...prev,
+      player: {
+        ...prev.player,
+        [field]: value,
+        // If jerseyNumber is being changed, also update jersey_number for backend compatibility
+        ...(field === 'jerseyNumber' ? { jersey_number: value } : {})
+      }
+    }));
+  };
 
   const saveEditedPlayer = async () => {
-  if (!editingPlayer.player.name.trim() || !editingPlayer.player.position || 
-      !(editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number)) {
-    setValidationError("Please fill in all player details.");
-    setShowValidationMessage(true);
-    return;
-  }
+    if (!editingPlayer.player.name.trim() || !editingPlayer.player.position || 
+        !(editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number)) {
+      setValidationError("Please fill in all player details.");
+      setShowValidationMessage(true);
+      return;
+    }
 
-  try {
-    const res = await fetch(`http://localhost:5000/api/teams/${viewModal.team.id}/players/${editingPlayer.player.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: editingPlayer.player.name,
-        position: editingPlayer.player.position,
-        jerseyNumber: editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number,
-        jersey_number: editingPlayer.player.jersey_number || editingPlayer.player.jerseyNumber
-      }),
-    });
+    try {
+      const res = await fetch(`http://localhost:5000/api/teams/${viewModal.team.id}/players/${editingPlayer.player.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingPlayer.player.name,
+          position: editingPlayer.player.position,
+          jerseyNumber: editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number,
+          jersey_number: editingPlayer.player.jersey_number || editingPlayer.player.jerseyNumber
+        }),
+      });
 
-    if (res.ok) {
-      const updatedPlayer = await res.json();
-      
-      // Update teams state
-      setTeams(prev => prev.map(team => {
-        if (team.id === viewModal.team.id) {
-          const updatedPlayers = [...team.players];
+      if (res.ok) {
+        const updatedPlayer = await res.json();
+        
+        // Update teams state
+        setTeams(prev => prev.map(team => {
+          if (team.id === viewModal.team.id) {
+            const updatedPlayers = [...team.players];
+            updatedPlayers[editingPlayer.index] = {
+              ...updatedPlayer,
+              jerseyNumber: updatedPlayer.jersey_number || updatedPlayer.jerseyNumber
+            };
+            return { ...team, players: updatedPlayers };
+          }
+          return team;
+        }));
+
+        // Update modal state
+        setViewModal(prev => {
+          const updatedPlayers = [...prev.team.players];
           updatedPlayers[editingPlayer.index] = {
             ...updatedPlayer,
             jerseyNumber: updatedPlayer.jersey_number || updatedPlayer.jerseyNumber
           };
-          return { ...team, players: updatedPlayers };
-        }
-        return team;
-      }));
+          return { ...prev, team: { ...prev.team, players: updatedPlayers } };
+        });
 
-      // Update modal state
-      setViewModal(prev => {
-        const updatedPlayers = [...prev.team.players];
-        updatedPlayers[editingPlayer.index] = {
-          ...updatedPlayer,
-          jerseyNumber: updatedPlayer.jersey_number || updatedPlayer.jerseyNumber
-        };
-        return { ...prev, team: { ...prev.team, players: updatedPlayers } };
-      });
-
-      setEditingPlayer(null);
-      setValidationError("Player updated successfully!");
-      setShowValidationMessage(true);
-      
-      setTimeout(() => {
-        setValidationError("");
-        setShowValidationMessage(false);
-      }, 3000);
-    } else {
+        setEditingPlayer(null);
+        setValidationError("Player updated successfully!");
+        setShowValidationMessage(true);
+        
+        setTimeout(() => {
+          setValidationError("");
+          setShowValidationMessage(false);
+        }, 3000);
+      } else {
+        setValidationError("Error updating player");
+        setShowValidationMessage(true);
+      }
+    } catch (err) {
+      console.error("Error updating player:", err);
       setValidationError("Error updating player");
       setShowValidationMessage(true);
     }
-  } catch (err) {
-    console.error("Error updating player:", err);
-    setValidationError("Error updating player");
-    setShowValidationMessage(true);
-  }
-};
+  };
 
   // Delete team
   const handleDeleteTeam = async (team) => {
@@ -633,13 +718,24 @@ const TeamsPage = ({ sidebarOpen }) => {
     setDeleteConfirm({ show: false, type: '', id: null, name: '' });
   };
 
+  // NEW: Toggle team details expansion
+  const toggleTeamDetails = (teamId) => {
+    setExpandedTeams(prev => ({
+      ...prev,
+      [teamId]: !prev[teamId]
+    }));
+  };
+
   // Capitalize first letter
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
-  // Get valid player count
-  const validPlayerCount = formData.players.filter(p => 
-    p.name.trim() && p.position && p.jerseyNumber
+  // Calculate valid player count (12-15 must be valid)
+  const validPlayerCount = currentTeam.players.filter(p => 
+    p.name.trim() && p.position && p.jerseyNumber.trim()
   ).length;
+
+  // Get position counts for display
+  const positionCounts = getPositionCounts();
 
   return (
     <div className="admin-dashboard">
@@ -652,12 +748,12 @@ const TeamsPage = ({ sidebarOpen }) => {
         <div className="dashboard-main">
           <div className="bracket-content">
             {/* Tabs */}
-           <div className="bracket-breadcrumb">
+            <div className="bracket-breadcrumb">
               <button
                 className={`breadcrumb-item ${activeTab === "view" ? "active" : ""}`}
                 onClick={() => {
                   setActiveTab("view");
-                  setFormData({ teamName: "", sport: "", players: [] });
+                  setCurrentTeam({ teamName: "", sport: "", players: [] });
                   setValidationError("");
                   setShowValidationMessage(false);
                 }}
@@ -675,12 +771,12 @@ const TeamsPage = ({ sidebarOpen }) => {
             </div>
 
             {/* Validation Message */}
-            {showValidationMessage && validationError && (
-              <div className={`admin-teams-validation-message ${validationError.includes("successfully") ? "admin-teams-success" : "admin-teams-error"}`}>
+            {validationError && (
+              <div className={`admin-teams-validation-message ${validationError.includes("Successfully") || validationError.includes("successfully") ? "admin-teams-success" : "admin-teams-error"}`}>
                 {validationError}
                 <button 
                   className="admin-teams-close-message"
-                  onClick={() => setShowValidationMessage(false)}
+                  onClick={() => setValidationError("")}
                 >
                   ×
                 </button>
@@ -690,8 +786,7 @@ const TeamsPage = ({ sidebarOpen }) => {
             {/* View Teams */}
             {activeTab === "view" && (
               <div className="bracket-view-section purple-background">
-                {/* Updated Search Container - Matching Events Page Style */}
-                {/* Search Container - Matching Events Page */}
+                {/* Search Container */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
                   <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1', minWidth: '300px' }}>
                     <input
@@ -830,7 +925,6 @@ const TeamsPage = ({ sidebarOpen }) => {
                             <th style={{ fontSize: '15px', minWidth: '200px' }}>Team Name</th>
                             <th style={{ fontSize: '15px' }}>Sport</th>
                             <th style={{ fontSize: '15px' }}>Players</th>
-                            <th style={{ fontSize: '15px' }}>Brackets</th>
                             <th style={{ textAlign: 'center', width: '180px', fontSize: '15px' }}>Actions</th>
                           </tr>
                         </thead>
@@ -845,48 +939,22 @@ const TeamsPage = ({ sidebarOpen }) => {
                                 </td>
                                 <td>
                                   <span 
-  className="bracket-sport-badge"
-  style={{ 
-    fontSize: '13px', 
-    padding: '8px 14px',
-    background: teamSport === 'Volleyball' ? '#4ecdc4' : '#ff6b35',
-    color: 'white',
-    borderRadius: '16px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
-  }}
->
-  {teamSport}
-</span>
+                                    className="bracket-sport-badge"
+                                    style={{ 
+                                      fontSize: '13px', 
+                                      padding: '8px 14px',
+                                      background: teamSport === 'Volleyball' ? '#4ecdc4' : '#ff6b35',
+                                      color: 'white',
+                                      borderRadius: '16px',
+                                      fontWeight: '700',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.5px'
+                                    }}
+                                  >
+                                    {teamSport}
+                                  </span>
                                 </td>
                                 <td style={{ fontSize: '15px', fontWeight: '600' }}>{team.players.length}</td>
-                               <td>
-  {team.brackets && team.brackets.length > 0 ? (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      {team.brackets.map((bracket, idx) => {
-        // Extract just the bracket name part (after last dash)
-        const fullBracketName = bracket.bracket_name;
-        const bracketNameOnly = fullBracketName.includes(' - ')
-          ? fullBracketName.split(' - ').pop()
-          : fullBracketName;
-        
-        return (
-          <span 
-            key={idx}
-            className="admin-teams-bracket-badge"
-            title={`${bracket.event_name} - ${fullBracketName}`}
-          >
-            {bracket.event_name} - {bracketNameOnly}
-          </span>
-        );
-      })}
-    </div>
-  ) : (
-    <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Not in any bracket</span>
-  )}
-</td>
-
                                 <td>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                                     <button
@@ -1018,52 +1086,55 @@ const TeamsPage = ({ sidebarOpen }) => {
               </div>
             )}
 
-            {/* Create Team */}
+            {/* Create Team - UPDATED to match TournamentCreator Step 2 */}
             {activeTab === "create" && (
-              <div className="admin-teams-create-section">
-                <div className="admin-teams-form-container">
+              <div className="bracket-create-section">
+                <div className="bracket-form-container">
                   <h2>Create New Team</h2>
-                  <form className="admin-teams-form" onSubmit={handleSubmit}>
-                    {/* Team Name */}
-                    <div className="admin-teams-form-group">
-                      <label htmlFor="teamName">Team Name *</label>
-                      <input
-                        type="text"
-                        id="teamName"
-                        name="teamName"
-                        value={formData.teamName}
-                        onChange={handleInputChange}
-                        placeholder="Enter team name"
-                        required
-                      />
+                 
+                  
+                  <div className="bracket-form">
+                    {/* Team Name and Sport Selection - Same layout as TournamentCreator */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                      <div className="bracket-form-group">
+                        <label htmlFor="teamName">Team Name *</label>
+                        <input
+                          type="text"
+                          id="teamName"
+                          name="teamName"
+                          value={currentTeam.teamName}
+                          onChange={handleTeamInputChange}
+                          placeholder="Enter team name"
+                          style={{ fontSize: '16px' }}
+                        />
+                      </div>
+
+                      <div className="bracket-form-group">
+                        <label htmlFor="sport">Sport *</label>
+                        <select
+                          id="sport"
+                          name="sport"
+                          value={currentTeam.sport}
+                          onChange={handleTeamInputChange}
+                          style={{ fontSize: '16px' }}
+                        >
+                          <option value="">Select a sport</option>
+                          {Object.keys(positions).map((sport) => (
+                            <option key={sport} value={sport}>{sport}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
-                    {/* Sport Selection */}
-                    <div className="admin-teams-form-group">
-                      <label htmlFor="sport">Sport *</label>
-                      <select
-                        id="sport"
-                        name="sport"
-                        value={formData.sport}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">Select a sport</option>
-                        {Object.keys(positions).map((sport) => (
-                          <option key={sport} value={sport}>{sport}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Players Section */}
-                    {formData.sport && (
+                    {/* Players Section - Same as TournamentCreator */}
+                    {currentTeam.sport && (
                       <div className="admin-teams-players-section">
                         <div className="admin-teams-players-header">
-                          <h3>Players ({formData.players.length}/15)</h3>
+                          <h3>Players ({validPlayerCount}/{currentTeam.players.length})</h3>
                           <div className="admin-teams-player-count">
                             {validPlayerCount} / 12-15 players
                             {validPlayerCount < 12 && (
-                              <span className="admin-teams-count-warning"> (Minimum 12 required)</span>
+                              <span className="admin-teams-count-warning"> (Minimum 12 players required)</span>
                             )}
                             {validPlayerCount >= 12 && validPlayerCount <= 15 && (
                               <span className="admin-teams-count-success"> ✓ Valid team size</span>
@@ -1071,11 +1142,57 @@ const TeamsPage = ({ sidebarOpen }) => {
                           </div>
                         </div>
 
+                        {/* Show only SUCCESS messages here (CSV import success) */}
+                        {validationError && (validationError.includes("Successfully") || validationError.includes("successfully")) && (
+                          <div 
+                            className="admin-teams-validation-message admin-teams-success validation-message-animated"
+                            style={{ marginTop: '15px', marginBottom: '15px' }}
+                          >
+                            {validationError}
+                            <button 
+                              className="admin-teams-close-message"
+                              onClick={() => setValidationError("")}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="csv-import-section">
+                          <div className="csv-import-buttons">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept=".csv"
+                              onChange={handleCSVImport}
+                              style={{ display: 'none' }}
+                            />
+                            <button
+                              type="button"
+                              className="csv-import-btn"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={importingCSV}
+                            >
+                              {importingCSV ? "Importing..." : "📁 Import Players from CSV"}
+                            </button>
+                            <button
+                              type="button"
+                              className="csv-template-btn"
+                              onClick={handleDownloadTemplate}
+                            >
+                              ⬇ Download CSV Template
+                            </button>
+                          </div>
+                          <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px', display: 'block' }}>
+                            CSV format: Player Name, Jersey Number, Position
+                          </small>
+                        </div>
+
                         {/* Position Limits Display */}
                         <div className="position-limits-display">
                           <h4>Position Limits (Maximum 3 per position)</h4>
                           <div className="position-limits-grid">
-                            {Object.entries(getPositionCounts()).map(([position, counts]) => (
+                            {Object.entries(positionCounts).map(([position, counts]) => (
                               <div key={position} className="position-limit-item">
                                 <span className="position-name">{position}</span>
                                 <span className={`position-count ${counts.current >= counts.max ? 'limit-reached' : ''}`}>
@@ -1086,7 +1203,7 @@ const TeamsPage = ({ sidebarOpen }) => {
                           </div>
                         </div>
 
-                        {formData.players.map((player, index) => (
+                        {currentTeam.players.map((player, index) => (
                           <div key={index} className="admin-teams-player-card">
                             <div className="admin-teams-player-input-row">
                               <div className="player-number-badge">
@@ -1097,36 +1214,39 @@ const TeamsPage = ({ sidebarOpen }) => {
                                 placeholder="Player name"
                                 value={player.name}
                                 onChange={(e) => handlePlayerChange(index, "name", e.target.value)}
-                                required
                                 className="admin-teams-player-name-input"
+                                style={{ fontSize: '16px' }}
+                                required
                               />
                               <input
                                 type="text"
                                 placeholder="Jersey #"
                                 value={player.jerseyNumber}
                                 onChange={(e) => handlePlayerChange(index, "jerseyNumber", e.target.value)}
-                                required
                                 className="admin-teams-jersey-input"
+                                style={{ fontSize: '16px' }}
                                 maxLength="10"
+                                required
                               />
                               <select
                                 value={player.position}
                                 onChange={(e) => handlePlayerChange(index, "position", e.target.value)}
-                                required
                                 className={`admin-teams-position-select ${
                                   !isPositionAvailable(player.position, index) ? 'position-unavailable' : ''
                                 }`}
+                                style={{ fontSize: '16px' }}
+                                required
                               >
                                 <option value="">Select position</option>
                                 {getAvailablePositions(index).map(pos => (
                                   <option key={pos} value={pos}>{pos}</option>
                                 ))}
                               </select>
-                              {formData.players.length > 12 && (
+                              {currentTeam.players.length > 12 && (
                                 <button
                                   type="button"
                                   className="remove-player-btn"
-                                  onClick={() => removePlayer(index)}
+                                  onClick={() => handleRemovePlayer(index)}
                                   title="Remove player"
                                 >
                                   ×
@@ -1136,22 +1256,23 @@ const TeamsPage = ({ sidebarOpen }) => {
                             {/* Position availability warning */}
                             {player.position && !isPositionAvailable(player.position, index) && (
                               <div className="position-warning">
-                                Maximum {getPositionLimits(formData.players.length, formData.sport)[player.position]} {player.position} players allowed
+                                Maximum {getPositionLimits(currentTeam.players.length, currentTeam.sport)[player.position]} {player.position} players allowed
                               </div>
                             )}
                           </div>
                         ))}
-
+                        
                         {/* Add More Players Button */}
-                        {formData.players.length < 15 && (
-                          <div className="add-players-section">
+                        {currentTeam.players.length < 15 && (
+                          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px', marginBottom: '15px' }}>
                             <button
                               type="button"
                               className="add-player-btn"
-                              onClick={addPlayer}
+                              onClick={handleAddPlayer}
+                              style={{ fontSize: '16px' }}
                             >
                               <FaPlus style={{ marginRight: '8px' }} />
-                              Add More Players ({15 - formData.players.length} slots available)
+                              Add More Players ({15 - currentTeam.players.length} slots available)
                             </button>
                           </div>
                         )}
@@ -1173,28 +1294,46 @@ const TeamsPage = ({ sidebarOpen }) => {
                       </div>
                     )}
 
-                    {/* Actions */}
-                    <div className="admin-teams-form-actions">
-                      <button 
-                        type="submit" 
-                        className="admin-teams-submit-btn"
-                        disabled={validPlayerCount < 12 || formData.players.length > 15}
-                      >
-                        Create Team
-                      </button>
-                      <button
-                        type="button"
-                        className="admin-teams-cancel-btn"
-                        onClick={() => {
-                          setFormData({ teamName: "", sport: "", players: [] });
-                          setValidationError("");
-                          setShowValidationMessage(false);
-                        }}
-                      >
-                        Clear Form
-                      </button>
+                    <div className="bracket-form-actions" style={{ marginTop: '20px' }}>
+                      {/* Only show Add Team button when 12 valid players are complete */}
+                      {validPlayerCount >= 12 && validPlayerCount <= 15 && (
+                        <button 
+                          onClick={handleAddTeam}
+                          className="bracket-submit-btn"
+                          disabled={loading}
+                        >
+                          {loading ? "Adding..." : "Add Team"}
+                        </button>
+                      )}
+                      
+                      {/* Only show Clear Form button if user has started entering data */}
+                      {(currentTeam.teamName.trim() || 
+                        currentTeam.sport || 
+                        currentTeam.players.some(p => p.name.trim() || p.position || p.jerseyNumber.trim())) && (
+                        <button
+                          type="button"
+                          className="bracket-cancel-btn"
+                          onClick={() => {
+                            setCurrentTeam({ teamName: "", sport: "", players: [] });
+                            setValidationError("");
+                          }}
+                        >
+                          Clear Form
+                        </button>
+                      )}
                     </div>
-                  </form>
+                  </div>
+
+                  {/* Back to Teams button */}
+                  <div className="bracket-form-actions" style={{ marginTop: '20px', borderTop: '2px solid rgba(255, 255, 255, 0.1)', paddingTop: '20px' }}>
+                    <button 
+                      onClick={() => setActiveTab("view")}
+                      className="bracket-cancel-btn"
+                    >
+                      <FaChevronLeft style={{ marginRight: '8px' }} />
+                      Back to Teams
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1202,7 +1341,7 @@ const TeamsPage = ({ sidebarOpen }) => {
         </div>
       </div>
 
-      {/* View Team Modal - Updated to match Events edit modal design */}
+      {/* View Team Modal */}
       {viewModal.show && viewModal.team && (
         <div 
           onClick={closeViewModal}
@@ -1349,20 +1488,20 @@ const TeamsPage = ({ sidebarOpen }) => {
               gap: '20px',
               flexWrap: 'wrap'
             }}>
-            <span 
-  style={{ 
-    padding: '6px 12px',
-    borderRadius: '16px',
-    fontSize: '13px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    background: viewModal.team.sport === 'Volleyball' ? '#4ecdc4' : '#ff6b35',
-    color: 'white'
-  }}
->
-  {viewModal.team.sport}
-</span>
+              <span 
+                style={{ 
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  background: viewModal.team.sport === 'Volleyball' ? '#4ecdc4' : '#ff6b35',
+                  color: 'white'
+                }}
+              >
+                {viewModal.team.sport}
+              </span>
               <span style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: '600' }}>
                 <strong>{viewModal.team.players.length}</strong> Players
               </span>
@@ -1415,235 +1554,233 @@ const TeamsPage = ({ sidebarOpen }) => {
                 Players List
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          
+                {viewModal.team.players.map((player, index) => {
+                  const isEditing = editingPlayer && editingPlayer.index === index;
+                  const teamSport = viewModal.team.sport || 'Basketball';
+                  
+                  return isEditing ? (
+                    // Editing style
+                    <div 
+                      key={index} 
+                      style={{
+                        background: '#1a2332',
+                        padding: '16px 24px',
+                        borderRadius: '12px',
+                        border: '2px solid #2d3748',
+                        marginBottom: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: '16px', alignItems: 'end' }}>
+                        {/* Name Input */}
+                        <div>
+                          <label style={{ 
+                            display: 'block', 
+                            marginBottom: '8px', 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#e2e8f0'
+                          }}>
+                            Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={editingPlayer.player.name}
+                            onChange={(e) => handleEditPlayerChange("name", e.target.value)}
+                            placeholder="Player name"
+                            style={{ 
+                              width: '100%', 
+                              padding: '12px 16px', 
+                              border: '2px solid #2d3748', 
+                              borderRadius: '8px',
+                              background: '#0f172a',
+                              color: '#e2e8f0',
+                              fontSize: '14px',
+                              outline: 'none',
+                              transition: 'border-color 0.2s ease'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+                          />
+                        </div>
 
-{viewModal.team.players.map((player, index) => {
-  const isEditing = editingPlayer && editingPlayer.index === index;
-  const teamSport = viewModal.team.sport || 'Basketball';
-  
-  return isEditing ? (
-    // NEW EDITING STYLE - Matching Events Page
-    <div 
-      key={index} 
-      style={{
-        background: '#1a2332',
-        padding: '16px 24px',
-        borderRadius: '12px',
-        border: '2px solid #2d3748',
-        marginBottom: '12px'
-      }}
-    >
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: '16px', alignItems: 'end' }}>
-        {/* Name Input */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            fontSize: '13px',
-            fontWeight: '600',
-            color: '#e2e8f0'
-          }}>
-            Name *
-          </label>
-          <input
-            type="text"
-            value={editingPlayer.player.name}
-            onChange={(e) => handleEditPlayerChange("name", e.target.value)}
-            placeholder="Player name"
-            style={{ 
-              width: '100%', 
-              padding: '12px 16px', 
-              border: '2px solid #2d3748', 
-              borderRadius: '8px',
-              background: '#0f172a',
-              color: '#e2e8f0',
-              fontSize: '14px',
-              outline: 'none',
-              transition: 'border-color 0.2s ease'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
-          />
-        </div>
+                        {/* Jersey Number Input */}
+                        <div>
+                          <label style={{ 
+                            display: 'block', 
+                            marginBottom: '8px', 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#e2e8f0'
+                          }}>
+                            Jersey # *
+                          </label>
+                          <input
+                            type="text"
+                            value={editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number}
+                            onChange={(e) => handleEditPlayerChange("jerseyNumber", e.target.value)}
+                            placeholder="Jersey #"
+                            maxLength="10"
+                            style={{ 
+                              width: '100%', 
+                              padding: '12px 16px', 
+                              border: '2px solid #2d3748',
+                              borderRadius: '8px',
+                              background: '#0f172a',
+                              color: '#e2e8f0',
+                              fontSize: '14px',
+                              outline: 'none',
+                              transition: 'border-color 0.2s ease'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+                          />
+                        </div>
 
-        {/* Jersey Number Input */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            fontSize: '13px',
-            fontWeight: '600',
-            color: '#e2e8f0'
-          }}>
-            Jersey # *
-          </label>
-          <input
-            type="text"
-            value={editingPlayer.player.jerseyNumber || editingPlayer.player.jersey_number}
-            onChange={(e) => handleEditPlayerChange("jerseyNumber", e.target.value)}
-            placeholder="Jersey #"
-            maxLength="10"
-            style={{ 
-              width: '100%', 
-              padding: '12px 16px', 
-              border: '2px solid #2d3748',
-              borderRadius: '8px',
-              background: '#0f172a',
-              color: '#e2e8f0',
-              fontSize: '14px',
-              outline: 'none',
-              transition: 'border-color 0.2s ease'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
-          />
-        </div>
+                        {/* Position Select */}
+                        <div>
+                          <label style={{ 
+                            display: 'block', 
+                            marginBottom: '8px', 
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#e2e8f0'
+                          }}>
+                            Position *
+                          </label>
+                          <select
+                            value={editingPlayer.player.position}
+                            onChange={(e) => handleEditPlayerChange("position", e.target.value)}
+                            style={{ 
+                              width: '100%', 
+                              padding: '12px 16px', 
+                              border: '2px solid #2d3748', 
+                              borderRadius: '8px',
+                              background: '#0f172a',
+                              color: '#e2e8f0',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                              outline: 'none',
+                              transition: 'border-color 0.2s ease'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+                          >
+                            <option value="">Select position</option>
+                            {positions[teamSport]?.map(pos => (
+                              <option key={pos} value={pos}>{pos}</option>
+                            ))}
+                          </select>
+                        </div>
 
-        {/* Position Select */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            fontSize: '13px',
-            fontWeight: '600',
-            color: '#e2e8f0'
-          }}>
-            Position *
-          </label>
-          <select
-            value={editingPlayer.player.position}
-            onChange={(e) => handleEditPlayerChange("position", e.target.value)}
-            style={{ 
-              width: '100%', 
-              padding: '12px 16px', 
-              border: '2px solid #2d3748', 
-              borderRadius: '8px',
-              background: '#0f172a',
-              color: '#e2e8f0',
-              fontSize: '14px',
-              cursor: 'pointer',
-              outline: 'none',
-              transition: 'border-color 0.2s ease'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-            onBlur={(e) => e.target.style.borderColor = '#2d3748'}
-          >
-            <option value="">Select position</option>
-            {positions[teamSport]?.map(pos => (
-              <option key={pos} value={pos}>{pos}</option>
-            ))}
-          </select>
-        </div>
+                        {/* Save Button */}
+                        <button 
+                          onClick={saveEditedPlayer} 
+                          style={{ 
+                            padding: '12px 24px',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            height: '48px',
+                            marginTop: '30px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <FaSave /> Save
+                        </button>
 
-        {/* Save Button */}
-        <button 
-          onClick={saveEditedPlayer} 
-          style={{ 
-            padding: '12px 24px',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            height: '48px',
-            marginTop: '30px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-            transition: 'all 0.2s ease',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <FaSave /> Save
-        </button>
-
-        {/* Cancel Button */}
-        <button 
-          onClick={cancelEditPlayer} 
-          style={{ 
-            padding: '12px 24px',
-            background: '#2d3748',
-            color: '#e2e8f0',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            height: '48px',
-            marginTop: '30px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <FaTimes /> Cancel
-        </button>
-      </div>
-    </div>
-  ) : (
-    // Normal display mode (keep as is)
-    <div 
-      key={index} 
-      style={{
-        background: 'var(--background-secondary)',
-        padding: '16px',
-        borderRadius: '8px',
-        border: '1px solid var(--border-color)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px'
-      }}
-    >
-      <span 
-        style={{ 
-          background: 'var(--primary-color)', 
-          color: 'white', 
-          width: '36px', 
-          height: '36px', 
-          borderRadius: '8px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          fontWeight: '700',
-          fontSize: '14px'
-        }}
-      >
-        #{player.jersey_number || player.jerseyNumber}
-      </span>
-      <div style={{ flex: 1 }}>
-        <div style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '16px' }}>
-          {player.name}
-        </div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '2px' }}>
-          {player.position}
-        </div>
-      </div>
-      <button 
-        onClick={() => startEditPlayer(index)}
-        style={{ 
-          padding: '8px 12px', 
-          background: 'var(--purple-color)', 
-          color: 'white', 
-          border: 'none', 
-          borderRadius: '6px', 
-          cursor: 'pointer',
-          fontSize: '13px',
-          fontWeight: '600',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px'
-        }}
-      >
-        <FaEdit /> Edit
-      </button>
-    </div>
-  );
-})}
+                        {/* Cancel Button */}
+                        <button 
+                          onClick={cancelEditPlayer} 
+                          style={{ 
+                            padding: '12px 24px',
+                            background: '#2d3748',
+                            color: '#e2e8f0',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            height: '48px',
+                            marginTop: '30px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <FaTimes /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Normal display mode
+                    <div 
+                      key={index} 
+                      style={{
+                        background: 'var(--background-secondary)',
+                        padding: '16px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px'
+                      }}
+                    >
+                      <span 
+                        style={{ 
+                          background: 'var(--primary-color)', 
+                          color: 'white', 
+                          width: '36px', 
+                          height: '36px', 
+                          borderRadius: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontWeight: '700',
+                          fontSize: '14px'
+                        }}
+                      >
+                        #{player.jersey_number || player.jerseyNumber}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '16px' }}>
+                          {player.name}
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '2px' }}>
+                          {player.position}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => startEditPlayer(index)}
+                        style={{ 
+                          padding: '8px 12px', 
+                          background: 'var(--purple-color)', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: '6px', 
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <FaEdit /> Edit
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

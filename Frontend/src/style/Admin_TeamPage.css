@@ -24,6 +24,65 @@
   --admin-teams-border-radius-lg: 12px;
   --admin-teams-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* CSV Import Section Styles */
+.csv-import-section {
+  background: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.3);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.csv-import-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.csv-import-btn, .csv-template-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.csv-import-btn {
+  background: #2196f3;
+  color: white;
+  flex: 1;
+  min-width: 200px;
+}
+
+.csv-import-btn:hover:not(:disabled) {
+  background: #1976d2;
+  transform: translateY(-1px);
+}
+
+.csv-import-btn:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.csv-template-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex: 1;
+  min-width: 200px;
+}
+
+.csv-template-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
 /* Breadcrumb Styles */
 .bracket-breadcrumb {
   display: flex;

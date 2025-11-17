@@ -26,6 +26,58 @@
   --navy-blue-hover: #1e40af;
 }
 
+
+/* Update Log Styling */
+.update-log-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.update-log-badge strong {
+  color: var(--text-primary);
+}
+
+.update-log-role-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.update-log-role-admin {
+  background: #ef4444;
+  color: white;
+}
+
+.update-log-role-staff {
+  background: #3b82f6;
+  color: white;
+}
+
+/* Additional animation for update log */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.update-log-badge {
+  animation: fadeIn 0.3s ease-out;
+}
+
 /* Main content wrapper */
 .dashboard-main {
   padding: 20px;

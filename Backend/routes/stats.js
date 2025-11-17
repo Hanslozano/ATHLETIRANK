@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
+const { authenticateToken } = require("../routes/middleware/authMiddleware");
 
 const normalizeArray = (value, length) => {
   let parsed = value;
@@ -167,6 +168,9 @@ router.get('/:bracketId/matches', async (req, res) => {
     const query = `
       SELECT 
         m.*,
+        m.last_updated_by,      -- ⭐ ADD THIS LINE
+        m.last_updated_at,      -- ⭐ ADD THIS LINE
+        m.last_updated_role,    -- ⭐ ADD THIS LINE
         t1.name as team1_name,
         t2.name as team2_name,
         tw.name as winner_name,
@@ -319,7 +323,7 @@ router.get("/matches/:matchId/stats", async (req, res) => {
 });
 
 // Enhanced Save stats for a match - UPDATED with snapshot support
-router.post("/matches/:matchId/stats", async (req, res) => {
+router.post("/matches/:matchId/stats", authenticateToken, async (req, res) => {
   const { players, team1_id, team2_id, awards = [] } = req.body;
   const matchId = req.params.matchId;
 
@@ -355,6 +359,14 @@ router.post("/matches/:matchId/stats", async (req, res) => {
   const conn = await db.pool.getConnection();
   try {
     await conn.beginTransaction();
+
+
+  // ⭐ ADD THIS: Get user info from session/token
+  const username = req.user?.username || 'Unknown User';
+const userRole = req.user?.role || 'staff';
+    console.log("User updating stats:", { username, userRole });
+    
+    
 
     // Get match details first to know the bracket and round info
     const [matchDetails] = await conn.query(
@@ -735,25 +747,33 @@ const insertValues = [
     }
 
     // UPDATE MATCH SCORES
-    await conn.query(
-      `UPDATE matches 
-       SET score_team1 = ?, score_team2 = ?, overtime_periods = ?
-       WHERE id = ?`,
-      [team1Total, team2Total, overtimePeriods, matchId]
-    );
+    // ⭐ UPDATE MATCH SCORES WITH USER INFO
+await conn.query(
+  `UPDATE matches 
+   SET score_team1 = ?, 
+       score_team2 = ?, 
+       overtime_periods = ?,
+       last_updated_by = ?,
+       last_updated_at = NOW(),
+       last_updated_role = ?
+   WHERE id = ?`,
+  [team1Total, team2Total, overtimePeriods, username, userRole, matchId]
+);
 
-    await conn.commit();
-    console.log("Stats saved successfully:", { 
-      team1Total, 
-      team2Total,
-      team1RegulationTotal,
-      team2RegulationTotal, 
-      team1OvertimeTotal,
-      team2OvertimeTotal,
-      overtimePeriods,
-      matchId
-    });
     
+await conn.commit();
+console.log("Stats saved successfully:", { 
+  team1Total, 
+  team2Total,
+  team1RegulationTotal,
+  team2RegulationTotal, 
+  team1OvertimeTotal,
+  team2OvertimeTotal,
+  overtimePeriods,
+  matchId,
+  updatedBy: username,  // ⭐ ADD THIS
+  role: userRole        // ⭐ ADD THIS
+});
     res.json({ 
       message: "Stats saved successfully", 
       team1Total, 
