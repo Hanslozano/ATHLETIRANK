@@ -9,14 +9,19 @@ const TeamPositionStats = ({ selectedEvent, selectedBracket }) => {
     libero: [],
     blocker: []
   });
+  const [top10Data, setTop10Data] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Fetch position data when bracket changes
   useEffect(() => {
-    if (selectedBracket && selectedBracket.sport_type === 'volleyball') {
-      fetchPositionData();
+    if (selectedBracket) {
+      if (selectedBracket.sport_type === 'volleyball') {
+        fetchPositionData();
+      } else if (selectedBracket.sport_type === 'basketball') {
+        fetchTop10Data();
+      }
     }
-  }, [selectedBracket]);
+  }, [selectedBracket, selectedEvent]);
 
   // Helper function to normalize position names
   const normalizePosition = (position) => {
@@ -35,15 +40,15 @@ const TeamPositionStats = ({ selectedEvent, selectedBracket }) => {
 
     switch(positionType) {
       case 'setter':
-        return assists; // Playmaking efficiency
+        return assists;
       case 'libero':
-        return digs + receptions; // Defensive efficiency
+        return digs + receptions;
       case 'outsideHitter':
-        return kills + aces + blocks; // Offensive Scoring
+        return kills + aces + blocks;
       case 'oppositeHitter':
-        return kills + blocks + aces; // Attacking power
+        return kills + blocks + aces;
       case 'blocker':
-        return blocks + kills; // Blocking
+        return blocks + kills;
       default:
         return 0;
     }
@@ -59,10 +64,9 @@ const TeamPositionStats = ({ selectedEvent, selectedBracket }) => {
       );
       const data = await res.json();
       
-      console.log("Fetched player data:", data); // Debug log
-      console.log("Sample player positions:", data.slice(0, 5).map(p => ({ name: p.name, position: p.position }))); // Debug positions
+      console.log("Fetched player data:", data);
       
-      // Group players by position - strictly by actual position field only
+      // Group players by position
       const grouped = {
         setter: data
           .filter(p => {
@@ -105,16 +109,53 @@ const TeamPositionStats = ({ selectedEvent, selectedBracket }) => {
           .slice(0, 10)
       };
 
-      console.log("Grouped position data:", grouped); // Debug log
-      console.log("Setters found:", grouped.setter.length);
-      console.log("Outside Hitters found:", grouped.outsideHitter.length);
-      console.log("Opposite Hitters found:", grouped.oppositeHitter.length);
-      console.log("Liberos found:", grouped.libero.length);
-      console.log("Middle Blockers found:", grouped.blocker.length);
-      
+      console.log("Grouped position data:", grouped);
       setPositionData(grouped);
     } catch (err) {
       console.error("Error fetching position data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTop10Data = async () => {
+    if (!selectedEvent || !selectedBracket) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/stats/events/${selectedEvent.id}/players-statistics?bracketId=${selectedBracket.id}`
+      );
+      const data = await res.json();
+      
+      console.log("Fetched basketball player data:", data);
+      
+      // Calculate overall score for each player
+      const playersWithScore = data.map(player => {
+     const ppg = Number(player.ppg) || 0;
+const rpg = Number(player.rpg) || 0;
+const apg = Number(player.apg) || 0;
+const spg = Number(player.spg) || 0;
+const bpg = Number(player.bpg) || 0;
+const tpg = Number(player.tpg) || 0;
+        // MVP Score = PPG + RPG + APG + SPG + BPG - TPG
+        const overallScore = ppg + rpg + apg + spg + bpg - tpg;
+        
+        return {
+          ...player,
+          overall_score: overallScore
+        };
+      });
+      
+      // Sort by overall score and take top 10
+      const top10 = playersWithScore
+        .sort((a, b) => b.overall_score - a.overall_score)
+        .slice(0, 10);
+      
+      console.log("Top 10 players:", top10);
+      setTop10Data(top10);
+    } catch (err) {
+      console.error("Error fetching top 10 data:", err);
     } finally {
       setLoading(false);
     }
@@ -183,8 +224,16 @@ const TeamPositionStats = ({ selectedEvent, selectedBracket }) => {
 
   const statColumns = getStatColumns();
   
-  // Don't render if not volleyball
-  if (!selectedBracket || selectedBracket.sport_type !== 'volleyball') {
+  // Render for both volleyball and basketball
+  if (!selectedBracket) {
+    return null;
+  }
+
+  const isBasketball = selectedBracket.sport_type === 'basketball';
+  const isVolleyball = selectedBracket.sport_type === 'volleyball';
+
+  // Don't render if neither sport
+  if (!isBasketball && !isVolleyball) {
     return null;
   }
 
@@ -192,116 +241,231 @@ const TeamPositionStats = ({ selectedEvent, selectedBracket }) => {
     <div className="seasonal-position-stats">
       {/* Header */}
       <div className="seasonal-position-header">
-        <h2 className="seasonal-position-title">Positional Leaders</h2>
-        <p className="seasonal-position-subtitle">Top individual performers by position across all teams.</p>
+        <h2 className="seasonal-position-title">
+          {isBasketball ? 'Top 10 Overall Leaders' : 'Positional Leaders'}
+        </h2>
+        <p className="seasonal-position-subtitle">
+          {isBasketball 
+            ? 'Top individual performers ranked by overall performance score.' 
+            : 'Top individual performers by position across all teams.'}
+        </p>
       </div>
 
-      {/* Position Selector */}
-      <div className="seasonal-position-tabs">
-        {positions.map((position) => (
-          <button
-            key={position.id}
-            onClick={() => setSelectedPosition(position.id)}
-            className={`seasonal-position-tab ${
-              selectedPosition === position.id ? 'active' : ''
-            }`}
-          >
-            <span className="seasonal-position-tab-icon">{position.icon}</span>
-            <span className="seasonal-position-tab-text">{position.name}</span>
-          </button>
-        ))}
-      </div>
+      {/* Position Selector - Only for Volleyball */}
+      {isVolleyball && (
+        <div className="seasonal-position-tabs">
+          {positions.map((position) => (
+            <button
+              key={position.id}
+              onClick={() => setSelectedPosition(position.id)}
+              className={`seasonal-position-tab ${
+                selectedPosition === position.id ? 'active' : ''
+              }`}
+            >
+              <span className="seasonal-position-tab-icon">{position.icon}</span>
+              <span className="seasonal-position-tab-text">{position.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Loading State */}
       {loading && (
         <div className="seasonal-loading">
           <div className="seasonal-spinner"></div>
-          <p>Loading position data...</p>
+          <p>Loading {isBasketball ? 'top performers' : 'position'} data...</p>
         </div>
       )}
 
-      {/* Stats Table */}
-      {!loading && (
-        <div className="seasonal-position-table-container">
-          <table className="seasonal-position-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Team</th>
-                <th>Player</th>
-                <th className="text-center">Jersey</th>
-                {statColumns.map((col, idx) => (
-                  <th key={idx} className="text-center">{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {!currentData || currentData.length === 0 ? (
+      {/* Basketball Top 10 Section */}
+      {!loading && isBasketball && (
+        <>
+          <div className="seasonal-position-table-container">
+            <table className="seasonal-position-table">
+              <thead>
                 <tr>
-                  <td colSpan={4 + statColumns.length} className="seasonal-no-data">
-                    No players found for this position
-                  </td>
+                  <th>Rank</th>
+                  <th>Team</th>
+                  <th>Player</th>
+                  <th className="text-center">Jersey</th>
+                  <th className="text-center">PPG</th>
+                  <th className="text-center">RPG</th>
+                  <th className="text-center">APG</th>
+                  <th className="text-center">SPG</th>
+                  <th className="text-center">BPG</th>
+                  <th className="text-center">TPG</th>
+                  <th className="text-center">Overall</th>
                 </tr>
-              ) : (
-                currentData.map((player, index) => {
-                  const statValues = getStatValues(player);
-                  const isTopThree = index < 3;
-                  
-                  return (
-                    <tr key={player.id || index} className={isTopThree ? 'top-three' : ''}>
-                      <td>
-                        <span className={`seasonal-rank-badge seasonal-rank-${index + 1}`}>
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="seasonal-position-team">{player.team_name}</span>
-                      </td>
-                      <td>
-                        <span className="seasonal-position-player">{player.name}</span>
-                      </td>
-                      <td className="text-center">
-                        <span className="seasonal-position-jersey">
-                          #{player.jersey_number}
-                        </span>
-                      </td>
-                      {statValues.map((value, idx) => (
-                        <td key={idx} className="text-center">
-                          <span className="seasonal-position-stat-value">{value}</span>
+              </thead>
+              <tbody>
+                {!top10Data || top10Data.length === 0 ? (
+                  <tr>
+                    <td colSpan="11" className="seasonal-no-data">
+                      No player statistics available
+                    </td>
+                  </tr>
+                ) : (
+                  top10Data.map((player, index) => {
+                    const isTopThree = index < 3;
+                    
+                    return (
+                      <tr key={player.id || index} className={isTopThree ? 'top-three' : ''}>
+                        <td>
+                          <span className={`seasonal-rank-badge seasonal-rank-${index + 1}`}>
+                            {index + 1}
+                          </span>
                         </td>
-                      ))}
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <td>
+                          <span className="seasonal-position-team">{player.team_name}</span>
+                        </td>
+                        <td>
+                          <span className="seasonal-position-player">{player.name}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-jersey">
+                            #{player.jersey_number}
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-stat-value">{typeof player.ppg === 'number' ? player.ppg.toFixed(1) : (player.ppg || '0.0')}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-stat-value">{typeof player.rpg === 'number' ? player.rpg.toFixed(1) : (player.rpg || '0.0')}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-stat-value">{typeof player.apg === 'number' ? player.apg.toFixed(1) : (player.apg || '0.0')}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-stat-value">{typeof player.spg === 'number' ? player.spg.toFixed(1) : (player.spg || '0.0')}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-stat-value">{typeof player.bpg === 'number' ? player.bpg.toFixed(1) : (player.bpg || '0.0')}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-stat-value">{typeof player.tpg === 'number' ? player.tpg.toFixed(1) : (player.tpg || '0.0')}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-stat-value" style={{fontWeight: 'bold', color: '#4CAF50'}}>
+                            {typeof player.overall_score === 'number' ? player.overall_score.toFixed(1) : (player.overall_score || '0.0')}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Summary Stats for Basketball */}
+          {top10Data && top10Data.length > 0 && (
+            <div className="seasonal-position-summary">
+              <div className="seasonal-position-summary-card">
+                <div className="seasonal-position-summary-label">🏆 Top Performer</div>
+                <div className="seasonal-position-summary-value">{top10Data[0].name}</div>
+                <div className="seasonal-position-summary-team">{top10Data[0].team_name}</div>
+              </div>
+              
+              <div className="seasonal-position-summary-card">
+                <div className="seasonal-position-summary-label">📊 Teams Represented</div>
+                <div className="seasonal-position-summary-value-large">
+                  {new Set(top10Data.map(p => p.team_name)).size}
+                </div>
+              </div>
+              
+              <div className="seasonal-position-summary-card">
+                <div className="seasonal-position-summary-label">⭐ Highest Score</div>
+                <div className="seasonal-position-summary-value-large">
+                  {top10Data[0].overall_score?.toFixed(1) || '0.0'}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Summary Stats */}
-      {!loading && currentData && currentData.length > 0 && (
-        <div className="seasonal-position-summary">
-          <div className="seasonal-position-summary-card">
-            <div className="seasonal-position-summary-label">🏆 Top Performer</div>
-            <div className="seasonal-position-summary-value">{currentData[0].name}</div>
-            <div className="seasonal-position-summary-team">{currentData[0].team_name}</div>
+      {/* Volleyball Position Stats Table */}
+      {!loading && isVolleyball && (
+        <>
+          <div className="seasonal-position-table-container">
+            <table className="seasonal-position-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Team</th>
+                  <th>Player</th>
+                  <th className="text-center">Jersey</th>
+                  {statColumns.map((col, idx) => (
+                    <th key={idx} className="text-center">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {!currentData || currentData.length === 0 ? (
+                  <tr>
+                    <td colSpan={4 + statColumns.length} className="seasonal-no-data">
+                      No players found for this position
+                    </td>
+                  </tr>
+                ) : (
+                  currentData.map((player, index) => {
+                    const statValues = getStatValues(player);
+                    const isTopThree = index < 3;
+                    
+                    return (
+                      <tr key={player.id || index} className={isTopThree ? 'top-three' : ''}>
+                        <td>
+                          <span className={`seasonal-rank-badge seasonal-rank-${index + 1}`}>
+                            {index + 1}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="seasonal-position-team">{player.team_name}</span>
+                        </td>
+                        <td>
+                          <span className="seasonal-position-player">{player.name}</span>
+                        </td>
+                        <td className="text-center">
+                          <span className="seasonal-position-jersey">
+                            #{player.jersey_number}
+                          </span>
+                        </td>
+                        {statValues.map((value, idx) => (
+                          <td key={idx} className="text-center">
+                            <span className="seasonal-position-stat-value">{value}</span>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-          
-          <div className="seasonal-position-summary-card">
-            <div className="seasonal-position-summary-label">📊 Teams Represented</div>
-            <div className="seasonal-position-summary-value-large">
-              {new Set(currentData.map(p => p.team_name)).size}
+
+          {/* Summary Stats for Volleyball */}
+          {currentData && currentData.length > 0 && (
+            <div className="seasonal-position-summary">
+              <div className="seasonal-position-summary-card">
+                <div className="seasonal-position-summary-label">🏆 Top Performer</div>
+                <div className="seasonal-position-summary-value">{currentData[0].name}</div>
+                <div className="seasonal-position-summary-team">{currentData[0].team_name}</div>
+              </div>
+              
+              <div className="seasonal-position-summary-card">
+                <div className="seasonal-position-summary-label">📊 Teams Represented</div>
+                <div className="seasonal-position-summary-value-large">
+                  {new Set(currentData.map(p => p.team_name)).size}
+                </div>
+              </div>
+              
+              <div className="seasonal-position-summary-card">
+                <div className="seasonal-position-summary-label">👥 Total Players</div>
+                <div className="seasonal-position-summary-value-large">{currentData.length}</div>
+              </div>
             </div>
-          </div>
-          
-          <div className="seasonal-position-summary-card">
-            <div className="seasonal-position-summary-label">👥 Total Players</div>
-            <div className="seasonal-position-summary-value-large">{currentData.length}</div>
-          </div>
-          
-          
-        </div>
+          )}
+        </>
       )}
     </div>
   );

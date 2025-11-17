@@ -330,6 +330,15 @@ useEffect(() => {
     return;
   }
 
+  // NEW: Add date validation
+  const startDate = new Date(eventData.startDate);
+  const endDate = new Date(eventData.endDate);
+  
+  if (endDate < startDate) {
+    setValidationError("Event End Date cannot be earlier than Event Start Date.");
+    return;
+  }
+
   // Just move to next step, don't create event yet
   setCurrentStep(2);
   setValidationError("");
@@ -1244,9 +1253,9 @@ const handleCreateAllBrackets = async () => {
                       />
                     </div>
 
-                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
   <div className="bracket-form-group">
-    <label htmlFor="startDate">Start Date *</label>
+    <label htmlFor="startDate">Event Start Date *</label>
     <input
       type="date"
       id="startDate"
@@ -1259,7 +1268,7 @@ const handleCreateAllBrackets = async () => {
   </div>
 
   <div className="bracket-form-group">
-    <label htmlFor="endDate">End Date *</label>
+    <label htmlFor="endDate">Event End Date *</label>
     <input
       type="date"
       id="endDate"
@@ -1429,40 +1438,43 @@ const handleCreateAllBrackets = async () => {
                           </button>
                         </div>
                       )}
-                      <div className="bracket-form-group">
-                        <label htmlFor="teamName">Team Name *</label>
-                        <input
-                          type="text"
-                          id="teamName"
-                          name="teamName"
-                          value={currentTeam.teamName}
-                          onChange={handleTeamInputChange}
-                          placeholder="Enter team name"
-                          style={{ fontSize: '16px' }}
-                        />
-                      </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="bracket-form-group">
+                    <label htmlFor="teamName">Team Name *</label>
+                    <input
+                      type="text"
+                      id="teamName"
+                      name="teamName"
+                      value={currentTeam.teamName}
+                      onChange={handleTeamInputChange}
+                      placeholder="Enter team name"
+                      style={{ fontSize: '16px' }}
+                    />
+                  </div>
 
-                     <div className="bracket-form-group">
-                      <label htmlFor="sport">Sport *</label>
-                      <select
-                        id="sport"
-                        name="sport"
-                        value={currentTeam.sport}
-                        onChange={handleTeamInputChange}
-                        disabled={editingTeamId !== null}
-                        style={{ fontSize: '16px', opacity: editingTeamId !== null ? 0.6 : 1 }}
-                      >
-                          <option value="">Select a sport</option>
-                          {Object.keys(positions).map((sport) => (
-                            <option key={sport} value={sport}>{sport}</option>
-                          ))}
-                      </select>
-                        {editingTeamId && (
-                          <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
-                            Sport cannot be changed when editing a team
-                          </small>
-                        )}
-                      </div>
+                  <div className="bracket-form-group">
+                    <label htmlFor="sport">Sport *</label>
+                    <select
+                      id="sport"
+                      name="sport"
+                      value={currentTeam.sport}
+                      onChange={handleTeamInputChange}
+                      disabled={editingTeamId !== null}
+                      style={{ fontSize: '16px', opacity: editingTeamId !== null ? 0.6 : 1 }}
+                    >
+                      <option value="">Select a sport</option>
+                      {Object.keys(positions).map((sport) => (
+                        <option key={sport} value={sport}>{sport}</option>
+                      ))}
+                    </select>
+                    {editingTeamId && (
+                      <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                        Sport cannot be changed when editing a team
+                      </small>
+                    )}
+                  </div>
+                </div>      
+
                     {/* Players Section */}
                       {currentTeam.sport && (
   <div className="admin-teams-players-section">
@@ -1631,25 +1643,35 @@ const handleCreateAllBrackets = async () => {
                       )}
 
                       <div className="bracket-form-actions" style={{ marginTop: '20px' }}>
-                        <button 
-                          onClick={handleAddTeam}
-                          className="bracket-submit-btn"
-                  disabled={loading || validPlayerCount < 12 || validPlayerCount > 15 || (createdTeams.length >= maxTeams && !editingTeamId)}
-                        >
-                         {loading ? (editingTeamId ? "Updating..." : "Adding...") : 
-                          editingTeamId ? "Update Team" :
-                          createdTeams.length >= maxTeams ? `Team Limit Reached (${maxTeams}/${maxTeams})` : "Add Team"}
-                        </button>
-                        <button
-                          type="button"
-                          className="bracket-cancel-btn"
-                          onClick={() => {
-                            setCurrentTeam({ teamName: "", sport: "", players: [] });
-                            setEditingTeamId(null);
-                          }}
-                        >
-                          Clear Form
-                        </button>
+                        {/* Only show Add Team button when 12 valid players are complete */}
+                        {validPlayerCount >= 12 && validPlayerCount <= 15 && (
+                          <button 
+                            onClick={handleAddTeam}
+                            className="bracket-submit-btn"
+                            disabled={loading || (createdTeams.length >= maxTeams && !editingTeamId)}
+                          >
+                            {loading ? (editingTeamId ? "Updating..." : "Adding...") : 
+                            editingTeamId ? "Update Team" :
+                            createdTeams.length >= maxTeams ? `Team Limit Reached (${maxTeams}/${maxTeams})` : "Add Team"}
+                          </button>
+                        )}
+                        
+                        {/* Only show Clear Form button if user has started entering data */}
+                        {(currentTeam.teamName.trim() || 
+                          currentTeam.sport || 
+                          currentTeam.players.some(p => p.name.trim() || p.position || p.jerseyNumber.trim())) && (
+                          <button
+                            type="button"
+                            className="bracket-cancel-btn"
+                            onClick={() => {
+                              setCurrentTeam({ teamName: "", sport: "", players: [] });
+                              setEditingTeamId(null);
+                              setValidationError("");
+                            }}
+                          >
+                            Clear Form
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2758,18 +2780,18 @@ title={createdTeams.length >= maxTeams ? "Maximum team limit reached" : "Add Tea
           border-radius: 8px;
         }
 
-        .mode-toggle-btn {
-          flex: 1;
-          padding: 16px 24px;
-          background: transparent;
-          color: #94a3b8;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 16px;
-          transition: all 0.3s ease;
-        }
+       .mode-toggle-btn {
+  flex: 1;
+  padding: 12px 24px;
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
 
         .mode-toggle-btn:hover {
           background: rgba(255, 255, 255, 0.05);

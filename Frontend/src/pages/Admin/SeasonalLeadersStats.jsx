@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaBasketballBall, FaVolleyballBall, FaTrophy } from "react-icons/fa";
 import { IoStatsChart } from "react-icons/io5";
-import TeamPositionStats from "./TeamPositionStats.jsx"; // Import the new component
+import TeamPositionStats from "./TeamPositionStats.jsx";
 import "../../style/SeasonalLeadersStats.css";
 
 const SeasonalLeadersStats = ({ sidebarOpen }) => {
@@ -182,7 +182,7 @@ const SeasonalLeadersStats = ({ sidebarOpen }) => {
                   onChange={(e) => {
                     const event = events.find(ev => ev.id === parseInt(e.target.value));
                     setSelectedEvent(event);
-                    setSelectedBracket(null); // Reset bracket selection
+                    setSelectedBracket(null);
                   }}
                   className="seasonal-control-select"
                 >
@@ -194,7 +194,7 @@ const SeasonalLeadersStats = ({ sidebarOpen }) => {
                 </select>
               </div>
 
-              {/* Bracket dropdown - only show if there are available brackets */}
+              {/* Bracket dropdown */}
               {brackets.length > 0 && (
                 <div className="seasonal-control-group">
                   <label className="seasonal-control-label">Select Sport:</label>
@@ -231,14 +231,14 @@ const SeasonalLeadersStats = ({ sidebarOpen }) => {
               </div>
             )}
 
-            {/* No Brackets Available Message */}
+            {/* No Brackets Available */}
             {!loading && !error && selectedEvent && brackets.length === 0 && (
               <div className="seasonal-error">
                 <p>No brackets available for this event.</p>
               </div>
             )}
 
-            {/* No Bracket Selected Message */}
+            {/* No Bracket Selected */}
             {!loading && !error && selectedEvent && brackets.length > 0 && !selectedBracket && (
               <div className="seasonal-error">
                 <p>Please select a bracket to view statistics.</p>
@@ -257,7 +257,7 @@ const SeasonalLeadersStats = ({ sidebarOpen }) => {
                       {renderLeaderCard("BLOCKS", leaderboards.blocks, "bpg", "🛡️")}
                       {renderLeaderCard("STEALS", leaderboards.steals, "spg", "🤲")}
                     </>
-                  ) : (
+                  ) : selectedBracket.sport_type === "volleyball" ? (
                     <>
                       {renderLeaderCard("KILLS", leaderboards.kills, "kills", "⚡")}
                       {renderLeaderCard("DIGS", leaderboards.digs, "digs", "🏐")}
@@ -265,10 +265,10 @@ const SeasonalLeadersStats = ({ sidebarOpen }) => {
                       {renderLeaderCard("BLOCKS", leaderboards.blocks, "blocks", "🛡️")}
                       {renderLeaderCard("SERVICE ACES", leaderboards.serviceAces, "service_aces", "🎯")}
                     </>
-                  )}
+                  ) : null}
                 </div>
 
-                {/* Team Position Stats - Only show for volleyball */}
+                {/* Team Position Stats Component - Works for both Basketball and Volleyball */}
                 <TeamPositionStats 
                   selectedEvent={selectedEvent}
                   selectedBracket={selectedBracket}
